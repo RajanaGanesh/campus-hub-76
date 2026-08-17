@@ -1,0 +1,49 @@
+/* ==========================================================================
+   CAMPUS HUB DESIGN SYSTEM - BASE VARIABLES & RESET (theme.css)
+   ========================================================================== */
+
+:root {
+  /* Color Palette */
+  --bg-primary: #04030d;       /* Very dark navy / near black */
+  --bg-secondary: #0d0b24;     /* Deep navy-purple */
+  --accent-primary: #7c5cff;   /* Purple / violet */
+  --accent-secondary: #4e32ff; /* Electric blue/purple */
+  --accent-highlight: #08b9dd; /* Cyan accent */
+  --text-primary: #ffffff;     /* White */
+  --text-secondary: #aaa8bb;   /* Muted lavender/gray */
+  --color-error: #ff4564;      /* Red/pink */
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-focus: #7c5cff;
+  --transition-speed: 0.25s;
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 92, 255, 0.3);
+}

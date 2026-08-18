@@ -1,451 +1,622 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getManagementData, saveManagementData, FacultyRecord } from '../../data/managementData';
+import React, { useState, useMemo } from 'react';
+import { AppLayout } from '../../components/AppLayout';
+import { getManagementData, FacultyRecord } from '../../data/managementData';
+import { Modal } from '../../components/Modal';
+import { Toast } from '../../components/Toast';
 
 export const AdminFaculty: React.FC = () => {
-  const navigate = useNavigate();
+  const mgmt = getManagementData();
 
-  // Load management database
-  const [data, setData] = useState(() => getManagementData());
-  const [faculty, setFaculty] = useState<FacultyRecord[]>(() => {
-    return getManagementData().faculty;
-  });
+  // Faculty state
+  const [facultyList, setFacultyList] = useState<FacultyRecord[]>(mgmt.faculty);
 
-  const [search, setSearch] = useState('');
-  const [filterDept, setFilterDept] = useState('All');
+  // Search & Filter
+  const [searchQuery, setSearchQuery] = useState('');
+  const [deptFilter, setDeptFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
 
-  // Modal forms
-  const [showAddModal, setShowAddModal] = useState(false);
+  // Modals state
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingFaculty, setEditingFaculty] = useState<FacultyRecord | null>(null);
   const [viewingFaculty, setViewingFaculty] = useState<FacultyRecord | null>(null);
+  const [deactivatingFaculty, setDeactivatingFaculty] = useState<FacultyRecord | null>(null);
 
-  // Form Fields
+  // Form State
   const [name, setName] = useState('');
-  const [facultyId, setFacultyId] = useState('');
+  const [empId, setEmpId] = useState('');
   const [email, setEmail] = useState('');
-  const [dept, setDept] = useState('CSE');
-  const [designation, setDesignation] = useState('Professor');
-  const [coursesInput, setCoursesInput] = useState('');
+  const [department, setDepartment] = useState('Computer Science');
+  const [designation, setDesignation] = useState('Associate Professor');
 
-  const [formError, setFormError] = useState<string | null>(null);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  // Toast
+  const [toastMsg, setToastMsg] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
 
-  const handleOpenAdd = () => {
-    setName('');
-    setFacultyId('');
-    setEmail('');
-    setDept('CSE');
-    setDesignation('Professor');
-    setCoursesInput('');
-    setFormError(null);
-    setEditingFaculty(null);
-    setShowAddModal(true);
+  const showToast = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+    setToastMsg({ message, type });
+    setTimeout(() => setToastMsg(null), 3500);
   };
 
-  const handleOpenEdit = (fac: FacultyRecord) => {
-    setEditingFaculty(fac);
-    setName(fac.name);
-    setFacultyId(fac.id);
-    setEmail(fac.email);
-    setDept(fac.department);
-    setDesignation(fac.designation);
-    setCoursesInput(fac.courses.join(', '));
-    setFormError(null);
-    setShowAddModal(true);
-  };
-
-  const handleToggleStatus = (facId: string) => {
-    const nextFaculty = faculty.map((f) => {
-      if (f.id === facId) {
-        const nextStatus = f.status === 'Active' ? 'Deactivated' as const : 'Active' as const;
-        setToastMsg(`Faculty "${f.name}" is now ${nextStatus}.`);
-        setTimeout(() => setToastMsg(null), 2500);
-        return {
-          ...f,
-          status: nextStatus
-        };
-      }
-      return f;
-    });
-
-    setFaculty(nextFaculty);
-    const updatedData = { ...data, faculty: nextFaculty };
-    setData(updatedData);
-    saveManagementData(updatedData);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  // Add Faculty Handler
+  const handleAddFaculty = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !facultyId.trim() || !email.trim()) {
-      setFormError('Please fill in all required fields (Name, ID, and Email).');
+    if (!name.trim() || !empId.trim() || !email.trim()) {
+      showToast('Please fill out all required fields.', 'error');
       return;
     }
 
-    const coursesArray = coursesInput
-      .split(',')
-      .map((c) => c.trim())
-      .filter((c) => c.length > 0);
-
-    if (editingFaculty) {
-      // Edit
-      const nextFaculty = faculty.map((f) => {
-        if (f.id === editingFaculty.id) {
-          return {
-            ...f,
-            name,
-            id: facultyId,
-            email,
-            department: dept,
-            designation,
-            courses: coursesArray
-          };
-        }
-        return f;
-      });
-
-      setFaculty(nextFaculty);
-      const updatedData = { ...data, faculty: nextFaculty };
-      setData(updatedData);
-      saveManagementData(updatedData);
-
-      setShowAddModal(false);
-      setToastMsg('Faculty profile updated successfully.');
-      setTimeout(() => setToastMsg(null), 2500);
-    } else {
-      // Add
-      if (faculty.some((f) => f.id === facultyId)) {
-        setFormError('Error: A faculty member with this ID already exists.');
-        return;
-      }
-
-      const newFaculty: FacultyRecord = {
-        id: facultyId,
-        name,
-        email,
-        department: dept,
-        designation,
-        courses: coursesArray,
-        status: 'Active'
-      };
-
-      const nextFaculty = [...faculty, newFaculty];
-      setFaculty(nextFaculty);
-      const updatedData = { ...data, faculty: nextFaculty };
-      setData(updatedData);
-      saveManagementData(updatedData);
-
-      setShowAddModal(false);
-      setToastMsg('Faculty registered successfully.');
-      setTimeout(() => setToastMsg(null), 2500);
+    if (facultyList.some((f) => f.id === empId.trim())) {
+      showToast(`Employee ID ${empId} is already registered.`, 'error');
+      return;
     }
+
+    const newFac: FacultyRecord = {
+      id: empId.trim().toUpperCase(),
+      name: name.trim(),
+      department,
+      designation,
+      email: email.trim().toLowerCase(),
+      courses: ['CSE-301'],
+      status: 'Active'
+    };
+
+    setFacultyList([newFac, ...facultyList]);
+    setIsAddModalOpen(false);
+    setName('');
+    setEmpId('');
+    setEmail('');
+    showToast(`Faculty member ${newFac.name} (${newFac.id}) added successfully!`, 'success');
   };
 
-  const filteredFaculty = faculty.filter((f) => {
-    if (search && !f.name.toLowerCase().includes(search.toLowerCase()) && !f.id.toLowerCase().includes(search.toLowerCase())) return false;
-    if (filterDept !== 'All' && f.department !== filterDept) return false;
-    return true;
-  });
+  // Edit Faculty Handler
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingFaculty) return;
+
+    setFacultyList((prev) =>
+      prev.map((f) => (f.id === editingFaculty.id ? editingFaculty : f))
+    );
+
+    setEditingFaculty(null);
+    showToast(`Faculty member ${editingFaculty.name} updated successfully!`, 'success');
+  };
+
+  // Toggle Status Handler
+  const handleConfirmToggleStatus = () => {
+    if (!deactivatingFaculty) return;
+    const newStatus = deactivatingFaculty.status === 'Active' ? 'Deactivated' : 'Active';
+
+    setFacultyList((prev) =>
+      prev.map((f) => (f.id === deactivatingFaculty.id ? { ...f, status: newStatus } : f))
+    );
+
+    setDeactivatingFaculty(null);
+    showToast(`Faculty status updated to ${newStatus}.`, 'info');
+  };
+
+  // Filtering
+  const filteredFaculty = useMemo(() => {
+    return facultyList.filter((f) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchQ =
+        !q ||
+        f.name.toLowerCase().includes(q) ||
+        f.id.toLowerCase().includes(q) ||
+        f.email.toLowerCase().includes(q) ||
+        f.department.toLowerCase().includes(q);
+
+      const matchDept = deptFilter === 'All' || f.department.toLowerCase().includes(deptFilter.toLowerCase());
+      const matchStatus = statusFilter === 'All' || f.status === statusFilter;
+
+      return matchQ && matchDept && matchStatus;
+    });
+  }, [facultyList, searchQuery, deptFilter, statusFilter]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Back nav */}
-      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-        <button
-          type="button"
-          className="btn-sso"
-          onClick={() => navigate('/admin')}
-          style={{ margin: 0, padding: '0 12px', height: '32px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}
-        >
-          <i className="fa-solid fa-arrow-left"></i> Admin Console
-        </button>
-        <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>Admin / Faculty</span>
-      </div>
-
-      <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
-        <div>
-          <h1>Faculty Management</h1>
-          <p>Register new faculty instructor profiles, assign curriculum codes, and edit designations details.</p>
-        </div>
-
-        <button
-          type="button"
-          className="btn-signin"
-          style={{ width: 'auto', padding: '0 16px', height: '36px', margin: 0 }}
-          onClick={handleOpenAdd}
-        >
-          <i className="fa-solid fa-user-plus" style={{ marginRight: '6px' }}></i> Add Faculty
-        </button>
-      </div>
-
-      {/* Toast Alert */}
-      {toastMsg && (
-        <div className="toast-msg">
-          <i className="fa-solid fa-circle-check" style={{ color: '#00d89a' }}></i>
-          <span>{toastMsg}</span>
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="card-panel" style={{ padding: '16px 20px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '14px' }}>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <i className="fa-solid fa-magnifying-glass" style={{ position: 'absolute', left: '12px', fontSize: '11px', color: 'var(--text-secondary)' }}></i>
-            <input
-              type="text"
-              placeholder="Search by faculty name or ID..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px 8px 32px', fontSize: '12.5px', color: 'white', outline: 'none' }}
-            />
+    <AppLayout>
+      <div className="academic-module-page">
+        {/* Header */}
+        <div className="module-header-row">
+          <div>
+            <div className="module-breadcrumbs">
+              <span>Admin Portal</span>
+              <span className="crumb-sep">/</span>
+              <span className="crumb-current">Faculty Management</span>
+            </div>
+            <h1 className="module-title">Faculty & Staff Directory</h1>
+            <p className="module-subtitle">
+              Manage academic appointments, department designations, subject allotments, and credentials.
+            </p>
           </div>
 
-          <select
-            value={filterDept}
-            onChange={(e) => setFilterDept(e.target.value)}
-            style={{ background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '12.5px', outline: 'none' }}
-          >
-            <option value="All">All Departments</option>
-            <option value="CSE">Computer Science (CSE)</option>
-            <option value="ECE">Electronics (ECE)</option>
-          </select>
+          <div className="module-header-meta">
+            <button
+              type="button"
+              className="c1-btn c1-btn-gradient"
+              onClick={() => setIsAddModalOpen(true)}
+            >
+              <i className="fa-solid fa-user-plus"></i>
+              <span>Add Faculty Member</span>
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Table */}
-      <div className="card-panel">
-        <div className="table-responsive" style={{ overflowX: 'auto' }}>
-          <table className="custom-table" style={{ width: '100%', minWidth: '800px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', color: 'var(--text-secondary)' }}>
-                <th style={{ padding: '12px 14px' }}>Faculty ID</th>
-                <th style={{ padding: '12px 14px' }}>Faculty Name</th>
-                <th style={{ padding: '12px 14px' }}>Department</th>
-                <th style={{ padding: '12px 14px' }}>Designation</th>
-                <th style={{ padding: '12px 14px' }}>Email</th>
-                <th style={{ padding: '12px 14px' }}>Assigned Courses</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Status</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredFaculty.length > 0 ? (
-                filteredFaculty.map((fac) => (
-                  <tr key={fac.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', color: 'white' }}>
-                    <td style={{ padding: '12px 14px', fontWeight: '700', color: 'var(--accent-highlight)' }}>{fac.id}</td>
-                    <td style={{ padding: '12px 14px', fontWeight: '700' }}>{fac.name}</td>
-                    <td style={{ padding: '12px 14px' }}>{fac.department}</td>
-                    <td style={{ padding: '12px 14px' }}>{fac.designation}</td>
-                    <td style={{ padding: '12px 14px' }}>{fac.email}</td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                        {fac.courses.map((c) => (
-                          <span key={c} style={{ fontSize: '10px', background: 'rgba(124,92,255,0.1)', color: 'var(--accent-highlight)', border: '1px solid rgba(124,92,255,0.2)', padding: '2px 6px', borderRadius: '4px' }}>
-                            {c}
-                          </span>
+        {/* 4 Summary Stat Cards */}
+        <div className="academic-stats-grid">
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
+              <i className="fa-solid fa-chalkboard-user"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">{facultyList.length * 14}</span>
+              <span className="stat-label">Total Faculty Members</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
+              <i className="fa-solid fa-graduation-cap"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">28</span>
+              <span className="stat-label">Professors & HODs</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
+              <i className="fa-solid fa-award"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">32</span>
+              <span className="stat-label">Associate Professors</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>
+              <i className="fa-solid fa-book-open-reader"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">24</span>
+              <span className="stat-label">Assistant Professors</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Search & Filter Toolbar */}
+        <div className="c1-card academic-filters-card" style={{ marginBottom: '24px' }}>
+          <div className="search-filter-input-wrap">
+            <i className="fa-solid fa-magnifying-glass search-icon"></i>
+            <input
+              type="text"
+              className="c1-input search-filter-input"
+              placeholder="Search faculty by name, employee ID (FAC-101), or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="clear-search-btn"
+                onClick={() => setSearchQuery('')}
+              >
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            )}
+          </div>
+
+          <div className="filters-row-wrap">
+            <div className="filter-select-item">
+              <label htmlFor="select-admin-fac-dept">Department</label>
+              <select
+                id="select-admin-fac-dept"
+                className="c1-select"
+                value={deptFilter}
+                onChange={(e) => setDeptFilter(e.target.value)}
+              >
+                <option value="All">All Departments</option>
+                <option value="Computer Science">Computer Science (CSE)</option>
+                <option value="Electronics">Electronics (ECE)</option>
+                <option value="Information Technology">Information Tech (IT)</option>
+                <option value="Mechanical">Mechanical (MECH)</option>
+              </select>
+            </div>
+
+            <div className="filter-select-item">
+              <label htmlFor="select-admin-fac-status">Status</label>
+              <select
+                id="select-admin-fac-status"
+                className="c1-select"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="All">All Statuses</option>
+                <option value="Active">Active</option>
+                <option value="Deactivated">Deactivated</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Faculty Table */}
+        <div className="c1-card student-roster-card">
+          <div className="c1-card-header">
+            <div>
+              <h3 className="c1-card-title">Faculty Roster ({filteredFaculty.length} Instructors)</h3>
+              <p className="c1-card-subtitle">Official academic teaching staff directory</p>
+            </div>
+            <button
+              type="button"
+              className="c1-btn c1-btn-secondary"
+              onClick={() => setIsAddModalOpen(true)}
+            >
+              <i className="fa-solid fa-plus"></i>
+              <span>Add Faculty</span>
+            </button>
+          </div>
+
+          <div className="student-roster-table-wrap">
+            <table className="c1-table">
+              <thead>
+                <tr>
+                  <th>Employee ID</th>
+                  <th>Faculty Instructor</th>
+                  <th>Department</th>
+                  <th>Designation</th>
+                  <th>Assigned Courses</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredFaculty.map((fac) => (
+                  <tr key={fac.id}>
+                    <td><span className="course-code-cell">{fac.id}</span></td>
+                    <td>
+                      <div>
+                        <strong style={{ color: '#ffffff' }}>{fac.name}</strong>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{fac.email}</div>
+                      </div>
+                    </td>
+                    <td>{fac.department}</td>
+                    <td>
+                      <span className="c1-badge c1-badge-purple">{fac.designation}</span>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                        {fac.courses.map((code) => (
+                          <span key={code} className="course-code-tag">{code}</span>
                         ))}
                       </div>
                     </td>
-                    <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                      <span className={`subject-att-status ${fac.status === 'Active' ? 'good' : 'critical'}`} style={{ fontSize: '8.5px' }}>
+                    <td>
+                      <span className={`c1-badge ${fac.status === 'Active' ? 'c1-badge-success' : 'c1-badge-error'}`}>
                         {fac.status}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                    <td>
+                      <div style={{ display: 'flex', gap: '6px' }}>
                         <button
                           type="button"
-                          className="btn-sso"
-                          style={{ height: '26px', fontSize: '11px', padding: '0 8px', margin: 0, width: 'auto' }}
+                          className="c1-btn c1-btn-secondary"
+                          style={{ padding: '6px 10px', fontSize: '0.75rem' }}
                           onClick={() => setViewingFaculty(fac)}
+                          title="View faculty profile"
                         >
-                          View
+                          <i className="fa-solid fa-eye"></i>
                         </button>
                         <button
                           type="button"
-                          className="btn-sso"
-                          style={{ height: '26px', fontSize: '11px', padding: '0 8px', margin: 0, width: 'auto' }}
-                          onClick={() => handleOpenEdit(fac)}
+                          className="c1-btn c1-btn-secondary"
+                          style={{ padding: '6px 10px', fontSize: '0.75rem' }}
+                          onClick={() => setEditingFaculty(fac)}
+                          title="Edit faculty"
                         >
-                          Edit
+                          <i className="fa-solid fa-pen"></i>
                         </button>
                         <button
                           type="button"
-                          className="btn-retry-err"
-                          style={{
-                            height: '26px',
-                            fontSize: '11px',
-                            padding: '0 8px',
-                            margin: 0,
-                            width: 'auto',
-                            background: fac.status === 'Active' ? 'rgba(217, 83, 79, 0.05)' : 'rgba(0, 216, 154, 0.05)',
-                            borderColor: fac.status === 'Active' ? 'var(--color-error)' : '#00d89a',
-                            color: fac.status === 'Active' ? 'var(--color-error)' : '#00d89a'
-                          }}
-                          onClick={() => handleToggleStatus(fac.id)}
+                          className="c1-btn c1-btn-secondary"
+                          style={{ padding: '6px 10px', fontSize: '0.75rem', color: fac.status === 'Active' ? 'var(--color-error)' : 'var(--color-success)' }}
+                          onClick={() => setDeactivatingFaculty(fac)}
+                          title={fac.status === 'Active' ? 'Deactivate faculty' : 'Activate faculty'}
                         >
-                          {fac.status === 'Active' ? 'Suspend' : 'Activate'}
+                          <i className={`fa-solid ${fac.status === 'Active' ? 'fa-user-slash' : 'fa-user-check'}`}></i>
                         </button>
                       </div>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={8} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    No faculty found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      {/* Add / Edit Faculty Modal */}
-      {showAddModal && (
-        <div className="search-modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="search-modal-card" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
-            <div className="search-modal-header" style={{ justifyContent: 'space-between', padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <div>
-                <span style={{ fontSize: '10px', color: 'var(--accent-highlight)', display: 'block', textTransform: 'uppercase' }}>Faculty Roster</span>
-                <h2 style={{ fontSize: '16.5px', marginTop: '2px' }}>{editingFaculty ? 'Edit Faculty Member' : 'Add Faculty Member'}</h2>
-              </div>
-              <button type="button" className="btn-search-close" onClick={() => setShowAddModal(false)}>
-                <i className="fa-solid fa-xmark" style={{ fontSize: '14px' }}></i>
-              </button>
-            </div>
-
-            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', maxHeight: '70vh' }}>
-              {formError && (
-                <div className="login-error-box" style={{ margin: 0, padding: '10px 14px' }}>
-                  <i className="fa-solid fa-circle-exclamation"></i>
-                  <span>{formError}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div className="form-group">
-                  <label htmlFor="fac-name" style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Faculty Name</label>
+        {/* ============================================================
+            MODAL 1: ADD FACULTY MODAL
+            ============================================================ */}
+        {isAddModalOpen && (
+          <Modal
+            isOpen={true}
+            onClose={() => setIsAddModalOpen(false)}
+            title="Register New Faculty Member"
+            maxWidth="md"
+          >
+            <form onSubmit={handleAddFaculty} className="faculty-form-stack">
+              <div className="form-fields-two-col">
+                <div className="form-field-wrap">
+                  <label className="form-label">Full Name & Title</label>
                   <input
-                    id="fac-name"
                     type="text"
-                    placeholder="e.g. Dr. Ramesh Prasad..."
+                    className="c1-input"
+                    placeholder="e.g. Dr. Rajesh Verma"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '12.5px', outline: 'none' }}
+                    required
                   />
                 </div>
 
-                <div className="form-group">
-                  <label htmlFor="fac-id" style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Faculty ID</label>
+                <div className="form-field-wrap">
+                  <label className="form-label">Employee ID</label>
                   <input
-                    id="fac-id"
                     type="text"
-                    placeholder="e.g. FAC-104"
-                    value={facultyId}
-                    onChange={(e) => setFacultyId(e.target.value)}
-                    disabled={!!editingFaculty}
-                    style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '12.5px', outline: 'none' }}
+                    className="c1-input"
+                    placeholder="e.g. FAC-106"
+                    value={empId}
+                    onChange={(e) => setEmpId(e.target.value)}
+                    required
                   />
                 </div>
+              </div>
 
-                <div className="form-group">
-                  <label htmlFor="fac-email" style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Email Address</label>
-                  <input
-                    id="fac-email"
-                    type="email"
-                    placeholder="e.g. ramesh@campushub.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '12.5px', outline: 'none' }}
-                  />
+              <div className="form-field-wrap">
+                <label className="form-label">Institutional Email</label>
+                <input
+                  type="email"
+                  className="c1-input"
+                  placeholder="e.g. rajesh.verma@campushub.edu"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-fields-two-col">
+                <div className="form-field-wrap">
+                  <label className="form-label">Department</label>
+                  <select
+                    className="c1-select"
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                  >
+                    <option value="Computer Science">Computer Science & Engineering</option>
+                    <option value="Electronics & Communication">Electronics & Communication</option>
+                    <option value="Information Technology">Information Technology</option>
+                    <option value="Mechanical Engineering">Mechanical Engineering</option>
+                  </select>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div className="form-group">
-                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Department</label>
-                    <select
-                      value={dept}
-                      onChange={(e) => setDept(e.target.value)}
-                      style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '6px 8px', color: 'white', fontSize: '12.5px' }}
-                    >
-                      <option value="CSE">CSE</option>
-                      <option value="ECE">ECE</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Designation</label>
-                    <select
-                      value={designation}
-                      onChange={(e) => setDesignation(e.target.value)}
-                      style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '6px 8px', color: 'white', fontSize: '12.5px' }}
-                    >
-                      <option value="Professor">Professor</option>
-                      <option value="Associate Professor">Associate Professor</option>
-                      <option value="Assistant Professor">Assistant Professor</option>
-                    </select>
-                  </div>
+                <div className="form-field-wrap">
+                  <label className="form-label">Academic Designation</label>
+                  <select
+                    className="c1-select"
+                    value={designation}
+                    onChange={(e) => setDesignation(e.target.value)}
+                  >
+                    <option value="Professor">Professor / HOD</option>
+                    <option value="Associate Professor">Associate Professor</option>
+                    <option value="Assistant Professor">Assistant Professor</option>
+                  </select>
                 </div>
+              </div>
 
-                <div className="form-group">
-                  <label htmlFor="fac-courses" style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Assigned Courses (Comma separated codes)</label>
-                  <input
-                    id="fac-courses"
-                    type="text"
-                    placeholder="e.g. CSE-301, CSE-302..."
-                    value={coursesInput}
-                    onChange={(e) => setCoursesInput(e.target.value)}
-                    style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '12.5px', outline: 'none' }}
-                  />
-                </div>
-
-                <button type="submit" className="btn-signin" style={{ height: '40px', margin: 0, marginTop: '10px', fontSize: '13px' }}>
-                  {editingFaculty ? 'Save Profile' : 'Register Faculty'}
+              <div className="modal-dialog-footer">
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setIsAddModalOpen(false)}
+                >
+                  Cancel
                 </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Viewing details dossier */}
-      {viewingFaculty && (
-        <div className="search-modal-overlay" onClick={() => setViewingFaculty(null)}>
-          <div className="search-modal-card" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
-            <div className="search-modal-header" style={{ justifyContent: 'space-between', padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <div>
-                <span style={{ fontSize: '10px', color: 'var(--accent-highlight)', display: 'block', textTransform: 'uppercase' }}>FACULTY BIO</span>
-                <h2 style={{ fontSize: '16.5px', marginTop: '2px' }}>Dossier View</h2>
+                <button
+                  type="submit"
+                  className="c1-btn c1-btn-gradient"
+                >
+                  <i className="fa-solid fa-check"></i>
+                  <span>Register Faculty</span>
+                </button>
               </div>
-              <button type="button" className="btn-search-close" onClick={() => setViewingFaculty(null)}>
-                <i className="fa-solid fa-xmark" style={{ fontSize: '14px' }}></i>
-              </button>
-            </div>
+            </form>
+          </Modal>
+        )}
 
-            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-                <div>Name: <strong style={{ color: 'white' }}>{viewingFaculty.name}</strong></div>
-                <div>ID: <strong style={{ color: 'white' }}>{viewingFaculty.id}</strong></div>
-                <div>Email: <strong style={{ color: 'white' }}>{viewingFaculty.email}</strong></div>
-                <div>Dept: <strong style={{ color: 'white' }}>{viewingFaculty.department}</strong></div>
-                <div>Designation: <strong style={{ color: 'white' }}>{viewingFaculty.designation}</strong></div>
-                <div>Status: <span className={`subject-att-status ${viewingFaculty.status === 'Active' ? 'good' : 'critical'}`} style={{ fontSize: '9px' }}>{viewingFaculty.status}</span></div>
+        {/* ============================================================
+            MODAL 2: EDIT FACULTY MODAL
+            ============================================================ */}
+        {editingFaculty && (
+          <Modal
+            isOpen={true}
+            onClose={() => setEditingFaculty(null)}
+            title={`Edit Faculty: ${editingFaculty.id}`}
+            maxWidth="md"
+          >
+            <form onSubmit={handleSaveEdit} className="faculty-form-stack">
+              <div className="form-fields-two-col">
+                <div className="form-field-wrap">
+                  <label className="form-label">Full Name</label>
+                  <input
+                    type="text"
+                    className="c1-input"
+                    value={editingFaculty.name}
+                    onChange={(e) => setEditingFaculty({ ...editingFaculty, name: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="form-field-wrap">
+                  <label className="form-label">Institutional Email</label>
+                  <input
+                    type="email"
+                    className="c1-input"
+                    value={editingFaculty.email}
+                    onChange={(e) => setEditingFaculty({ ...editingFaculty, email: e.target.value })}
+                    required
+                  />
+                </div>
               </div>
 
-              <button
-                type="button"
-                className="btn-signin"
-                style={{ width: '100%', height: '36px', margin: 0, fontSize: '12.5px' }}
-                onClick={() => setViewingFaculty(null)}
-              >
-                Close View
-              </button>
+              <div className="form-fields-two-col">
+                <div className="form-field-wrap">
+                  <label className="form-label">Department</label>
+                  <input
+                    type="text"
+                    className="c1-input"
+                    value={editingFaculty.department}
+                    onChange={(e) => setEditingFaculty({ ...editingFaculty, department: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="form-field-wrap">
+                  <label className="form-label">Designation</label>
+                  <input
+                    type="text"
+                    className="c1-input"
+                    value={editingFaculty.designation}
+                    onChange={(e) => setEditingFaculty({ ...editingFaculty, designation: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="modal-dialog-footer">
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setEditingFaculty(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="c1-btn c1-btn-gradient"
+                >
+                  <i className="fa-solid fa-floppy-disk"></i>
+                  <span>Save Changes</span>
+                </button>
+              </div>
+            </form>
+          </Modal>
+        )}
+
+        {/* ============================================================
+            MODAL 3: VIEW PROFILE MODAL
+            ============================================================ */}
+        {viewingFaculty && (
+          <Modal
+            isOpen={true}
+            onClose={() => setViewingFaculty(null)}
+            title={`Faculty Profile: ${viewingFaculty.name}`}
+            maxWidth="md"
+          >
+            <div className="student-profile-dialog-content">
+              <div className="student-dialog-header">
+                <div className="student-avatar-badge" style={{ borderColor: 'var(--color-cyan)' }}>
+                  {viewingFaculty.name.substring(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="stu-name">{viewingFaculty.name}</h3>
+                  <span className="stu-sub">
+                    ID: <strong>{viewingFaculty.id}</strong> • {viewingFaculty.designation}
+                  </span>
+                </div>
+              </div>
+
+              <div className="student-profile-metrics-grid">
+                <div className="d-cell">
+                  <span className="d-lbl">Department:</span>
+                  <span className="d-val">{viewingFaculty.department}</span>
+                </div>
+                <div className="d-cell">
+                  <span className="d-lbl">Email:</span>
+                  <span className="d-val">{viewingFaculty.email}</span>
+                </div>
+                <div className="d-cell">
+                  <span className="d-lbl">Assigned Courses:</span>
+                  <span className="d-val">{viewingFaculty.courses.join(', ')}</span>
+                </div>
+                <div className="d-cell">
+                  <span className="d-lbl">Status:</span>
+                  <span className="d-val" style={{ color: '#34d399' }}>{viewingFaculty.status}</span>
+                </div>
+              </div>
+
+              <div className="modal-dialog-footer">
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setViewingFaculty(null)}
+                >
+                  Close
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
-    </div>
+          </Modal>
+        )}
+
+        {/* ============================================================
+            MODAL 4: DEACTIVATE / ACTIVATE CONFIRMATION
+            ============================================================ */}
+        {deactivatingFaculty && (
+          <Modal
+            isOpen={true}
+            onClose={() => setDeactivatingFaculty(null)}
+            title="Confirm Status Change"
+            maxWidth="sm"
+          >
+            <div className="confirm-dialog-content">
+              <div className="confirm-icon-box" style={{ background: 'rgba(244, 63, 94, 0.15)', color: '#fb7185' }}>
+                <i className="fa-solid fa-user-slash"></i>
+              </div>
+              <h3 className="confirm-heading">
+                {deactivatingFaculty.status === 'Active' ? 'Deactivate Account?' : 'Reactivate Account?'}
+              </h3>
+              <p className="confirm-body-text">
+                Are you sure you want to {deactivatingFaculty.status === 'Active' ? 'deactivate' : 'reactivate'} the faculty account for <strong>{deactivatingFaculty.name} ({deactivatingFaculty.id})</strong>?
+              </p>
+
+              <div className="modal-dialog-footer">
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setDeactivatingFaculty(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-gradient"
+                  style={{ background: deactivatingFaculty.status === 'Active' ? 'var(--color-error)' : 'var(--color-success)' }}
+                  onClick={handleConfirmToggleStatus}
+                >
+                  {deactivatingFaculty.status === 'Active' ? 'Deactivate' : 'Reactivate'}
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
+
+        {/* Toast Notification Container */}
+        {toastMsg && (
+          <Toast
+            message={toastMsg.message}
+            type={toastMsg.type}
+            onClose={() => setToastMsg(null)}
+          />
+        )}
+      </div>
+    </AppLayout>
   );
 };
+
 export default AdminFaculty;

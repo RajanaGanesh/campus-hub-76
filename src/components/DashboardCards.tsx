@@ -118,27 +118,22 @@ export const ScheduleCard: React.FC<ScheduleCardProps> = ({ schedule }) => {
     </div>
   );
 };
-
 // 4. ATTENDANCE CARD
-interface SubjectAttendance {
-  name: string;
-  percentage: number;
-  status: 'safe' | 'warning' | 'critical';
-}
-
 interface AttendanceCardProps {
   overallPercentage: number;
-  subjects: SubjectAttendance[];
 }
 
 export const AttendanceCard: React.FC<AttendanceCardProps> = ({
   overallPercentage,
-  subjects,
 }) => {
   // Circular progress dimensions: radius=40, circum=251.2
   const r = 40;
   const strokeDasharray = 2 * Math.PI * r;
   const strokeDashoffset = strokeDasharray - (overallPercentage / 100) * strokeDasharray;
+
+  // Determine overall status based on percentage
+  const status = overallPercentage >= 85 ? 'Safe' : (overallPercentage >= 75 ? 'Warning' : 'Critical');
+  const statusClass = status.toLowerCase();
 
   return (
     <div className="card-panel">
@@ -146,7 +141,7 @@ export const AttendanceCard: React.FC<AttendanceCardProps> = ({
         <h3>Attendance Overview</h3>
         <i className="fa-solid fa-user-check" style={{ color: 'var(--text-secondary)' }}></i>
       </div>
-      <div className="attendance-card-body">
+      <div className="attendance-card-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', gap: '20px' }}>
         <div className="attendance-circle-container">
           <svg className="attendance-circle-svg">
             <defs>
@@ -170,26 +165,14 @@ export const AttendanceCard: React.FC<AttendanceCardProps> = ({
           <span className="attendance-circle-val">{overallPercentage}%</span>
         </div>
 
-        <div className="attendance-breakdown">
-          {subjects.map((sub, idx) => (
-            <div key={idx} className="subject-att-row">
-              <div className="subject-att-header">
-                <span className="subject-att-name">{sub.name}</span>
-                <span className="subject-att-value">
-                  {sub.percentage}%{' '}
-                  <span className={`subject-att-status ${sub.status}`}>
-                    {sub.status}
-                  </span>
-                </span>
-              </div>
-              <div className="subject-att-track">
-                <div
-                  className={`subject-att-bar ${sub.status}`}
-                  style={{ width: `${sub.percentage}%` }}
-                />
-              </div>
-            </div>
-          ))}
+        <div className="attendance-info" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Overall Status</div>
+          <div className={`subject-att-status ${statusClass}`} style={{ fontSize: '18px', fontWeight: 'bold', display: 'inline-block', width: 'fit-content' }}>
+            {status}
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            Min. required for examinations: 75%
+          </div>
         </div>
       </div>
     </div>

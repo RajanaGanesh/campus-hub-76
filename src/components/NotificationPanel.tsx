@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export interface NotificationItem {
   id: number;
@@ -24,12 +25,18 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   onMarkAllRead,
   onClose
 }) => {
+  const navigate = useNavigate();
   if (!isOpen) return null;
 
   const categoryIcons = {
     academic: 'fa-user-gradient fa-graduation-cap',
     placement: 'fa-briefcase',
     announcement: 'fa-bullhorn',
+  };
+
+  const handleViewAll = () => {
+    onClose();
+    navigate('/student/notifications');
   };
 
   return (
@@ -72,6 +79,18 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             <p style={{ fontSize: '12px' }}>All caught up! No notifications.</p>
           </div>
         )}
+      </div>
+
+      <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border-subtle)', background: 'rgba(255, 255, 255, 0.02)' }}>
+        <button
+          type="button"
+          className="c1-btn c1-btn-secondary"
+          style={{ width: '100%', fontSize: '0.8125rem', padding: '8px 0' }}
+          onClick={handleViewAll}
+        >
+          <span>View All Notifications Inbox</span>
+          <i className="fa-solid fa-arrow-right" style={{ marginLeft: '6px' }}></i>
+        </button>
       </div>
     </div>
   );

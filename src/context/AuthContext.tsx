@@ -1,144 +1,111 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { AuthService, UserProfile, UserRole, AuthResponse, normalizeRole } from '../services/authService';
+import { supabase } from '../lib/supabase';
 
-export interface User {
-  email: string;
-  name: string;
-  role: 'student' | 'faculty' | 'admin' | 'parent';
-}
+// Re-export types for use throughout the application
+export type { UserProfile, UserRole, AuthResponse };
+export type User = UserProfile; // Backwards compatibility alias
 
 interface AuthContextType {
-  user: User | null;
+  user: UserProfile | null;
+  profile: UserProfile | null;
+  role: UserRole | null;
+  loading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, role: string, name: string) => void;
-  logout: () => void;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<AuthResponse>;
+  logout: () => Promise<void>;
+  refreshSession: () => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<{ success: boolean; error?: string }>;
+  resetPassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const normalizeRole = (role: string): 'student' | 'faculty' | 'admin' | 'parent' => {
-  if (!role) return 'student';
-  const lower = role.toLowerCase().trim();
-  if (lower === 'student') return 'student';
-  if (lower === 'faculty') return 'faculty';
-  if (lower === 'admin' || lower === 'administrator') return 'admin';
-  if (lower === 'parent') return 'parent';
-  return 'student'; // safe fallback
-};
-
-const loadInitialSession = (): { user: User | null; isAuthenticated: boolean } => {
-  // Support standard browser environments (checking for SSR window window.localStorage availability)
-  if (typeof window === 'undefined') {
-    return { user: null, isAuthenticated: false };
-  }
-
-  const keys = ['campushub_user', 'campusoneUser', 'user', 'currentUser', 'authUser', 'auth'];
-  let rawSession: string | null = null;
-
-  // 1. Scan localStorage
-  for (const key of keys) {
-    try {
-      const val = localStorage.getItem(key);
-      if (val) {
-        rawSession = val;
-        break;
-      }
-    } catch {}
-  }
-
-  // 2. Scan sessionStorage if not found in localStorage
-  if (!rawSession) {
-    for (const key of keys) {
-      try {
-        const val = sessionStorage.getItem(key);
-        if (val) {
-          rawSession = val;
-          break;
-        }
-      } catch {}
-    }
-  }
-
-  if (rawSession) {
-    try {
-      let parsed: any = null;
-      try {
-        parsed = JSON.parse(rawSession);
-      } catch {
-        parsed = rawSession.trim();
-      }
-
-      let email = 'student@campushub.com';
-      let role: 'student' | 'faculty' | 'admin' | 'parent' = 'student';
-      let name = 'Aditya Sharma';
-
-      if (parsed && typeof parsed === 'object') {
-        const rawRole = parsed.role || parsed.userRole || parsed.type || parsed.accountType || parsed.userType || '';
-        role = normalizeRole(rawRole);
-        email = parsed.email || parsed.emailAddress || parsed.username || `${role}@campushub.com`;
-        name = parsed.name || parsed.displayName || parsed.fullName || (role.charAt(0).toUpperCase() + role.slice(1) + ' User');
-      } else if (typeof parsed === 'string') {
-        role = normalizeRole(parsed);
-        email = `${role}@campushub.com`;
-        name = role.charAt(0).toUpperCase() + role.slice(1) + ' User';
-      }
-
-      return { user: { email, role, name }, isAuthenticated: true };
-    } catch {
-      return { user: null, isAuthenticated: false };
-    }
-  }
-
-  return { user: null, isAuthenticated: false };
-};
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const initial = loadInitialSession();
-  const [user, setUser] = useState<User | null>(initial.user);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(initial.isAuthenticated);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  const performLogoutAndClear = () => {
-    setUser(null);
-    setIsAuthenticated(false);
-    const keys = ['campushub_user', 'campusoneUser', 'user', 'currentUser', 'authUser', 'auth'];
-    keys.forEach((key) => {
-      try {
-        localStorage.removeItem(key);
-        sessionStorage.removeItem(key);
-      } catch {}
-    });
-  };
+  // Initialize and load session on mount
+  const refreshSession = useCallback(async () => {
+    try {
+      setLoading(true);
+      const activeProfile = await AuthService.getActiveSession();
+      setUser(activeProfile);
+    } catch (err) {
+      console.error('Failed to restore authentication session:', err);
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    // Synchronize keys in background on startup or role updates
-    if (user) {
-      try {
-        localStorage.setItem('campushub_user', JSON.stringify(user));
-        localStorage.setItem('campusoneUser', JSON.stringify(user));
-      } catch {}
+    refreshSession();
+
+    // Listen for Supabase authentication state changes if active
+    if (AuthService.isSupabaseActive() && supabase) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          const profile = await AuthService.fetchUserProfile(session.user.id, session.user.email || '');
+          setUser(profile);
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+        }
+      });
+
+      return () => {
+        subscription.unsubscribe();
+      };
     }
-  }, [user]);
+  }, [refreshSession]);
 
-  const login = (email: string, role: string, name: string) => {
-    const normalized = normalizeRole(role);
-    const userData: User = { email, role: normalized, name };
-    setUser(userData);
-    setIsAuthenticated(true);
-    
+  const login = async (email: string, password: string, rememberMe: boolean = false): Promise<AuthResponse> => {
     try {
-      localStorage.setItem('campushub_user', JSON.stringify(userData));
-      localStorage.setItem('campusoneUser', JSON.stringify(userData));
-    } catch {}
+      const result = await AuthService.signIn(email, password, rememberMe);
+      if (result.success && result.profile) {
+        setUser(result.profile);
+      }
+      return result;
+    } catch (err: any) {
+      const errorMsg = err?.message || 'Login failed unexpectedly. Please try again.';
+      return { success: false, error: errorMsg };
+    }
   };
 
-  const logout = () => {
-    performLogoutAndClear();
+  const logout = async (): Promise<void> => {
+    try {
+      await AuthService.signOut();
+    } finally {
+      setUser(null);
+    }
   };
 
-  return (
-    <AuthContext.Provider value={{ user, isAuthenticated, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const sendPasswordReset = async (email: string) => {
+    return await AuthService.sendPasswordResetEmail(email);
+  };
+
+  const resetPassword = async (newPassword: string) => {
+    return await AuthService.updatePassword(newPassword);
+  };
+
+  const isAuthenticated = !!user;
+  const role = user ? user.role : null;
+  const profile = user;
+
+  const value: AuthContextType = {
+    user,
+    profile,
+    role,
+    loading,
+    isAuthenticated,
+    login,
+    logout,
+    refreshSession,
+    sendPasswordReset,
+    resetPassword
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
@@ -148,3 +115,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+export { normalizeRole };

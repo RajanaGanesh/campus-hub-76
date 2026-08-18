@@ -1,0 +1,404 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import {
+  detectIntentAndRespond,
+  getQuickPromptsForRole,
+  ChatMessage,
+  QuickPrompt
+} from '../services/assistantService';
+
+export const CampusAIAssistant: React.FC = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const userRole = user?.role || 'student';
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
+  const [lastIntent, setLastIntent] = useState<string | null>(null);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const quickPrompts: QuickPrompt[] = getQuickPromptsForRole(userRole);
+
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      setMessages([
+        {
+          id: 'welcome',
+          sender: 'ai',
+          text: `Hello ${user?.name || ''}! I'm your CampusOne Assistant.\n\nI can help you find information about your campus, academics, attendance, assignments, examinations, fee receipts, library books, placements, and notices.`,
+          timestamp: 'Just now'
+        }
+      ]);
+    }
+  }, [isOpen, messages.length, user?.name]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        inputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen, messages, isTyping]);
+
+  const handleSendMessage = (textToSend?: string) => {
+    const text = (textToSend || input).trim();
+    if (!text) return;
+
+    const userMsg: ChatMessage = {
+      id: `user-${Date.now()}`,
+      sender: 'user',
+      text,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setMessages((prev) => [...prev, userMsg]);
+    setInput('');
+    setIsTyping(true);
+
+    setTimeout(() => {
+      const { response, intent, actionButton } = detectIntentAndRespond(text, userRole, lastIntent);
+      setLastIntent(intent);
+
+      const aiMsg: ChatMessage = {
+        id: `ai-${Date.now()}`,
+        sender: 'ai',
+        text: response,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        actionButton
+      };
+
+      setMessages((prev) => [...prev, aiMsg]);
+      setIsTyping(false);
+    }, 450);
+  };
+
+  const handleClearChat = () => {
+    setMessages([
+      {
+        id: `welcome-${Date.now()}`,
+        sender: 'ai',
+        text: `Conversation cleared. How can I help you today, ${user?.name || 'there'}?`,
+        timestamp: 'Just now'
+      }
+    ]);
+    setLastIntent(null);
+  };
+
+  const handleActionClick = (path: string) => {
+    setIsOpen(false);
+    navigate(path);
+  };
+
+  return (
+    <>
+      {/* Floating Trigger Button */}
+      {!isOpen && (
+        <button
+          type="button"
+          onClick={() => setIsOpen(true)}
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 998,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '12px 20px',
+            borderRadius: '9999px',
+            border: '1px solid rgba(99, 102, 241, 0.4)',
+            background: 'linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%)',
+            color: '#ffffff',
+            fontWeight: 700,
+            fontSize: '0.9375rem',
+            cursor: 'pointer',
+            boxShadow: '0 8px 30px rgba(79, 70, 229, 0.5)',
+            transition: 'all 0.2s ease',
+            fontFamily: 'Inter, system-ui, sans-serif'
+          }}
+          aria-label="Open CampusOne AI Assistant"
+        >
+          <div
+            style={{
+              width: '26px',
+              height: '26px',
+              borderRadius: '50%',
+              background: 'rgba(255, 255, 255, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '0.875rem'
+            }}
+          >
+            <i className="fa-solid fa-wand-magic-sparkles"></i>
+          </div>
+          <span>Campus AI</span>
+        </button>
+      )}
+
+      {/* Slide-in Assistant Panel */}
+      {isOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            width: '400px',
+            maxWidth: 'calc(100vw - 32px)',
+            height: '600px',
+            maxHeight: 'calc(100vh - 48px)',
+            backgroundColor: '#0c0e22',
+            border: '1px solid rgba(99, 102, 241, 0.3)',
+            borderRadius: '16px',
+            boxShadow: '0 25px 60px rgba(0, 0, 0, 0.6), 0 0 30px rgba(99, 102, 241, 0.2)',
+            zIndex: 999,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            fontFamily: 'Inter, system-ui, sans-serif'
+          }}
+        >
+          {/* Header */}
+          <div
+            style={{
+              padding: '16px 20px',
+              background: 'linear-gradient(135deg, rgba(30, 27, 75, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%)',
+              borderBottom: '1px solid rgba(99, 102, 241, 0.2)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#ffffff',
+                  fontSize: '1rem',
+                  boxShadow: '0 0 12px rgba(99, 102, 241, 0.4)'
+                }}
+              >
+                <i className="fa-solid fa-wand-magic-sparkles"></i>
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#ffffff' }}>CampusOne Assistant</h3>
+                <span style={{ fontSize: '0.6875rem', color: '#34d399', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#34d399', display: 'inline-block' }}></span>
+                  Online • {userRole.toUpperCase()} MODE
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button
+                type="button"
+                onClick={handleClearChat}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  padding: '6px 8px',
+                  borderRadius: '6px',
+                  fontSize: '0.8125rem'
+                }}
+                title="Clear conversation"
+              >
+                <i className="fa-solid fa-trash-can"></i>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  padding: '6px 8px',
+                  borderRadius: '6px',
+                  fontSize: '1rem'
+                }}
+                title="Close assistant"
+              >
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Action Prompt Chips */}
+          <div
+            style={{
+              padding: '10px 14px',
+              backgroundColor: 'rgba(255, 255, 255, 0.02)',
+              borderBottom: '1px solid var(--border-subtle)',
+              display: 'flex',
+              gap: '6px',
+              overflowX: 'auto',
+              whiteSpace: 'nowrap',
+              scrollbarWidth: 'none'
+            }}
+          >
+            {quickPrompts.map((qp, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleSendMessage(qp.query)}
+                style={{
+                  padding: '5px 10px',
+                  fontSize: '0.75rem',
+                  borderRadius: '9999px',
+                  border: '1px solid rgba(99, 102, 241, 0.25)',
+                  backgroundColor: 'rgba(99, 102, 241, 0.08)',
+                  color: '#c7d2fe',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {qp.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Messages Stream */}
+          <div
+            style={{
+              flex: 1,
+              padding: '16px',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px'
+            }}
+          >
+            {messages.map((m) => (
+              <div
+                key={m.id}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: m.sender === 'user' ? 'flex-end' : 'flex-start'
+                }}
+              >
+                <div
+                  style={{
+                    maxWidth: '85%',
+                    padding: '12px 16px',
+                    borderRadius: m.sender === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                    backgroundColor: m.sender === 'user' ? '#4f46e5' : 'rgba(30, 41, 59, 0.8)',
+                    color: '#ffffff',
+                    fontSize: '0.84375rem',
+                    lineHeight: 1.5,
+                    border: m.sender === 'ai' ? '1px solid var(--border-subtle)' : 'none',
+                    whiteSpace: 'pre-line'
+                  }}
+                >
+                  {m.text}
+
+                  {m.actionButton && (
+                    <button
+                      type="button"
+                      onClick={() => handleActionClick(m.actionButton!.path)}
+                      style={{
+                        marginTop: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid rgba(56, 189, 248, 0.4)',
+                        backgroundColor: 'rgba(56, 189, 248, 0.15)',
+                        color: '#38bdf8',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <span>{m.actionButton.label}</span>
+                      <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.6875rem' }}></i>
+                    </button>
+                  )}
+                </div>
+                <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '4px', padding: '0 4px' }}>
+                  {m.timestamp}
+                </span>
+              </div>
+            ))}
+
+            {isTyping && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                <i className="fa-solid fa-circle-notch fa-spin" style={{ color: 'var(--accent-blue)' }}></i>
+                <span>CampusOne Assistant is thinking...</span>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input Form */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSendMessage();
+            }}
+            style={{
+              padding: '12px 16px',
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              borderTop: '1px solid var(--border-subtle)',
+              display: 'flex',
+              gap: '8px'
+            }}
+          >
+            <input
+              ref={inputRef}
+              type="text"
+              className="c1-input"
+              placeholder="Ask anything about your campus..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              style={{
+                flex: 1,
+                fontSize: '0.8125rem',
+                padding: '10px 14px',
+                borderRadius: '9999px',
+                backgroundColor: 'rgba(255, 255, 255, 0.04)'
+              }}
+            />
+            <button
+              type="submit"
+              disabled={!input.trim()}
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '50%',
+                border: 'none',
+                background: input.trim() ? 'linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%)' : 'rgba(255, 255, 255, 0.1)',
+                color: '#ffffff',
+                cursor: input.trim() ? 'pointer' : 'default',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.875rem',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <i className="fa-solid fa-arrow-up"></i>
+            </button>
+          </form>
+        </div>
+      )}
+    </>
+  );
+};
+
+export default CampusAIAssistant;

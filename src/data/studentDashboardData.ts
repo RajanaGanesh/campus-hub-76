@@ -21,7 +21,7 @@ export interface StatItem {
 export interface AttendanceSubject {
   name: string;
   percentage: number;
-  status: 'safe' | 'warning' | 'critical';
+  status: 'safe' | 'warning' | 'critical' | 'danger';
 }
 
 export interface PerformanceSem {

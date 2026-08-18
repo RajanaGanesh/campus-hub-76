@@ -22,7 +22,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, isMobileOpen, onMobileClose }) => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const userRole = user?.role || 'student';
 
   // Role aware links mapper
@@ -48,19 +48,42 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, isMobileOpen, onM
       case 'admin':
         return [
           {
-            label: 'Administration',
+            label: 'Core Admin',
             links: [
-              { id: 'admin-dashboard', label: 'Dashboard', icon: 'fa-chart-simple', path: '/admin' },
-              { id: 'admin-students', label: 'Students', icon: 'fa-users', path: '/admin/students' },
+              { id: 'admin-dashboard', label: 'Dashboard', icon: 'fa-chart-simple', path: '/admin/dashboard' },
+              { id: 'admin-students', label: 'Students', icon: 'fa-user-graduate', path: '/admin/students' },
               { id: 'admin-faculty', label: 'Faculty', icon: 'fa-chalkboard-user', path: '/admin/faculty' },
-              { id: 'admin-courses', label: 'Courses', icon: 'fa-book', path: '/admin/courses' },
-              { id: 'admin-fees', label: 'Fees', icon: 'fa-wallet', path: '/admin/fees' },
-              { id: 'admin-placements', label: 'Placements', icon: 'fa-briefcase', path: '/admin/placements' },
+              { id: 'admin-courses', label: 'Courses', icon: 'fa-book-open', path: '/admin/courses' },
+              { id: 'admin-departments', label: 'Departments', icon: 'fa-building-columns', path: '/admin/departments' }
+            ]
+          },
+          {
+            label: 'Academics',
+            links: [
+              { id: 'admin-attendance', label: 'Attendance', icon: 'fa-clipboard-user', path: '/admin/attendance' },
+              { id: 'admin-assignments', label: 'Assignments', icon: 'fa-file-invoice', path: '/admin/assignments' },
+              { id: 'admin-exams', label: 'Examinations', icon: 'fa-receipt', path: '/admin/exams' },
+              { id: 'admin-results', label: 'Results & GPA', icon: 'fa-award', path: '/admin/results' }
+            ]
+          },
+          {
+            label: 'Campus Services',
+            links: [
+              { id: 'admin-fees', label: 'Fees & Finance', icon: 'fa-wallet', path: '/admin/fees' },
+              { id: 'admin-library', label: 'Library', icon: 'fa-book-bookmark', path: '/admin/library' },
               { id: 'admin-hostel', label: 'Hostel', icon: 'fa-hotel', path: '/admin/hostel' },
               { id: 'admin-transport', label: 'Transport', icon: 'fa-bus', path: '/admin/transport' },
-              { id: 'admin-requests', label: 'Requests', icon: 'fa-list-check', path: '/admin/requests' },
-              { id: 'admin-announcements', label: 'Announcements', icon: 'fa-bullhorn', path: '/admin/announcements' },
-              { id: 'admin-ai', label: 'Campus AI', icon: 'fa-wand-magic-sparkles', path: '/assistant' }
+              { id: 'admin-placements', label: 'Placements', icon: 'fa-briefcase', path: '/admin/placements' }
+            ]
+          },
+          {
+            label: 'System & Reports',
+            links: [
+              { id: 'admin-notices', label: 'Notices & Circulars', icon: 'fa-bullhorn', path: '/admin/notices' },
+              { id: 'admin-notifications', label: 'Notifications', icon: 'fa-bell', path: '/admin/notifications' },
+              { id: 'admin-users', label: 'User Accounts', icon: 'fa-users-gear', path: '/admin/users' },
+              { id: 'admin-reports', label: 'Reports & Export', icon: 'fa-file-chart-column', path: '/admin/reports' },
+              { id: 'admin-settings', label: 'Settings', icon: 'fa-sliders', path: '/admin/settings' }
             ]
           }
         ];
@@ -68,34 +91,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, isMobileOpen, onM
       case 'parent':
         return [
           {
-            label: 'Main',
-            links: [{ id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-simple', path: '/dashboard' }]
-          },
-          {
-            label: 'Academic',
+            label: 'Monitoring',
             links: [
-              { id: 'attendance', label: 'Attendance logs', icon: 'fa-user-check', path: '/attendance' },
-              { id: 'performance', label: 'Performance', icon: 'fa-chart-bar', path: '/performance' },
-              { id: 'results', label: 'Exams Results', icon: 'fa-award', path: '/results' },
-              { id: 'assignments', label: 'Assignments', icon: 'fa-file-invoice', path: '/assignments' }
+              { id: 'parent-dashboard', label: 'Dashboard', icon: 'fa-chart-simple', path: '/parent/dashboard' },
+              { id: 'parent-attendance', label: 'Attendance', icon: 'fa-user-check', path: '/parent/attendance' },
+              { id: 'parent-academics', label: 'Academics & Grades', icon: 'fa-award', path: '/parent/academics' },
+              { id: 'parent-assignments', label: 'Assignments', icon: 'fa-file-invoice', path: '/parent/assignments' },
+              { id: 'parent-exams', label: 'Examinations', icon: 'fa-receipt', path: '/parent/exams' }
             ]
           },
           {
-            label: 'Services',
-            links: [{ id: 'fees', label: 'Fees Portal', icon: 'fa-wallet', path: '/fees' }]
+            label: 'Campus Services',
+            links: [
+              { id: 'parent-fees', label: 'Fee Receipts', icon: 'fa-wallet', path: '/parent/fees' },
+              { id: 'parent-library', label: 'Library Status', icon: 'fa-book-bookmark', path: '/parent/library' },
+              { id: 'parent-hostel', label: 'Hostel Residency', icon: 'fa-hotel', path: '/parent/hostel' },
+              { id: 'parent-placements', label: 'Placements', icon: 'fa-briefcase', path: '/parent/placements' }
+            ]
           },
           {
             label: 'Communication',
             links: [
-              { id: 'announcements', label: 'Announcements', icon: 'fa-bullhorn', path: '/announcements' },
-              { id: 'notifications', label: 'Notifications', icon: 'fa-bell', path: '/notifications' }
-            ]
-          },
-          {
-            label: 'Account',
-            links: [
-              { id: 'profile', label: 'Profile', icon: 'fa-user-gear', path: '/profile' },
-              { id: 'settings', label: 'Settings', icon: 'fa-sliders', path: '/settings' }
+              { id: 'parent-notices', label: 'Notices & Circulars', icon: 'fa-bullhorn', path: '/parent/notices' },
+              { id: 'parent-notifications', label: 'Notifications', icon: 'fa-bell', path: '/parent/notifications' },
+              { id: 'parent-settings', label: 'Profile & Settings', icon: 'fa-user-gear', path: '/parent/settings' }
             ]
           }
         ];
@@ -105,65 +124,60 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, isMobileOpen, onM
         return [
           {
             label: 'Main',
-            links: [{ id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-simple', path: '/dashboard' }]
+            links: [{ id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-simple', path: '/student/dashboard' }]
           },
           {
             label: 'Academic',
             links: [
-              { id: 'attendance', label: 'Attendance', icon: 'fa-user-check', path: '/attendance' },
-              { id: 'timetable', label: 'Timetable', icon: 'fa-calendar-days', path: '/timetable' },
-              { id: 'assignments', label: 'Assignments', icon: 'fa-file-invoice', path: '/assignments' },
-              { id: 'exams', label: 'Examinations', icon: 'fa-receipt', path: '/exams' },
-              { id: 'results', label: 'Results', icon: 'fa-award', path: '/results' },
-              { id: 'learning', label: 'LMS Learning', icon: 'fa-graduation-cap', path: '/learning' }
+              { id: 'attendance', label: 'Attendance', icon: 'fa-user-check', path: '/student/attendance' },
+              { id: 'timetable', label: 'Timetable', icon: 'fa-calendar-days', path: '/student/timetable' },
+              { id: 'assignments', label: 'Assignments', icon: 'fa-file-invoice', path: '/student/assignments' },
+              { id: 'exams', label: 'Examinations', icon: 'fa-receipt', path: '/student/exams' },
+              { id: 'results', label: 'Results & GPA', icon: 'fa-award', path: '/student/results' },
+              { id: 'learning', label: 'LMS Learning', icon: 'fa-graduation-cap', path: '/student/lms' }
             ]
           },
           {
             label: 'Services',
             links: [
-              { id: 'library', label: 'Library', icon: 'fa-book-open', path: '/library' },
-              { id: 'fees', label: 'Fees & Payments', icon: 'fa-wallet', path: '/fees' },
-              { id: 'services', label: 'Campus Services', icon: 'fa-screwdriver-wrench', path: '/services' },
-              { id: 'requests', label: 'Service Requests', icon: 'fa-list-check', path: '/services/requests' }
+              { id: 'library', label: 'Library', icon: 'fa-book-open', path: '/student/library' },
+              { id: 'fees', label: 'Fees & Payments', icon: 'fa-wallet', path: '/student/fees' },
+              { id: 'services', label: 'Campus Services', icon: 'fa-screwdriver-wrench', path: '/student/services' },
+              { id: 'requests', label: 'Service Requests', icon: 'fa-list-check', path: '/student/requests' }
             ]
           },
           {
             label: 'Campus Life',
             links: [
-              { id: 'hostel', label: 'Hostel', icon: 'fa-hotel', path: '/hostel' },
-              { id: 'mess', label: 'Mess & Dining', icon: 'fa-utensils', path: '/hostel/mess' },
-              { id: 'transport', label: 'Transport', icon: 'fa-bus', path: '/transport' },
-              { id: 'mobility', label: 'Campus Mobility', icon: 'fa-location-dot', path: '/mobility' }
+              { id: 'hostel', label: 'Hostel', icon: 'fa-hotel', path: '/student/hostel' },
+              { id: 'mess', label: 'Mess & Dining', icon: 'fa-utensils', path: '/student/mess' },
+              { id: 'transport', label: 'Transport', icon: 'fa-bus', path: '/student/transport' }
             ]
           },
           {
             label: 'Career',
             links: [
-              { id: 'placements', label: 'Placements', icon: 'fa-briefcase', path: '/placements' },
-              { id: 'applications', label: 'My Applications', icon: 'fa-paper-plane', path: '/placements/applications' },
-              { id: 'saved', label: 'Saved Jobs', icon: 'fa-bookmark', path: '/placements/saved' },
-              { id: 'calendar', label: 'Placement Calendar', icon: 'fa-calendar-days', path: '/placements/calendar' },
-              { id: 'career-profile', label: 'Career Profile', icon: 'fa-user-tie', path: '/placements/profile' },
-              { id: 'prep', label: 'Interview Preparation', icon: 'fa-book-open-reader', path: '/placements/prep' }
+              { id: 'placements', label: 'Placements', icon: 'fa-briefcase', path: '/student/placements' }
             ]
           },
           {
             label: 'Communication',
-            links: [{ id: 'notifications', label: 'Notifications', icon: 'fa-bell', path: '/notifications' }]
+            links: [
+              { id: 'notices', label: 'Notice Board', icon: 'fa-bullhorn', path: '/student/notices' },
+              { id: 'notifications', label: 'Notifications', icon: 'fa-bell', path: '/student/notifications' }
+            ]
           },
           {
             label: 'Intelligence',
             links: [
-              { id: 'ai-assistant', label: 'Campus AI', icon: 'fa-wand-magic-sparkles', path: '/assistant' },
-              { id: 'insights', label: 'Insights', icon: 'fa-chart-pie', path: '/insights' },
-              { id: 'help-center', label: 'Help Center', icon: 'fa-circle-question', path: '/help' }
+              { id: 'ai-assistant', label: 'Campus AI', icon: 'fa-wand-magic-sparkles', path: '/student/ai-assistant' }
             ]
           },
           {
             label: 'Account',
             links: [
-              { id: 'profile', label: 'Profile', icon: 'fa-user-gear', path: '/profile' },
-              { id: 'settings', label: 'Settings', icon: 'fa-sliders', path: '/settings' }
+              { id: 'profile', label: 'Profile', icon: 'fa-user-gear', path: '/student/profile' },
+              { id: 'settings', label: 'Settings', icon: 'fa-sliders', path: '/student/settings' }
             ]
           }
         ];
@@ -179,15 +193,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, isMobileOpen, onM
     }
   };
 
+  const handleLogout = async () => {
+    await logout();
+  };
+
   return (
     <>
       <aside
         className={`sidebar ${isCollapsed ? 'collapsed' : ''} ${isMobileOpen ? 'mobile-open' : ''}`}
       >
         <div className="sidebar-header">
-          <Logo />
+          <Logo size="sm" showText={false} />
           <div className="brand-text">
-            <h1>Campus Hub</h1>
+            <h1>CampusOne</h1>
             <span>Smart Campus Platform</span>
           </div>
         </div>
@@ -211,6 +229,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, isMobileOpen, onM
             </div>
           ))}
         </nav>
+
+        {/* Sidebar Footer with Logout */}
+        <div className="sidebar-footer">
+          <button
+            type="button"
+            className="sidebar-logout-btn"
+            onClick={handleLogout}
+            title="Sign out of CampusOne"
+          >
+            <i className="fa-solid fa-arrow-right-from-bracket"></i>
+            {!isCollapsed && <span>Sign Out</span>}
+            {isCollapsed && <span className="sidebar-tooltip">Sign Out</span>}
+          </button>
+        </div>
       </aside>
       
       {/* Mobile Drawer Overlay Backdrop */}

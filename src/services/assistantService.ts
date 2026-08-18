@@ -9,6 +9,49 @@ export interface ChatMessage {
   };
 }
 
+export interface QuickPrompt {
+  label: string;
+  query: string;
+}
+
+export const getQuickPromptsForRole = (role: 'student' | 'faculty' | 'admin' | 'parent'): QuickPrompt[] => {
+  switch (role) {
+    case 'student':
+      return [
+        { label: 'My Attendance', query: 'What is my attendance percentage?' },
+        { label: 'Upcoming Exams', query: 'When are my upcoming exams?' },
+        { label: 'Pending Assignments', query: 'Show my pending assignments' },
+        { label: 'My Fee Balance', query: 'What is my fee status?' },
+        { label: 'Placement Drives', query: 'What placement opportunities am I eligible for?' }
+      ];
+    case 'faculty':
+      return [
+        { label: "Today's Schedule", query: 'What are my scheduled classes today?' },
+        { label: 'My Courses', query: 'Show my assigned courses and student count' },
+        { label: 'Pending Grading', query: 'How many assignments need evaluation?' },
+        { label: 'Class Attendance', query: 'What is the attendance rate in my courses?' }
+      ];
+    case 'admin':
+      return [
+        { label: 'Campus Statistics', query: 'Show total campus student and faculty enrollment' },
+        { label: 'Attendance Audit', query: 'What is the institutional attendance rate?' },
+        { label: 'Fee Realization', query: 'Show university fee collection summary' },
+        { label: 'Room Conflicts', query: 'Check examination hall conflict status' }
+      ];
+    case 'parent':
+      return [
+        { label: "Student's Attendance", query: 'What is my student attendance?' },
+        { label: 'Academic GPA', query: 'Show my student GPA and semester results' },
+        { label: 'Pending Homework', query: 'Are there any pending assignments?' },
+        { label: 'Fee Invoices', query: 'What is our tuition fee payment balance?' }
+      ];
+    default:
+      return [
+        { label: 'Campus Overview', query: 'Give me an overview of CampusOne' }
+      ];
+  }
+};
+
 export const detectIntentAndRespond = (
   query: string,
   role: 'student' | 'faculty' | 'admin' | 'parent',
@@ -16,203 +59,237 @@ export const detectIntentAndRespond = (
 ): { response: string; intent: string; actionButton?: { label: string; path: string } } => {
   const clean = query.toLowerCase().trim();
 
-  // Role checks
+  // Security checks across all roles
+  if (
+    clean.includes('password') ||
+    clean.includes('secret') ||
+    clean.includes('token') ||
+    clean.includes('api_key') ||
+    clean.includes('database_url') ||
+    clean.includes('service_role')
+  ) {
+    return {
+      response: 'Security Policy Alert: Access to system credentials, database secrets, or private authentication tokens is strictly forbidden.',
+      intent: 'security'
+    };
+  }
+
+  // ----------------------------------------------------
+  // ROLE 1: STUDENT
+  // ----------------------------------------------------
   if (role === 'student') {
-    // 1. Attendance
-    if (clean.includes('attendance') || clean.includes('present') || clean.includes('absent')) {
+    if (clean.includes('attendance') || clean.includes('present') || clean.includes('absent') || clean.includes('classes')) {
       return {
-        response: 'Your overall attendance average is 86%. Data Structures is good at 85%, and Database Management (DBMS) is currently your lowest at 72% (which is below the recommended 75% threshold).',
+        response: 'Your overall attendance average is 87% (104 of 120 lectures attended). All subjects are in good standing above the 75% threshold.',
         intent: 'attendance',
-        actionButton: { label: 'View Attendance Details', path: '/attendance' }
+        actionButton: { label: 'Open Attendance Sheet', path: '/student/timetable' }
       };
     }
 
-    // 2. Assignments
-    if (clean.includes('assignment') || clean.includes('pending') || clean.includes('due') || clean.includes('homework')) {
+    if (clean.includes('assignment') || clean.includes('homework') || clean.includes('pending task') || clean.includes('due')) {
       return {
-        response: 'You have 2 pending assignments due soon:\n1. "Binary Tree Implementation" (Data Structures) due 25 Aug 2026\n2. "Normal Form Normalization" (Database Management) due 28 Aug 2026.',
+        response: 'You have 1 pending coursework assignment:\n- "Microservices Deployment on Kubernetes" (Cloud Computing CSE-401) due on 25 Aug 2026.\nTwo other assignments have been graded with an average score of 91.5/100.',
         intent: 'assignments',
-        actionButton: { label: 'Open Assignments Desk', path: '/assignments' }
+        actionButton: { label: 'Open Assignments Desk', path: '/student/assignments' }
       };
     }
 
-    // 3. Exams
-    if (clean.includes('exam') || clean.includes('test') || clean.includes('schedule') || clean.includes('midterm')) {
+    if (clean.includes('exam') || clean.includes('timetable') || clean.includes('test') || clean.includes('midterm') || clean.includes('hall')) {
       return {
-        response: 'Your next exam is "Database Midterms Theory" (CSE-302) scheduled for 21 Aug 2026. You also have "Computer Networks Lab" (CSE-303) on 25 Aug 2026.',
+        response: 'Your upcoming examinations are:\n1. Mid-Semester Theory Exam 1 (CSE-301) on 25 Aug 2026 at 10:00 AM (Room CSE-204).\n2. DBMS Practical & Viva (CSE-302) on 28 Aug 2026 at 02:00 PM (Computer Lab 3).',
         intent: 'exams',
-        actionButton: { label: 'View Exam Schedules', path: '/exams' }
+        actionButton: { label: 'View Exam Schedules', path: '/student/exams' }
       };
     }
 
-    // 4. Results
-    if (clean.includes('result') || clean.includes('grade') || clean.includes('marks') || clean.includes('score')) {
+    if (clean.includes('result') || clean.includes('gpa') || clean.includes('grade') || clean.includes('marks') || clean.includes('cgpa')) {
       return {
-        response: 'Your Midterm 1 results are published:\n- Data Structures: Internal 26/30, External 58/70 (Grade A)\n- Database Management: Internal 28/30, External 62/70 (Grade A+).',
+        response: 'Your academic transcript stands at Cumulative CGPA 8.60 / 10.0 and Semester 8 SGPA 8.75. You have completed 160/160 credits with 0 backlogs.',
         intent: 'results',
-        actionButton: { label: 'Open Academic Results', path: '/results' }
+        actionButton: { label: 'Open Results & GPA', path: '/student/results' }
       };
     }
 
-    // 5. Library
+    if (clean.includes('fee') || clean.includes('bill') || clean.includes('tuition') || clean.includes('receipt') || clean.includes('dues')) {
+      return {
+        response: 'Your annual tuition fee of ₹85,000 is Paid in Full. Receipt #REC-2026-8901 was verified on 08 Aug 2026 with ₹0 outstanding balance.',
+        intent: 'fees',
+        actionButton: { label: 'Open Fee Receipts', path: '/student/fees' }
+      };
+    }
+
     if (clean.includes('book') || clean.includes('library') || clean.includes('borrow')) {
       return {
-        response: 'You have 2 books currently issued. "Introduction to Algorithms" (CLRS) is due soon on 18th Aug. Avoid overdue fees by returning it on time.',
+        response: 'You currently have 2 library volumes on loan:\n- "Introduction to Algorithms (CLRS)" (Due 22 Aug 2026)\n- "Database System Concepts" (Due 26 Aug 2026).\nOutstanding fine: ₹0.',
         intent: 'library',
-        actionButton: { label: 'Open Library Catalog', path: '/library' }
+        actionButton: { label: 'Open Central Library', path: '/student/library' }
       };
     }
 
-    // 6. Fees
-    if (clean.includes('fee') || clean.includes('bill') || clean.includes('pay') || clean.includes('pending fee')) {
+    if (clean.includes('hostel') || clean.includes('room') || clean.includes('mess') || clean.includes('warden')) {
       return {
-        response: 'Your total fee is ₹2,45,000. You have paid ₹1,80,000, leaving a pending balance of ₹65,000. Next due date is 24th Aug 2026.',
-        intent: 'fees',
-        actionButton: { label: 'Open Fees & Payments', path: '/fees' }
-      };
-    }
-
-    // 7. Placements
-    if (clean.includes('job') || clean.includes('placement') || clean.includes('company') || clean.includes('eligible')) {
-      return {
-        response: 'You are eligible for 5 new opportunities. Your CGPA (8.6) matches TechNova Software Developer (required 7.5). The application deadline is 22nd Aug.',
-        intent: 'placements',
-        actionButton: { label: 'Open Placements Portal', path: '/placements' }
-      };
-    }
-
-    // 8. Hostel / Mess
-    if (clean.includes('hostel') || clean.includes('room') || clean.includes('roommate') || clean.includes('mess') || clean.includes('lunch') || clean.includes('dinner')) {
-      if (clean.includes('mess') || clean.includes('lunch') || clean.includes('dinner') || clean.includes('food')) {
-        return {
-          response: 'Hostel mess is active. Lunch is between 12:30 PM and 2:00 PM. Dinner is between 7:30 PM and 9:00 PM. Today\'s dinner features Roti, Paneer Butter Masala, and Dal Fry.',
-          intent: 'mess',
-          actionButton: { label: 'View Mess Dining Menu', path: '/hostel/mess' }
-        };
-      }
-      return {
-        response: 'You are assigned to Krishna Boys Hostel (B Block), Room B-204 (4 Sharing). Your active roommates are Arun Kumar, Rahul Kumar, and Amit Patel.',
+        response: 'You are resident in Block A (Boys Senior Hostel), Room A-204 (Double AC). Warden: Mr. K. Sharma (+91 98765 11111). Your mess plan is Active.',
         intent: 'hostel',
-        actionButton: { label: 'Open Hostel Dashboard', path: '/hostel' }
+        actionButton: { label: 'Open Hostel Portal', path: '/student/hostel' }
       };
     }
 
-    // 9. Transport / Bus
-    if (clean.includes('bus') || clean.includes('transport') || clean.includes('route') || clean.includes('track') || clean.includes('pass')) {
+    if (clean.includes('bus') || clean.includes('transport') || clean.includes('route')) {
       return {
-        response: 'You are assigned to Route 12 (Miyapur bus AP 39 AB 1234). The scheduled morning pickup time is 08:05 AM. Your digital transport pass is Active.',
+        response: 'You are subscribed to Route 1 (KA-01-FA-1204, Silk Board – HSR – Campus). Morning pickup: 07:15 AM. Driver: Mr. Ramesh Babu (+91 98450 12345).',
         intent: 'transport',
-        actionButton: { label: 'Track Shuttle Bus', path: '/transport' }
+        actionButton: { label: 'Open Transport Fleet', path: '/student/transport' }
       };
     }
 
-    // 10. Timetable
-    if (clean.includes('timetable') || clean.includes('class') || clean.includes('schedule') || clean.includes('next class')) {
+    if (clean.includes('job') || clean.includes('placement') || clean.includes('interview') || clean.includes('offer') || clean.includes('company')) {
       return {
-        response: 'Your next scheduled class today is "Database Management Systems" in Room CSE-202 at 10:30 AM.',
-        intent: 'timetable',
-        actionButton: { label: 'View Timetable Schedule', path: '/timetable' }
+        response: 'Placement Status: 8 Applications Submitted, 3 Companies Shortlisted, 1 Confirmed Offer from TechNova Solutions (₹8.5 LPA Associate Software Engineer).',
+        intent: 'placements',
+        actionButton: { label: 'Open Placements Portal', path: '/student/placements' }
       };
     }
 
-    // 11. Follow-ups
-    if (lastIntent === 'attendance' && (clean.includes('lowest') || clean.includes('low') || clean.includes('attention'))) {
+    if (clean.includes('notice') || clean.includes('circular') || clean.includes('holiday') || clean.includes('announcement')) {
       return {
-        response: 'Your lowest attendance is in Database Management (CSE-302) at 72%. It is recommended to attend the next 3 lectures to cross the 75% bar.',
-        intent: 'attendance',
-        actionButton: { label: 'View Attendance Details', path: '/attendance' }
-      };
-    }
-
-    if (lastIntent === 'attendance' && (clean.includes('detail') || clean.includes('show') || clean.includes('more'))) {
-      return {
-        response: 'Opening your detailed attendance profile.',
-        intent: 'attendance',
-        actionButton: { label: 'Open Attendance Dashboard', path: '/attendance' }
+        response: 'Recent Circular: Annual Parent-Teacher Conference (PTC) is scheduled for Saturday, 12 September 2026 in the Main Auditorium.',
+        intent: 'notices',
+        actionButton: { label: 'View Notice Board', path: '/student/notices' }
       };
     }
   }
 
+  // ----------------------------------------------------
+  // ROLE 2: FACULTY
+  // ----------------------------------------------------
   if (role === 'faculty') {
-    if (clean.includes('student') || clean.includes('roll') || clean.includes('roster')) {
+    if (clean.includes('course') || clean.includes('class') || clean.includes('today') || clean.includes('schedule')) {
       return {
-        response: 'You have 124 total students registered across your 4 active course sections.',
-        intent: 'students',
-        actionButton: { label: 'Open Students Roster', path: '/faculty/students' }
-      };
-    }
-
-    if (clean.includes('course') || clean.includes('subject') || clean.includes('class') || clean.includes('schedule')) {
-      return {
-        response: 'You are teaching 2 courses this semester:\n- CSE-301 (Data Structures, Section A)\n- CSE-302 (Database Management, Section B).',
+        response: 'You are teaching 2 active courses this term:\n- CSE-301 (Advanced Data Structures, 60 Students)\n- CSE-302 (Database Management Systems, 60 Students).\nNext class: CSE-301 at 09:00 AM in Room CSE-204.',
         intent: 'courses',
-        actionButton: { label: 'Manage My Courses', path: '/faculty/courses' }
+        actionButton: { label: 'Open My Courses', path: '/faculty/courses' }
       };
     }
 
-    if (clean.includes('assignment') || clean.includes('submission') || clean.includes('grade') || clean.includes('mark')) {
+    if (clean.includes('student') || clean.includes('roster') || clean.includes('enrolled')) {
       return {
-        response: 'You have 12 ungraded assignment submissions for "Binary Tree Implementation" (ASSIGN-101) pending your review.',
-        intent: 'assignments',
-        actionButton: { label: 'Open Grading Portal', path: '/faculty/assignments' }
-      };
-    }
-
-    if (clean.includes('attendance') || clean.includes('roll call')) {
-      return {
-        response: 'Your classes show an average presence of 86%. You can mark today\'s attendance for CSE-302 now.',
-        intent: 'attendance',
-        actionButton: { label: 'Open Attendance Sheet', path: '/faculty/attendance' }
-      };
-    }
-  }
-
-  if (role === 'admin') {
-    if (clean.includes('student') || clean.includes('enroll')) {
-      return {
-        response: 'Total enrollment stands at 2,450 students. You can register new students or suspend accounts in the Student center.',
+        response: 'You have 120 total students registered across CSE-301 and CSE-302. All students have active RFID credentials.',
         intent: 'students',
-        actionButton: { label: 'Manage Students', path: '/admin/students' }
+        actionButton: { label: 'Open Student Roster', path: '/faculty/students' }
       };
     }
 
-    if (clean.includes('faculty') || clean.includes('teacher') || clean.includes('professor')) {
+    if (clean.includes('attendance') || clean.includes('roll call') || clean.includes('present')) {
       return {
-        response: 'The campus has 142 registered faculty members. You can review designations or assign courses in the Faculty center.',
-        intent: 'faculty',
-        actionButton: { label: 'Manage Faculty', path: '/admin/faculty' }
+        response: 'Overall attendance in your courses is 86.4%. You can mark session attendance for CSE-301 Section A directly on the roll call grid.',
+        intent: 'attendance',
+        actionButton: { label: 'Mark Attendance', path: '/faculty/attendance' }
       };
     }
 
-    if (clean.includes('request') || clean.includes('complaint') || clean.includes('ticket')) {
+    if (clean.includes('assignment') || clean.includes('grading') || clean.includes('submission')) {
       return {
-        response: 'There are 34 pending support tickets, including 12 hostel maintenance issues that require your review.',
-        intent: 'requests',
-        actionButton: { label: 'Manage Service Requests', path: '/admin/requests' }
+        response: 'You have published 3 coursework assignments. 54 submissions received for "Binary Search Trees" with 12 submissions awaiting your score valuation.',
+        intent: 'assignments',
+        actionButton: { label: 'Open Grading Desk', path: '/faculty/assignments' }
       };
     }
 
-    if (clean.includes('fee') || clean.includes('collection')) {
+    if (clean.includes('exam') || clean.includes('invigilation') || clean.includes('hall')) {
       return {
-        response: 'Overall fee collection collection percentage is at 85% (Total collected: ₹2.97 Cr, Pending dues: ₹37.5L).',
-        intent: 'fees',
-        actionButton: { label: 'Open Fee Analytics', path: '/admin/fees' }
-      };
-    }
-
-    // Security check - student stats requested by non-admin?
-    if (clean.includes('passwords') || clean.includes('token') || clean.includes('secret')) {
-      return {
-        response: 'Access Denied: Exposing credentials or private authentication tokens is strictly forbidden for security reasons.',
-        intent: 'security'
+        response: 'You are assigned as Faculty Invigilator for Mid-Semester Theory Exam 1 on 25 Aug 2026 (10:00 AM – 12:00 PM) in Room CSE-204.',
+        intent: 'exams',
+        actionButton: { label: 'Open Exam Schedules', path: '/faculty/exams' }
       };
     }
   }
 
-  // Fallback
+  // ----------------------------------------------------
+  // ROLE 3: ADMIN
+  // ----------------------------------------------------
+  if (role === 'admin') {
+    if (clean.includes('statistic') || clean.includes('count') || clean.includes('student') || clean.includes('faculty') || clean.includes('overview')) {
+      return {
+        response: 'Campus Institutional Snapshot:\n- Total Students: 1,240\n- Faculty Members: 84\n- Active Courses: 48\n- Academic Departments: 8\n- Campus Attendance: 86.4%\n- Fee Realization: ₹1.84 Cr (92%)\n- Placement Offers: 142.',
+        intent: 'stats',
+        actionButton: { label: 'Open Admin Dashboard', path: '/admin/dashboard' }
+      };
+    }
+
+    if (clean.includes('fee') || clean.includes('revenue') || clean.includes('collection') || clean.includes('finance')) {
+      return {
+        response: 'University Fee Ledger: Invoiced ₹2.00 Cr, Collected ₹1.84 Cr (92% Realization), Outstanding Balance ₹16.0 Lakhs across 84 students.',
+        intent: 'fees',
+        actionButton: { label: 'Manage Fee Collections', path: '/admin/fees' }
+      };
+    }
+
+    if (clean.includes('exam') || clean.includes('conflict') || clean.includes('hall')) {
+      return {
+        response: 'Examination Master Schedule: 12 exam papers configured across 8 Halls. Room Conflict Validator reports 0 overlapping room schedules.',
+        intent: 'exams',
+        actionButton: { label: 'Manage Examinations', path: '/admin/exams' }
+      };
+    }
+
+    if (clean.includes('report') || clean.includes('export') || clean.includes('csv') || clean.includes('naac')) {
+      return {
+        response: '9 Institutional Datasets are ready for export in CSV and PDF formats (Admissions, Workload, Attendance Audit, Financial Ledger, Library, Hostel, Transport, Placements).',
+        intent: 'reports',
+        actionButton: { label: 'Open Reports Center', path: '/admin/reports' }
+      };
+    }
+  }
+
+  // ----------------------------------------------------
+  // ROLE 4: PARENT
+  // ----------------------------------------------------
+  if (role === 'parent') {
+    if (clean.includes('attendance') || clean.includes('present') || clean.includes('absent')) {
+      return {
+        response: 'Your student Aditya Sharma maintains an overall attendance of 87% (104 of 120 lectures attended). All subjects are above the 75% threshold.',
+        intent: 'attendance',
+        actionButton: { label: 'View Attendance Logs', path: '/parent/attendance' }
+      };
+    }
+
+    if (clean.includes('gpa') || clean.includes('result') || clean.includes('grade') || clean.includes('mark') || clean.includes('academic')) {
+      return {
+        response: 'Aditya Sharma stands at Cumulative CGPA 8.60 / 10.0 and Semester 8 SGPA 8.75 with 0 backlogs and Excellent academic standing.',
+        intent: 'academics',
+        actionButton: { label: 'View Academic Results', path: '/parent/academics' }
+      };
+    }
+
+    if (clean.includes('assignment') || clean.includes('homework') || clean.includes('task')) {
+      return {
+        response: 'Aditya has 1 pending assignment due on 25 Aug ("Microservices Deployment on Kubernetes"). 2 previously submitted assignments were graded with an average of 91.5/100.',
+        intent: 'assignments',
+        actionButton: { label: 'View Assignments', path: '/parent/assignments' }
+      };
+    }
+
+    if (clean.includes('fee') || clean.includes('bill') || clean.includes('receipt') || clean.includes('balance')) {
+      return {
+        response: 'Annual tuition fee of ₹85,000 for Aditya Sharma is Paid in Full. Verified receipt #REC-2026-8901 is available for PDF download.',
+        intent: 'fees',
+        actionButton: { label: 'View Fee Receipts', path: '/parent/fees' }
+      };
+    }
+
+    if (clean.includes('exam') || clean.includes('timetable') || clean.includes('date')) {
+      return {
+        response: 'Upcoming Exam Papers:\n1. Mid-Semester Theory Paper 1 on 25 Aug 2026 (Room CSE-204)\n2. DBMS Practical & Viva on 28 Aug 2026 (Computer Lab 3).',
+        intent: 'exams',
+        actionButton: { label: 'View Exam Timetable', path: '/parent/exams' }
+      };
+    }
+  }
+
+  // Fallback response
   return {
-    response: "I'm not sure about that yet in Campus AI Demo Mode. Try asking about attendance, assignments, exams, results, library, fees, placements, hostel or transport.",
-    intent: 'fallback',
-    actionButton: { label: 'Open Help Center', path: '/help' }
+    response: "I couldn't find specific records matching your query in your CampusOne dataset. You can ask about attendance, assignments, examinations, results, fee receipts, library books, hostel, transport, or placement opportunities.",
+    intent: lastIntent || 'general_help',
+    actionButton: { label: 'Return to Dashboard', path: `/${role}/dashboard` }
   };
 };

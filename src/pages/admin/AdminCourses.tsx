@@ -1,421 +1,453 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getManagementData, saveManagementData, CourseRecord } from '../../data/managementData';
+import React, { useState, useMemo } from 'react';
+import { AppLayout } from '../../components/AppLayout';
+import { getManagementData, CourseRecord } from '../../data/managementData';
+import { Modal } from '../../components/Modal';
+import { Toast } from '../../components/Toast';
 
 export const AdminCourses: React.FC = () => {
-  const navigate = useNavigate();
+  const mgmt = getManagementData();
 
-  // Load management data
-  const [data, setData] = useState(() => getManagementData());
-  const [courses, setCourses] = useState<CourseRecord[]>(() => {
-    return getManagementData().courses;
-  });
+  // Courses state
+  const [courses, setCourses] = useState<CourseRecord[]>(mgmt.courses);
 
-  // Modal forms
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showAssignModal, setShowAssignModal] = useState(false);
+  // Search & Filter
+  const [searchQuery, setSearchQuery] = useState('');
+  const [deptFilter, setDeptFilter] = useState('All');
 
-  // Add Course Fields
-  const [code, setCode] = useState('');
+  // Modals state
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [assigningCourse, setAssigningCourse] = useState<CourseRecord | null>(null);
+
+  // Form State
   const [name, setName] = useState('');
-  const [dept, setDept] = useState('CSE');
-  const [semester, setSemester] = useState('5th Semester');
+  const [code, setCode] = useState('');
+  const [dept, setDept] = useState('Computer Science');
+  const [sem, setSem] = useState('Semester 6');
+  const [facultyId, setFacultyId] = useState('FAC-101');
 
-  // Assign Faculty Fields
-  const [assignCourseCode, setAssignCourseCode] = useState('CSE-301');
-  const [assignFacultyId, setAssignFacultyId] = useState('FAC-101');
-  const [assignSection, setAssignSection] = useState('A');
-  const [assignSemester, setAssignSemester] = useState('5th Semester');
+  // Assign Form
+  const [selectedFacId, setSelectedFacId] = useState('FAC-101');
 
-  const [formError, setFormError] = useState<string | null>(null);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  // Toast
+  const [toastMsg, setToastMsg] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
 
-  const handleOpenAdd = () => {
-    setCode('');
-    setName('');
-    setDept('CSE');
-    setSemester('5th Semester');
-    setFormError(null);
-    setShowAddModal(true);
+  const showToast = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+    setToastMsg({ message, type });
+    setTimeout(() => setToastMsg(null), 3500);
   };
 
-  const handleOpenAssign = (cCode: string) => {
-    setAssignCourseCode(cCode);
-    setAssignFacultyId('FAC-101');
-    setAssignSection('A');
-    setAssignSemester('5th Semester');
-    setFormError(null);
-    setShowAssignModal(true);
-  };
-
-  const handleToggleStatus = (cCode: string) => {
-    const nextCourses = courses.map((c) => {
-      if (c.code === cCode) {
-        const nextStatus = c.status === 'Active' ? 'Inactive' as const : 'Active' as const;
-        setToastMsg(`Course "${c.name}" status set to ${nextStatus}.`);
-        setTimeout(() => setToastMsg(null), 2500);
-        return {
-          ...c,
-          status: nextStatus
-        };
-      }
-      return c;
-    });
-
-    setCourses(nextCourses);
-    const updatedData = { ...data, courses: nextCourses };
-    setData(updatedData);
-    saveManagementData(updatedData);
-  };
-
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const handleAddCourse = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!code.trim() || !name.trim()) {
-      setFormError('Please fill in both the Course Code and Course Name.');
+    if (!name.trim() || !code.trim()) {
+      showToast('Please fill out all required fields.', 'error');
       return;
     }
 
-    if (courses.some((c) => c.code.toLowerCase() === code.toLowerCase())) {
-      setFormError('Error: A course with this code already exists.');
-      return;
-    }
+    const fac = mgmt.faculty.find((f) => f.id === facultyId);
 
     const newCourse: CourseRecord = {
-      code: code.toUpperCase(),
-      name,
+      code: code.trim().toUpperCase(),
+      name: name.trim(),
       department: dept,
-      semester,
-      facultyId: '',
-      facultyName: 'Unassigned',
-      studentsCount: 0,
+      semester: sem,
+      facultyId,
+      facultyName: fac ? fac.name : 'Dr. Suresh Kumar',
+      studentsCount: 60,
       status: 'Active',
       progress: 0,
-      nextClass: 'Unscheduled'
+      nextClass: 'Mon, Wed 09:00 AM'
     };
 
-    const nextCourses = [...courses, newCourse];
-    setCourses(nextCourses);
-    const updatedData = { ...data, courses: nextCourses };
-    setData(updatedData);
-    saveManagementData(updatedData);
-
-    setShowAddModal(false);
-    setToastMsg('Course added successfully.');
-    setTimeout(() => setToastMsg(null), 2500);
+    setCourses([newCourse, ...courses]);
+    setIsAddModalOpen(false);
+    setName('');
+    setCode('');
+    showToast(`Course "${newCourse.name}" created successfully!`, 'success');
   };
 
-  const handleAssignSubmit = (e: React.FormEvent) => {
+  const handleSaveAssign = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!assigningCourse) return;
 
-    const facultyMember = data.faculty.find((f) => f.id === assignFacultyId);
-    if (!facultyMember) {
-      setFormError('Selected faculty member not found.');
-      return;
-    }
+    const fac = mgmt.faculty.find((f) => f.id === selectedFacId);
 
-    const nextCourses = courses.map((c) => {
-      if (c.code === assignCourseCode) {
-        return {
-          ...c,
-          facultyId: facultyMember.id,
-          facultyName: facultyMember.name,
-          semester: assignSemester,
-          nextClass: `Assigned Section ${assignSection}`
-        };
-      }
-      return c;
-    });
+    setCourses((prev) =>
+      prev.map((c) =>
+        c.code === assigningCourse.code
+          ? { ...c, facultyId: selectedFacId, facultyName: fac ? fac.name : c.facultyName }
+          : c
+      )
+    );
 
-    // Also update faculty courses list
-    const nextFaculty = data.faculty.map((f) => {
-      if (f.id === facultyMember.id && !f.courses.includes(assignCourseCode)) {
-        return {
-          ...f,
-          courses: [...f.courses, assignCourseCode]
-        };
-      }
-      return f;
-    });
-
-    setCourses(nextCourses);
-    const updatedData = {
-      ...data,
-      courses: nextCourses,
-      faculty: nextFaculty
-    };
-    setData(updatedData);
-    saveManagementData(updatedData);
-
-    setShowAssignModal(false);
-    setToastMsg('Faculty assigned successfully.');
-    setTimeout(() => setToastMsg(null), 2500);
+    setAssigningCourse(null);
+    showToast(`Faculty ${fac?.name} assigned to ${assigningCourse.code}!`, 'success');
   };
+
+  const filteredCourses = useMemo(() => {
+    return courses.filter((c) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchQ =
+        !q ||
+        c.name.toLowerCase().includes(q) ||
+        c.code.toLowerCase().includes(q) ||
+        c.facultyName.toLowerCase().includes(q);
+
+      const matchDept = deptFilter === 'All' || c.department.toLowerCase().includes(deptFilter.toLowerCase());
+
+      return matchQ && matchDept;
+    });
+  }, [courses, searchQuery, deptFilter]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Back button */}
-      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-        <button
-          type="button"
-          className="btn-sso"
-          onClick={() => navigate('/admin')}
-          style={{ margin: 0, padding: '0 12px', height: '32px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}
-        >
-          <i className="fa-solid fa-arrow-left"></i> Admin Console
-        </button>
-        <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>Admin / Courses</span>
-      </div>
-
-      <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
-        <div>
-          <h1>Course Management</h1>
-          <p>Create new academic modules, assign faculty instructors, and adjust course syllabus statuses.</p>
-        </div>
-
-        <button
-          type="button"
-          className="btn-signin"
-          style={{ width: 'auto', padding: '0 16px', height: '36px', margin: 0 }}
-          onClick={handleOpenAdd}
-        >
-          <i className="fa-solid fa-book-medical" style={{ marginRight: '6px' }}></i> Add Course
-        </button>
-      </div>
-
-      {/* Toast Alert */}
-      {toastMsg && (
-        <div className="toast-msg">
-          <i className="fa-solid fa-circle-check" style={{ color: '#00d89a' }}></i>
-          <span>{toastMsg}</span>
-        </div>
-      )}
-
-      {/* Roster table */}
-      <div className="card-panel">
-        <div className="table-responsive" style={{ overflowX: 'auto' }}>
-          <table className="custom-table" style={{ width: '100%', minWidth: '800px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', color: 'var(--text-secondary)' }}>
-                <th style={{ padding: '12px 14px' }}>Course Code</th>
-                <th style={{ padding: '12px 14px' }}>Course Name</th>
-                <th style={{ padding: '12px 14px' }}>Department</th>
-                <th style={{ padding: '12px 14px' }}>Semester</th>
-                <th style={{ padding: '12px 14px' }}>Assigned Instructor</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Students</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Status</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {courses.map((c) => (
-                <tr key={c.code} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', color: 'white' }}>
-                  <td style={{ padding: '12px 14px', fontWeight: '700', color: 'var(--accent-highlight)' }}>{c.code}</td>
-                  <td style={{ padding: '12px 14px', fontWeight: '700' }}>{c.name}</td>
-                  <td style={{ padding: '12px 14px' }}>{c.department}</td>
-                  <td style={{ padding: '12px 14px' }}>{c.semester}</td>
-                  <td style={{ padding: '12px 14px', fontWeight: '600' }}>{c.facultyName}</td>
-                  <td style={{ padding: '12px 14px', textAlign: 'center' }}>{c.studentsCount}</td>
-                  <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                    <span className={`subject-att-status ${c.status === 'Active' ? 'good' : 'inactive'}`} style={{ fontSize: '8.5px' }}>
-                      {c.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                    <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                      <button
-                        type="button"
-                        className="btn-sso"
-                        style={{ height: '26px', fontSize: '11px', padding: '0 8px', margin: 0, width: 'auto' }}
-                        onClick={() => handleOpenAssign(c.code)}
-                      >
-                        Assign Faculty
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-retry-err"
-                        style={{
-                          height: '26px',
-                          fontSize: '11px',
-                          padding: '0 8px',
-                          margin: 0,
-                          width: 'auto',
-                          background: c.status === 'Active' ? 'rgba(217, 83, 79, 0.05)' : 'rgba(0, 216, 154, 0.05)',
-                          borderColor: c.status === 'Active' ? 'var(--color-error)' : '#00d89a',
-                          color: c.status === 'Active' ? 'var(--color-error)' : '#00d89a'
-                        }}
-                        onClick={() => handleToggleStatus(c.code)}
-                      >
-                        {c.status === 'Active' ? 'Deactivate' : 'Activate'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Add Course Modal */}
-      {showAddModal && (
-        <div className="search-modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="search-modal-card" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
-            <div className="search-modal-header" style={{ justifyContent: 'space-between', padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <div>
-                <span style={{ fontSize: '10px', color: 'var(--accent-highlight)', display: 'block', textTransform: 'uppercase' }}>Curriculum</span>
-                <h2 style={{ fontSize: '16.5px', marginTop: '2px' }}>Add Course</h2>
-              </div>
-              <button type="button" className="btn-search-close" onClick={() => setShowAddModal(false)}>
-                <i className="fa-solid fa-xmark" style={{ fontSize: '14px' }}></i>
-              </button>
+    <AppLayout>
+      <div className="academic-module-page">
+        {/* Header */}
+        <div className="module-header-row">
+          <div>
+            <div className="module-breadcrumbs">
+              <span>Admin Portal</span>
+              <span className="crumb-sep">/</span>
+              <span className="crumb-current">Curriculum & Courses</span>
             </div>
+            <h1 className="module-title">Curriculum & Course Management</h1>
+            <p className="module-subtitle">
+              Configure course syllabus, allocate faculty instructors, and manage academic cohorts.
+            </p>
+          </div>
 
-            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {formError && (
-                <div className="login-error-box" style={{ margin: 0, padding: '10px 14px' }}>
-                  <i className="fa-solid fa-circle-exclamation"></i>
-                  <span>{formError}</span>
-                </div>
-              )}
+          <div className="module-header-meta">
+            <button
+              type="button"
+              className="c1-btn c1-btn-gradient"
+              onClick={() => setIsAddModalOpen(true)}
+            >
+              <i className="fa-solid fa-book-medical"></i>
+              <span>Create New Course</span>
+            </button>
+          </div>
+        </div>
 
-              <form onSubmit={handleAddSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div className="form-group">
-                  <label htmlFor="crs-code" style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Course Code</label>
-                  <input
-                    id="crs-code"
-                    type="text"
-                    placeholder="e.g. CSE-305"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '12.5px', outline: 'none' }}
-                  />
-                </div>
+        {/* 4 Summary Stat Cards */}
+        <div className="academic-stats-grid">
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
+              <i className="fa-solid fa-book-open"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">{courses.length * 8}</span>
+              <span className="stat-label">Active Courses</span>
+            </div>
+          </div>
 
-                <div className="form-group">
-                  <label htmlFor="crs-name" style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Course Name</label>
-                  <input
-                    id="crs-name"
-                    type="text"
-                    placeholder="e.g. Operating Systems..."
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '12.5px', outline: 'none' }}
-                  />
-                </div>
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
+              <i className="fa-solid fa-chalkboard-user"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">84</span>
+              <span className="stat-label">Assigned Faculty</span>
+            </div>
+          </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div className="form-group">
-                    <label style={{ fontSize: '11.5px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Department</label>
-                    <select
-                      value={dept}
-                      onChange={(e) => setDept(e.target.value)}
-                      style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '12px' }}
-                    >
-                      <option value="CSE">CSE</option>
-                      <option value="ECE">ECE</option>
-                    </select>
-                  </div>
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
+              <i className="fa-solid fa-users"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">1,240</span>
+              <span className="stat-label">Student Enrollments</span>
+            </div>
+          </div>
 
-                  <div className="form-group">
-                    <label style={{ fontSize: '11.5px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Semester</label>
-                    <select
-                      value={semester}
-                      onChange={(e) => setSemester(e.target.value)}
-                      style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '12px' }}
-                    >
-                      <option value="1st Semester">1st Sem</option>
-                      <option value="3rd Semester">3rd Sem</option>
-                      <option value="5th Semester">5th Sem</option>
-                      <option value="7th Semester">7th Sem</option>
-                    </select>
-                  </div>
-                </div>
-
-                <button type="submit" className="btn-signin" style={{ height: '40px', margin: 0, marginTop: '10px', fontSize: '13px' }}>
-                  Publish Course
-                </button>
-              </form>
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>
+              <i className="fa-solid fa-award"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">4.0 Avg</span>
+              <span className="stat-label">Credits per Course</span>
             </div>
           </div>
         </div>
-      )}
 
-      {/* Assign Instructor Modal */}
-      {showAssignModal && (
-        <div className="search-modal-overlay" onClick={() => setShowAssignModal(false)}>
-          <div className="search-modal-card" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
-            <div className="search-modal-header" style={{ justifyContent: 'space-between', padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <div>
-                <span style={{ fontSize: '10px', color: 'var(--accent-highlight)', display: 'block', textTransform: 'uppercase' }}>Instructors Allocation</span>
-                <h2 style={{ fontSize: '16.5px', marginTop: '2px' }}>Assign Faculty</h2>
-              </div>
-              <button type="button" className="btn-search-close" onClick={() => setShowAssignModal(false)}>
-                <i className="fa-solid fa-xmark" style={{ fontSize: '14px' }}></i>
+        {/* Search Toolbar */}
+        <div className="c1-card academic-filters-card" style={{ marginBottom: '24px' }}>
+          <div className="search-filter-input-wrap">
+            <i className="fa-solid fa-magnifying-glass search-icon"></i>
+            <input
+              type="text"
+              className="c1-input search-filter-input"
+              placeholder="Search courses by code (CSE-301), title, or faculty name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="clear-search-btn"
+                onClick={() => setSearchQuery('')}
+              >
+                <i className="fa-solid fa-xmark"></i>
               </button>
+            )}
+          </div>
+
+          <div className="filters-row-wrap">
+            <div className="filter-select-item">
+              <label htmlFor="select-course-dept">Department</label>
+              <select
+                id="select-course-dept"
+                className="c1-select"
+                value={deptFilter}
+                onChange={(e) => setDeptFilter(e.target.value)}
+              >
+                <option value="All">All Departments</option>
+                <option value="Computer Science">Computer Science</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Mechanical">Mechanical</option>
+              </select>
             </div>
+          </div>
+        </div>
 
-            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {formError && (
-                <div className="login-error-box" style={{ margin: 0, padding: '10px 14px' }}>
-                  <i className="fa-solid fa-circle-exclamation"></i>
-                  <span>{formError}</span>
+        {/* Courses Table */}
+        <div className="c1-card student-roster-card">
+          <div className="c1-card-header">
+            <div>
+              <h3 className="c1-card-title">Curriculum Registry ({filteredCourses.length} Subjects)</h3>
+              <p className="c1-card-subtitle">Active syllabus courses, credits, and faculty instructors</p>
+            </div>
+            <button
+              type="button"
+              className="c1-btn c1-btn-secondary"
+              onClick={() => setIsAddModalOpen(true)}
+            >
+              <i className="fa-solid fa-plus"></i>
+              <span>Add Subject</span>
+            </button>
+          </div>
+
+          <div className="student-roster-table-wrap">
+            <table className="c1-table">
+              <thead>
+                <tr>
+                  <th>Course Code</th>
+                  <th>Subject Title</th>
+                  <th>Department</th>
+                  <th>Semester</th>
+                  <th>Assigned Faculty</th>
+                  <th>Enrolled</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCourses.map((c) => (
+                  <tr key={c.code}>
+                    <td><span className="course-code-tag">{c.code}</span></td>
+                    <td>
+                      <strong style={{ color: '#ffffff' }}>{c.name}</strong>
+                    </td>
+                    <td>{c.department}</td>
+                    <td>{c.semester}</td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <i className="fa-solid fa-user-tie" style={{ color: 'var(--accent-blue)' }}></i>
+                        <span style={{ color: '#ffffff' }}>{c.facultyName}</span>
+                      </div>
+                    </td>
+                    <td><strong>{c.studentsCount}</strong> Students</td>
+                    <td>
+                      <span className="c1-badge c1-badge-success">{c.status}</span>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="c1-btn c1-btn-secondary"
+                        style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                        onClick={() => {
+                          setAssigningCourse(c);
+                          setSelectedFacId(c.facultyId);
+                        }}
+                      >
+                        <i className="fa-solid fa-user-pen"></i>
+                        <span>Reassign</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* ============================================================
+            MODAL 1: ADD COURSE MODAL
+            ============================================================ */}
+        {isAddModalOpen && (
+          <Modal
+            isOpen={true}
+            onClose={() => setIsAddModalOpen(false)}
+            title="Create Curriculum Course"
+            maxWidth="md"
+          >
+            <form onSubmit={handleAddCourse} className="faculty-form-stack">
+              <div className="form-fields-two-col">
+                <div className="form-field-wrap">
+                  <label className="form-label">Course Subject Name</label>
+                  <input
+                    type="text"
+                    className="c1-input"
+                    placeholder="e.g. Distributed Operating Systems"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
                 </div>
-              )}
 
-              <form onSubmit={handleAssignSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div className="form-group">
-                  <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Selected Course</label>
-                  <strong style={{ color: 'white', fontSize: '14px' }}>{assignCourseCode}</strong>
+                <div className="form-field-wrap">
+                  <label className="form-label">Course Code</label>
+                  <input
+                    type="text"
+                    className="c1-input"
+                    placeholder="e.g. CSE-405"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    required
+                  />
                 </div>
+              </div>
 
-                <div className="form-group">
-                  <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Select Faculty Instructor</label>
+              <div className="form-fields-two-col">
+                <div className="form-field-wrap">
+                  <label className="form-label">Department</label>
                   <select
-                    value={assignFacultyId}
-                    onChange={(e) => setAssignFacultyId(e.target.value)}
-                    style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '12.5px' }}
+                    className="c1-select"
+                    value={dept}
+                    onChange={(e) => setDept(e.target.value)}
                   >
-                    {data.faculty.map((f) => (
-                      <option key={f.id} value={f.id}>{f.name} ({f.designation} - {f.department})</option>
-                    ))}
+                    <option value="Computer Science">Computer Science & Engineering</option>
+                    <option value="Electronics & Communication">Electronics & Communication</option>
+                    <option value="Information Technology">Information Technology</option>
                   </select>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div className="form-group">
-                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Semester</label>
-                    <select
-                      value={assignSemester}
-                      onChange={(e) => setAssignSemester(e.target.value)}
-                      style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '6px 8px', color: 'white', fontSize: '12px' }}
-                    >
-                      <option value="5th Semester">5th Semester</option>
-                      <option value="7th Semester">7th Semester</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Section</label>
-                    <select
-                      value={assignSection}
-                      onChange={(e) => setAssignSection(e.target.value)}
-                      style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '6px 8px', color: 'white', fontSize: '12px' }}
-                    >
-                      <option value="A">Section A</option>
-                      <option value="B">Section B</option>
-                    </select>
-                  </div>
+                <div className="form-field-wrap">
+                  <label className="form-label">Academic Semester</label>
+                  <select
+                    className="c1-select"
+                    value={sem}
+                    onChange={(e) => setSem(e.target.value)}
+                  >
+                    <option value="Semester 1">Semester 1</option>
+                    <option value="Semester 3">Semester 3</option>
+                    <option value="Semester 5">Semester 5</option>
+                    <option value="Semester 6">Semester 6</option>
+                    <option value="Semester 7">Semester 7</option>
+                    <option value="Semester 8">Semester 8</option>
+                  </select>
                 </div>
+              </div>
 
-                <button type="submit" className="btn-signin" style={{ height: '40px', margin: 0, marginTop: '10px', fontSize: '13px' }}>
-                  Assign Faculty Instructor
+              <div className="form-field-wrap">
+                <label className="form-label">Assign Faculty Instructor</label>
+                <select
+                  className="c1-select"
+                  value={facultyId}
+                  onChange={(e) => setFacultyId(e.target.value)}
+                >
+                  {mgmt.faculty.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name} ({f.id} - {f.department})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="modal-dialog-footer">
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setIsAddModalOpen(false)}
+                >
+                  Cancel
                 </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+                <button
+                  type="submit"
+                  className="c1-btn c1-btn-gradient"
+                >
+                  <i className="fa-solid fa-check"></i>
+                  <span>Create Course</span>
+                </button>
+              </div>
+            </form>
+          </Modal>
+        )}
+
+        {/* ============================================================
+            MODAL 2: REASSIGN FACULTY MODAL
+            ============================================================ */}
+        {assigningCourse && (
+          <Modal
+            isOpen={true}
+            onClose={() => setAssigningCourse(null)}
+            title={`Assign Faculty: ${assigningCourse.code}`}
+            maxWidth="md"
+          >
+            <form onSubmit={handleSaveAssign} className="faculty-form-stack">
+              <div className="c1-alert c1-alert-info">
+                <i className="fa-solid fa-circle-info"></i>
+                <div>
+                  Currently assigned to <strong>{assigningCourse.facultyName}</strong> for <strong>{assigningCourse.name}</strong>.
+                </div>
+              </div>
+
+              <div className="form-field-wrap">
+                <label className="form-label">Select Faculty Instructor</label>
+                <select
+                  className="c1-select"
+                  value={selectedFacId}
+                  onChange={(e) => setSelectedFacId(e.target.value)}
+                >
+                  {mgmt.faculty.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name} ({f.designation} • {f.department})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="modal-dialog-footer">
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setAssigningCourse(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="c1-btn c1-btn-gradient"
+                >
+                  <i className="fa-solid fa-floppy-disk"></i>
+                  <span>Save Assignment</span>
+                </button>
+              </div>
+            </form>
+          </Modal>
+        )}
+
+        {/* Toast Notification Container */}
+        {toastMsg && (
+          <Toast
+            message={toastMsg.message}
+            type={toastMsg.type}
+            onClose={() => setToastMsg(null)}
+          />
+        )}
+      </div>
+    </AppLayout>
   );
 };
+
 export default AdminCourses;

@@ -1,158 +1,304 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AppLayout } from '../../components/AppLayout';
+import { getManagementData } from '../../data/managementData';
 
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const mgmt = getManagementData();
+
+  const totalStudents = mgmt.students.length * 20; // 1,240 students campus-wide
+  const totalFaculty = mgmt.faculty.length * 14; // 84 faculty
+  const totalCourses = mgmt.courses.length * 8; // 48 active courses
+
+  // Department distribution
+  const deptStats = [
+    { code: 'CSE', name: 'Computer Science & Engineering', students: 360, faculty: 24, percent: 29 },
+    { code: 'ECE', name: 'Electronics & Communication', students: 280, faculty: 18, percent: 23 },
+    { code: 'IT', name: 'Information Technology', students: 220, faculty: 14, percent: 18 },
+    { code: 'AI&DS', name: 'Artificial Intelligence & Data Science', students: 160, faculty: 12, percent: 13 },
+    { code: 'MECH', name: 'Mechanical Engineering', students: 120, faculty: 10, percent: 10 },
+    { code: 'CIVIL', name: 'Civil Engineering', students: 100, faculty: 6, percent: 7 }
+  ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Header */}
-      <div className="dashboard-header">
-        <h1>Admin Dashboard</h1>
-        <p>Monitor and manage the complete Campus Hub ecosystem.</p>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '16px' }}>
-        {[
-          { label: 'Total Students', val: '2,450', icon: 'fa-users', color: 'primary' },
-          { label: 'Total Faculty', val: '142', icon: 'fa-chalkboard-user', color: 'cyan' },
-          { label: 'Active Courses', val: '86', icon: 'fa-book', color: 'warning' },
-          { label: 'Attendance', val: '87%', icon: 'fa-user-check', color: 'green' },
-          { label: 'Placement Rate', val: '82%', icon: 'fa-briefcase', color: 'green' },
-          { label: 'Pending Requests', val: '34', icon: 'fa-clock', color: 'critical' }
-        ].map((st, idx) => (
-          <div key={idx} className="card-panel stat-card">
-            <div className="stat-card-row">
-              <div className={`stat-card-icon ${st.color}`}>
-                <i className={`fa-solid ${st.icon}`}></i>
-              </div>
+    <AppLayout>
+      <div className="academic-module-page">
+        {/* Header */}
+        <div className="module-header-row">
+          <div>
+            <div className="module-breadcrumbs">
+              <span>Admin Portal</span>
+              <span className="crumb-sep">/</span>
+              <span className="crumb-current">Central Dashboard</span>
             </div>
-            <div className="stat-card-value">{st.val}</div>
-            <div className="stat-card-desc">{st.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Main Grid: Charts & System Notifications */}
-      <div className="dashboard-main-grid">
-        {/* Charts & System Analytics */}
-        <div className="card-panel" style={{ flex: 1.4 }}>
-          <div className="card-panel-header" style={{ marginBottom: '16px' }}>
-            <h3>Campus Performance Overview</h3>
-            <i className="fa-solid fa-chart-line" style={{ color: 'var(--text-secondary)' }}></i>
+            <h1 className="module-title">Welcome back, Administrator</h1>
+            <p className="module-subtitle">
+              Monitor and manage your entire campus operations, academics, admissions, services, and finances from one place.
+            </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px' }}>
-            {/* Chart 1: Fee Collection vs Target */}
-            <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '16px' }}>
-              <span style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Fee Collection Overview</span>
-              <h4 style={{ fontSize: '16px', fontWeight: '900', color: 'white', marginTop: '4px', marginBottom: '12px' }}>Collected vs Pending</h4>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', marginBottom: '4px' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>Collected (85%)</span>
-                    <strong style={{ color: '#00d89a' }}>₹2.45 Cr</strong>
-                  </div>
-                  <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.02)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: '85%', height: '100%', background: '#00d89a' }} />
-                  </div>
-                </div>
+          <div className="module-header-meta">
+            <button
+              type="button"
+              className="c1-btn c1-btn-gradient"
+              onClick={() => navigate('/admin/reports')}
+            >
+              <i className="fa-solid fa-file-chart-column"></i>
+              <span>Campus Reports</span>
+            </button>
+          </div>
+        </div>
 
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', marginBottom: '4px' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>Pending (15%)</span>
-                    <strong style={{ color: 'var(--color-error)' }}>₹43.2 L</strong>
-                  </div>
-                  <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.02)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: '15%', height: '100%', background: 'var(--color-error)' }} />
-                  </div>
-                </div>
-              </div>
+        {/* 8 Statistics Cards */}
+        <div className="academic-stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+          <div className="c1-card academic-stat-card" onClick={() => navigate('/admin/students')} style={{ cursor: 'pointer' }}>
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
+              <i className="fa-solid fa-user-graduate"></i>
             </div>
+            <div className="stat-card-data">
+              <span className="stat-num">{totalStudents}</span>
+              <span className="stat-label">Total Enrolled Students</span>
+            </div>
+          </div>
 
-            {/* Chart 2: Hostel Occupancy */}
-            <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '16px' }}>
-              <span style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Hostel Capacity</span>
-              <h4 style={{ fontSize: '16px', fontWeight: '900', color: 'white', marginTop: '4px', marginBottom: '12px' }}>Occupancy breakdown</h4>
+          <div className="c1-card academic-stat-card" onClick={() => navigate('/admin/faculty')} style={{ cursor: 'pointer' }}>
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
+              <i className="fa-solid fa-chalkboard-user"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">{totalFaculty}</span>
+              <span className="stat-label">Faculty Members</span>
+            </div>
+          </div>
 
-              <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-                <svg width="60" height="60" viewBox="0 0 36 36">
-                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.02)" strokeWidth="3" />
-                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--accent-primary)" strokeWidth="3" strokeDasharray="90, 100" />
-                </svg>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px' }}>
-                  <div>Total Rooms: <strong style={{ color: 'white' }}>200</strong></div>
-                  <div>Occupied (90%): <strong style={{ color: 'var(--accent-highlight)' }}>180</strong></div>
-                  <div>Available: <strong style={{ color: '#00d89a' }}>20</strong></div>
-                </div>
-              </div>
+          <div className="c1-card academic-stat-card" onClick={() => navigate('/admin/courses')} style={{ cursor: 'pointer' }}>
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc' }}>
+              <i className="fa-solid fa-book-open"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">{totalCourses}</span>
+              <span className="stat-label">Active Courses</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card" onClick={() => navigate('/admin/departments')} style={{ cursor: 'pointer' }}>
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
+              <i className="fa-solid fa-building-columns"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">8 Depts</span>
+              <span className="stat-label">Active Departments</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card" onClick={() => navigate('/admin/attendance')} style={{ cursor: 'pointer' }}>
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa' }}>
+              <i className="fa-solid fa-user-check"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num" style={{ color: '#60a5fa' }}>86.4%</span>
+              <span className="stat-label">Campus Attendance Rate</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card" onClick={() => navigate('/admin/fees')} style={{ cursor: 'pointer' }}>
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>
+              <i className="fa-solid fa-wallet"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num" style={{ color: '#fbbf24' }}>₹1.84 Cr</span>
+              <span className="stat-label">Fees Realized (92%)</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card" onClick={() => navigate('/admin/placements')} style={{ cursor: 'pointer' }}>
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(236, 72, 153, 0.15)', color: '#f472b6' }}>
+              <i className="fa-solid fa-briefcase"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">142 Offers</span>
+              <span className="stat-label">Career Placements</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card" onClick={() => navigate('/admin/notifications')} style={{ cursor: 'pointer' }}>
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(244, 63, 94, 0.15)', color: '#fb7185' }}>
+              <i className="fa-solid fa-bell"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num" style={{ color: '#fb7185' }}>14 Alerts</span>
+              <span className="stat-label">Pending Service Requests</span>
             </div>
           </div>
         </div>
 
-        {/* System Notifications Alert Center */}
-        <div className="card-panel" style={{ flex: 1 }}>
-          <div className="card-panel-header" style={{ marginBottom: '16px' }}>
-            <h3>System Administrator Alerts</h3>
-            <i className="fa-solid fa-triangle-exclamation" style={{ color: 'var(--text-secondary)' }}></i>
+        {/* Analytics Section & Quick Actions Grid */}
+        <div className="hostel-overview-grid" style={{ gridTemplateColumns: '1.7fr 1fr' }}>
+          {/* Department Distribution Analytics */}
+          <div className="c1-card faculty-today-classes-card">
+            <div className="c1-card-header">
+              <div>
+                <h3 className="c1-card-title">Campus Enrollment by Academic Department</h3>
+                <p className="c1-card-subtitle">Active student capacity and faculty ratio per engineering discipline</p>
+              </div>
+              <span className="c1-badge c1-badge-cyan">Term 2025–2026</span>
+            </div>
+
+            <div className="dept-distribution-stack" style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '8px' }}>
+              {deptStats.map((dept) => (
+                <div key={dept.code} className="dept-stat-node" style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="course-code-tag">{dept.code}</span>
+                      <strong style={{ fontSize: '0.875rem', color: '#ffffff' }}>{dept.name}</strong>
+                    </div>
+                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                      <strong>{dept.students}</strong> Students • <strong>{dept.faculty}</strong> Faculty
+                    </span>
+                  </div>
+                  <div className="progress-bar-large-track">
+                    <div className="progress-bar-large-fill" style={{ width: `${dept.percent * 3}%`, background: 'linear-gradient(90deg, #6366f1 0%, #38bdf8 100%)' }}></div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {[
-              { text: '34 service complaints pending review.', color: '#ffb236', icon: 'fa-screwdriver-wrench', path: '/admin/requests' },
-              { text: '12 hostel requests require warden actions.', color: '#ffb236', icon: 'fa-hotel', path: '/admin/requests' },
-              { text: 'Microsoft placement shortlist uploaded.', color: '#00d89a', icon: 'fa-briefcase', path: '/admin/placements' },
-              { text: 'Bus Route 12 reported delayed by 15 mins.', color: 'var(--color-error)', icon: 'fa-bus', path: '/admin/transport' },
-              { text: 'Fee collection deadline approaching: 24th Aug.', color: '#00d89a', icon: 'fa-wallet', path: '/admin/fees' }
-            ].map((alert, idx) => (
-              <div
-                key={idx}
-                className="timetable-item"
-                style={{ padding: '12px 14px', gap: '12px', cursor: 'pointer' }}
-                onClick={() => navigate(alert.path)}
+          {/* Quick Actions Shortcuts */}
+          <div className="c1-card faculty-quick-actions-card">
+            <h3 className="c1-card-title">Admin Operations</h3>
+            <p className="c1-card-subtitle">Instant triggers for campus administration</p>
+
+            <div className="faculty-shortcuts-grid">
+              <button
+                type="button"
+                className="shortcut-tile"
+                onClick={() => navigate('/admin/students')}
               >
-                <div style={{ color: alert.color, fontSize: '14px' }}>
-                  <i className={`fa-solid ${alert.icon}`}></i>
+                <div className="shortcut-icon" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
+                  <i className="fa-solid fa-user-plus"></i>
                 </div>
-                <span style={{ fontSize: '12px', color: 'white' }}>{alert.text}</span>
-              </div>
-            ))}
+                <span>Add Student</span>
+              </button>
+
+              <button
+                type="button"
+                className="shortcut-tile"
+                onClick={() => navigate('/admin/faculty')}
+              >
+                <div className="shortcut-icon" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
+                  <i className="fa-solid fa-user-tie"></i>
+                </div>
+                <span>Add Faculty</span>
+              </button>
+
+              <button
+                type="button"
+                className="shortcut-tile"
+                onClick={() => navigate('/admin/courses')}
+              >
+                <div className="shortcut-icon" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc' }}>
+                  <i className="fa-solid fa-book-medical"></i>
+                </div>
+                <span>Create Course</span>
+              </button>
+
+              <button
+                type="button"
+                className="shortcut-tile"
+                onClick={() => navigate('/admin/notices')}
+              >
+                <div className="shortcut-icon" style={{ background: 'rgba(244, 63, 94, 0.15)', color: '#fb7185' }}>
+                  <i className="fa-solid fa-bullhorn"></i>
+                </div>
+                <span>Publish Notice</span>
+              </button>
+
+              <button
+                type="button"
+                className="shortcut-tile"
+                onClick={() => navigate('/admin/exams')}
+              >
+                <div className="shortcut-icon" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>
+                  <i className="fa-solid fa-receipt"></i>
+                </div>
+                <span>Schedule Exam</span>
+              </button>
+
+              <button
+                type="button"
+                className="shortcut-tile"
+                onClick={() => navigate('/admin/placements')}
+              >
+                <div className="shortcut-icon" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
+                  <i className="fa-solid fa-briefcase"></i>
+                </div>
+                <span>Add Placement</span>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-      {/* AI Overview Alerts Row */}
-      <div className="card-panel ai-insight-card" style={{ marginTop: '10px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
-          <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-            <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'rgba(124,92,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-highlight)', fontSize: '20px' }}>
-              <i className="fa-solid fa-wand-magic-sparkles"></i>
+
+        {/* Financial & Campus Services Snapshot */}
+        <div className="academic-stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
+          <div className="c1-card" style={{ padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <h4 style={{ color: '#ffffff', fontSize: '0.9375rem', fontWeight: 700 }}>Hostel Occupancy</h4>
+              <span className="c1-badge c1-badge-cyan">90% Full</span>
             </div>
-            <div>
-              <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'white', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                Admin AI Assistant & System Insights
-              </h3>
-              <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: '1.5', maxWidth: '700px' }}>
-                • <strong>Campus Tickets:</strong> 34 campus requests require attention.<br />
-                • <strong>Hostel Occupancy:</strong> Hostel occupancy is currently 90%. Ganga girls block has 8 available rooms.<br />
-                • <strong>Shuttle Mobility:</strong> 12 transport routes are active. Route 12 Miyapur bus is currently delayed.
-              </p>
-            </div>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+              <strong>360 of 400</strong> rooms occupied across 4 blocks (Boys & Girls).
+            </p>
+            <button
+              type="button"
+              className="c1-btn c1-btn-secondary"
+              style={{ width: '100%', marginTop: '12px', fontSize: '0.75rem' }}
+              onClick={() => navigate('/admin/hostel')}
+            >
+              Manage Hostels
+            </button>
           </div>
 
-          <button
-            type="button"
-            className="btn-ai-ask"
-            style={{ width: 'auto', padding: '0 18px', height: '36px', margin: 0, fontSize: '12px' }}
-            onClick={() => navigate('/assistant')}
-          >
-            Consult Admin AI
-          </button>
+          <div className="c1-card" style={{ padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <h4 style={{ color: '#ffffff', fontSize: '0.9375rem', fontWeight: 700 }}>Campus Transport</h4>
+              <span className="c1-badge c1-badge-success">16 Buses</span>
+            </div>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+              <strong>540 students</strong> commuting on 8 designated city routes.
+            </p>
+            <button
+              type="button"
+              className="c1-btn c1-btn-secondary"
+              style={{ width: '100%', marginTop: '12px', fontSize: '0.75rem' }}
+              onClick={() => navigate('/admin/transport')}
+            >
+              Manage Fleet & Routes
+            </button>
+          </div>
+
+          <div className="c1-card" style={{ padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <h4 style={{ color: '#ffffff', fontSize: '0.9375rem', fontWeight: 700 }}>Central Library</h4>
+              <span className="c1-badge c1-badge-purple">14,200 Titles</span>
+            </div>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+              <strong>1,240 books</strong> currently on loan with 84 overdue returns.
+            </p>
+            <button
+              type="button"
+              className="c1-btn c1-btn-secondary"
+              style={{ width: '100%', marginTop: '12px', fontSize: '0.75rem' }}
+              onClick={() => navigate('/admin/library')}
+            >
+              Library Inventory
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 };
+
 export default AdminDashboard;

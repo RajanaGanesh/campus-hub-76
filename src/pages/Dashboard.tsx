@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { studentDashboardData } from '../data/studentDashboardData';
+import { studentDashboardData, StudentDashboardData } from '../data/studentDashboardData';
+import { dbService } from '../services/dbService';
 import { StudentStatCard } from '../components/StudentStatCard';
 import { PerformanceChart } from '../components/PerformanceChart';
 import { ActivityTimeline } from '../components/ActivityTimeline';
@@ -21,31 +22,32 @@ export const Dashboard: React.FC = () => {
   
   const [greeting, setGreeting] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [studentData, setStudentData] = useState<StudentDashboardData | null>(null);
 
-  // Time-aware greeting clock logic
+  // Time-aware greeting clock logic & database query loader
   useEffect(() => {
     const hrs = new Date().getHours();
     if (hrs < 12) setGreeting('Good Morning');
     else if (hrs < 17) setGreeting('Good Afternoon');
     else setGreeting('Good Evening');
 
-    // Simulate API Fetch Delay
-    const timer = setTimeout(() => {
+    async function loadData() {
+      if (user?.email) {
+        try {
+          const data = await dbService.getStudentDashboardData(user.email);
+          setStudentData(data);
+        } catch (err) {
+          console.error('Error loading student dashboard data from Supabase:', err);
+        }
+      }
       setIsLoading(false);
-    }, 1200);
+    }
 
-    return () => clearTimeout(timer);
-  }, []);
+    loadData();
+  }, [user]);
 
   const userName = user?.name || 'User';
   const userRole = user?.role || 'student';
-
-  const attendanceSubjects = [
-    { name: 'Data Structures', percentage: 92, status: 'safe' as const },
-    { name: 'Database Management', percentage: 88, status: 'safe' as const },
-    { name: 'Computer Networks', percentage: 76, status: 'warning' as const },
-    { name: 'Operating Systems', percentage: 84, status: 'safe' as const }
-  ];
 
   const campusAnnouncements = [
     { title: 'Semester Examination Timetable Released', category: 'Academic', date: 'Aug 15, 2026', desc: 'The complete mid-semester exam timetable is now live.' },
@@ -91,7 +93,7 @@ export const Dashboard: React.FC = () => {
 
   // Render Student Dashboard Layout (STEP 3 Target)
   const renderStudentDashboard = () => {
-    const data = studentDashboardData;
+    const data = studentData || studentDashboardData;
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -134,7 +136,6 @@ export const Dashboard: React.FC = () => {
             <div className="card-panel">
               <AttendanceCard
                 overallPercentage={data.overallAttendance}
-                subjects={data.attendanceSubjects}
               />
               <button
                 type="button"
@@ -744,7 +745,7 @@ export const Dashboard: React.FC = () => {
 
       <div className="dashboard-main-grid">
         <div className="dashboard-row">
-          <AttendanceCard overallPercentage={86} subjects={attendanceSubjects} />
+          <AttendanceCard overallPercentage={86} />
         </div>
         <div className="dashboard-row">
           <AnnouncementCard announcements={campusAnnouncements} onViewAllClick={() => navigate('/announcements')} />

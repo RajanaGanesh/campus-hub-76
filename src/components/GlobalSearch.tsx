@@ -2,53 +2,72 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-interface SearchItem {
+export interface GlobalSearchEntry {
   id: string;
   title: string;
+  category: string;
+  description: string;
   icon: string;
   path: string;
-  roles: string[];
+  roles: Array<'student' | 'faculty' | 'admin' | 'parent'>;
 }
 
-const SEARCH_ITEMS: SearchItem[] = [
-  { id: 'dashboard', title: 'Dashboard', icon: 'fa-chart-simple', path: '/', roles: ['student', 'faculty', 'admin', 'parent'] },
-  { id: 'attendance', title: 'Attendance Logs', icon: 'fa-user-check', path: '/attendance', roles: ['student', 'faculty', 'admin', 'parent'] },
-  { id: 'timetable', title: 'Weekly Timetable', icon: 'fa-calendar-days', path: '/timetable', roles: ['student', 'faculty', 'admin'] },
-  { id: 'assignments', title: 'Coursework Assignments', icon: 'fa-file-invoice', path: '/assignments', roles: ['student', 'faculty', 'admin', 'parent'] },
-  { id: 'exams', title: 'Examinations Schedule', icon: 'fa-receipt', path: '/exams', roles: ['student', 'faculty', 'admin', 'parent'] },
-  { id: 'results', title: 'Term Results', icon: 'fa-award', path: '/results', roles: ['student', 'admin', 'parent'] },
-  { id: 'library', title: 'Library Catalog', icon: 'fa-book-open', path: '/library', roles: ['student', 'admin'] },
-  { id: 'fees', title: 'Fees Billing & Payments', icon: 'fa-wallet', path: '/fees', roles: ['student', 'admin', 'parent'] },
-  { id: 'services', title: 'Campus Services Catalog', icon: 'fa-screwdriver-wrench', path: '/services', roles: ['student', 'admin'] },
-  { id: 'requests', title: 'My Service Requests Timeline', icon: 'fa-list-check', path: '/services/requests', roles: ['student', 'admin'] },
-  { id: 'digital-id', title: 'Digital Student ID Card Badge', icon: 'fa-id-card', path: '/services', roles: ['student', 'admin'] },
-  { id: 'bonafide', title: 'Bonafide Certificate Request', icon: 'fa-file-signature', path: '/services', roles: ['student', 'admin'] },
-  { id: 'nodue', title: 'No Due Clearance Certificate Request', icon: 'fa-clipboard-check', path: '/services', roles: ['student', 'admin'] },
-  { id: 'leave', title: 'Leave Application Request Form', icon: 'fa-calendar-minus', path: '/services', roles: ['student', 'admin'] },
-  { id: 'grievance', title: 'Institutional Grievance Feedback Form', icon: 'fa-hand-holding-hand', path: '/services', roles: ['student', 'admin'] },
-  { id: 'helpdesk', title: 'Help Desk Campus Support Contact', icon: 'fa-circle-question', path: '/services', roles: ['student', 'admin'] },
-  { id: 'placements', title: 'Placements & Job Listings Catalog', icon: 'fa-briefcase', path: '/placements', roles: ['student', 'admin'] },
-  { id: 'applications', title: 'My Job Applications Tracker', icon: 'fa-paper-plane', path: '/placements/applications', roles: ['student', 'admin'] },
-  { id: 'saved-jobs', title: 'Saved Jobs Opportunities', icon: 'fa-bookmark', path: '/placements/saved', roles: ['student', 'admin'] },
-  { id: 'calendar', title: 'Placement Calendar & Recruitment Drives', icon: 'fa-calendar-days', path: '/placements/calendar', roles: ['student', 'admin'] },
-  { id: 'career-profile', title: 'Career Profile & Resume Readiness', icon: 'fa-user-tie', path: '/placements/profile', roles: ['student', 'admin'] },
-  { id: 'prep', title: 'Interview Preparation Prep Portal', icon: 'fa-book-open-reader', path: '/placements/prep', roles: ['student', 'admin'] },
-  { id: 'hostel', title: 'Hostel Lodging Dashboard', icon: 'fa-hotel', path: '/hostel', roles: ['student', 'admin'] },
-  { id: 'my-room', title: 'Hostel Assigned Room Information', icon: 'fa-bed', path: '/hostel', roles: ['student', 'admin'] },
-  { id: 'hostel-requests', title: 'Hostel Service Maintenance Complaints', icon: 'fa-screwdriver-wrench', path: '/hostel/requests', roles: ['student', 'admin'] },
-  { id: 'mess', title: 'Mess & Weekly Dining Menu Board', icon: 'fa-utensils', path: '/hostel/mess', roles: ['student', 'admin'] },
-  { id: 'transport', title: 'Campus Transport Pass & Schedules', icon: 'fa-bus', path: '/transport', roles: ['student', 'admin'] },
-  { id: 'bus-routes', title: 'Bus Routes Listings & Driver Details', icon: 'fa-route', path: '/transport', roles: ['student', 'admin'] },
-  { id: 'bus-tracking', title: 'Bus Live Tracking Map Simulator', icon: 'fa-location-dot', path: '/transport', roles: ['student', 'admin'] },
-  { id: 'transport-pass', title: 'Digital Transit Transport Pass QR', icon: 'fa-qrcode', path: '/transport', roles: ['student', 'admin'] },
-  { id: 'mobility', title: 'Campus Mobility Dashboard Hub', icon: 'fa-location-arrow', path: '/mobility', roles: ['student', 'admin'] },
-  { id: 'announcements', title: 'Campus Announcements Feed', icon: 'fa-bullhorn', path: '/announcements', roles: ['faculty', 'parent'] },
-  { id: 'notifications', title: 'Notification Alerts', icon: 'fa-bell', path: '/notifications', roles: ['student', 'faculty', 'admin', 'parent'] },
-  { id: 'ai-assistant', title: 'Campus AI Chatbot Assistant', icon: 'fa-wand-magic-sparkles', path: '/assistant', roles: ['student', 'faculty', 'admin', 'parent'] },
-  { id: 'insights', title: 'Personalized Academic Insights Analysis', icon: 'fa-chart-pie', path: '/insights', roles: ['student', 'admin'] },
-  { id: 'help-center', title: 'Help Center Support FAQs Guides', icon: 'fa-circle-question', path: '/help', roles: ['student', 'faculty', 'admin'] },
-  { id: 'profile', title: 'My User Profile', icon: 'fa-user-gear', path: '/profile', roles: ['student', 'faculty', 'admin', 'parent'] },
-  { id: 'settings', title: 'System Settings', icon: 'fa-sliders', path: '/settings', roles: ['student', 'faculty', 'admin', 'parent'] }
+export const GLOBAL_SEARCH_ENTRIES: GlobalSearchEntry[] = [
+  // Student Portal
+  { id: 'stu-dash', title: 'Student Dashboard', category: 'General', description: 'Overview metrics, daily classes, and quick shortcuts', icon: 'fa-chart-simple', path: '/student/dashboard', roles: ['student'] },
+  { id: 'stu-att', title: 'Attendance Logs & Session Roll Call', category: 'Academics', description: 'Subject-wise attendance matrix and percentages', icon: 'fa-user-check', path: '/student/timetable', roles: ['student'] },
+  { id: 'stu-asg', title: 'Assignments & Homework Tasks', category: 'Academics', description: 'Submit coursework, view deadlines and feedback', icon: 'fa-file-invoice', path: '/student/assignments', roles: ['student'] },
+  { id: 'stu-exam', title: 'Examination Timetable', category: 'Academics', description: 'Mid-semester and end-semester hall seatings', icon: 'fa-receipt', path: '/student/exams', roles: ['student'] },
+  { id: 'stu-res', title: 'Academic Results & Transcripts', category: 'Academics', description: 'Cumulative GPA, semester marks, and credit sheets', icon: 'fa-award', path: '/student/results', roles: ['student'] },
+  { id: 'stu-lms', title: 'LMS Course Materials & Syllabus', category: 'Academics', description: 'Study notes, lecture slides, and video archives', icon: 'fa-book-open', path: '/student/lms', roles: ['student'] },
+  { id: 'stu-lib', title: 'Central Library Catalogue & Loans', category: 'Campus Services', description: 'Active RFID book borrowings and fine balances', icon: 'fa-book-bookmark', path: '/student/library', roles: ['student'] },
+  { id: 'stu-fee', title: 'Tuition Fees & Payment Invoices', category: 'Campus Services', description: 'Annual fees, receipts, and payment portal', icon: 'fa-wallet', path: '/student/fees', roles: ['student'] },
+  { id: 'stu-place', title: 'Placements & Career Opportunities', category: 'Career', description: 'Job openings, campus recruitment drives, applications', icon: 'fa-briefcase', path: '/student/placements', roles: ['student'] },
+  { id: 'stu-host', title: 'Hostel Residency & Mess Menu', category: 'Campus Services', description: 'Room allotment, warden contact, and daily meal plans', icon: 'fa-hotel', path: '/student/hostel', roles: ['student'] },
+  { id: 'stu-trans', title: 'Transport Fleet & Bus Schedules', category: 'Campus Services', description: 'Transit routes, stop timings, and driver details', icon: 'fa-bus', path: '/student/transport', roles: ['student'] },
+  { id: 'stu-not', title: 'Campus Notices & Bulletins', category: 'Notices', description: 'Official circulars, holiday advisories, and events', icon: 'fa-bullhorn', path: '/student/notices', roles: ['student'] },
+  { id: 'stu-notif', title: 'Student Notifications Inbox', category: 'System', description: 'Activity stream, alerts, and deadline reminders', icon: 'fa-bell', path: '/student/notifications', roles: ['student'] },
+
+  // Faculty Portal
+  { id: 'fac-dash', title: 'Faculty Dashboard', category: 'General', description: 'Teaching schedule, courses overview, and shortcuts', icon: 'fa-chart-simple', path: '/faculty/dashboard', roles: ['faculty'] },
+  { id: 'fac-courses', title: 'Assigned Courses & Curriculum', category: 'Teaching', description: 'Manage assigned subjects, syllabus, and credit loads', icon: 'fa-book-open', path: '/faculty/courses', roles: ['faculty'] },
+  { id: 'fac-stu', title: 'Student Directory & Class Roster', category: 'Teaching', description: 'Enrolled students list, profiles, and attendance', icon: 'fa-users', path: '/faculty/students', roles: ['faculty'] },
+  { id: 'fac-att', title: 'Mark Class Attendance', category: 'Teaching', description: 'Daily roll call sheet and session presence logs', icon: 'fa-clipboard-user', path: '/faculty/attendance', roles: ['faculty'] },
+  { id: 'fac-asg', title: 'Assignments Desk & Grading', category: 'Evaluation', description: 'Publish homework tasks and evaluate submissions', icon: 'fa-file-invoice', path: '/faculty/assignments', roles: ['faculty'] },
+  { id: 'fac-exams', title: 'Examination Timetable & Invigilation', category: 'Evaluation', description: 'Exam halls, dates, and invigilation duties', icon: 'fa-receipt', path: '/faculty/exams', roles: ['faculty'] },
+  { id: 'fac-res', title: 'Enter Examination Marks & Results', category: 'Evaluation', description: 'Internal valuation, assessment scoring, and grades', icon: 'fa-award', path: '/faculty/results', roles: ['faculty'] },
+  { id: 'fac-mat', title: 'Study Materials & LMS Uploads', category: 'Teaching', description: 'Upload lecture notes, PDFs, and assignment resources', icon: 'fa-file-arrow-up', path: '/faculty/materials', roles: ['faculty'] },
+  { id: 'fac-not', title: 'Publish Academic Notices', category: 'Communication', description: 'Broadcast circulars to students and departmental groups', icon: 'fa-bullhorn', path: '/faculty/notices', roles: ['faculty'] },
+
+  // Admin Portal
+  { id: 'adm-dash', title: 'Central Admin Dashboard', category: 'Administration', description: 'University analytics, department metrics, and operations', icon: 'fa-chart-simple', path: '/admin/dashboard', roles: ['admin'] },
+  { id: 'adm-stu', title: 'Student Management & Admissions', category: 'Administration', description: 'Full student directory, add/edit candidate records', icon: 'fa-user-graduate', path: '/admin/students', roles: ['admin'] },
+  { id: 'adm-fac', title: 'Faculty & Staff Roster', category: 'Administration', description: 'Teaching staff directory, designations, appointments', icon: 'fa-chalkboard-user', path: '/admin/faculty', roles: ['admin'] },
+  { id: 'adm-courses', title: 'Course Management & Curriculum', category: 'Academics', description: 'Master curriculum registry and faculty reassignments', icon: 'fa-book-open', path: '/admin/courses', roles: ['admin'] },
+  { id: 'adm-dept', title: 'Academic Departments & Branches', category: 'Academics', description: 'Manage engineering schools, HODs, and laboratories', icon: 'fa-building-columns', path: '/admin/departments', roles: ['admin'] },
+  { id: 'adm-att', title: 'Campus-Wide Attendance Overview', category: 'Operations', description: 'Institutional attendance rates and low attendance alerts', icon: 'fa-clipboard-user', path: '/admin/attendance', roles: ['admin'] },
+  { id: 'adm-fees', title: 'Tuition Fee Management & Collections', category: 'Finance', description: 'Fee realization ledger, collections, and overdue accounts', icon: 'fa-wallet', path: '/admin/fees', roles: ['admin'] },
+  { id: 'adm-lib', title: 'Central Library Master Inventory', category: 'Services', description: 'Catalogue book inventory, loans, and overdue tracking', icon: 'fa-book-bookmark', path: '/admin/library', roles: ['admin'] },
+  { id: 'adm-host', title: 'Hostel Blocks & Resident Management', category: 'Services', description: 'Blocks A to D, room occupancy, and warden contacts', icon: 'fa-hotel', path: '/admin/hostel', roles: ['admin'] },
+  { id: 'adm-trans', title: 'Transport Fleet & Route Schedules', category: 'Services', description: 'Transit routes 1 to 4, fleet buses, driver rosters', icon: 'fa-bus', path: '/admin/transport', roles: ['admin'] },
+  { id: 'adm-place', title: 'Placement & Corporate Relations', category: 'Placements', description: 'Hiring partners, job opportunities, and offer tracking', icon: 'fa-briefcase', path: '/admin/placements', roles: ['admin'] },
+  { id: 'adm-not', title: 'Publish Institutional Notices', category: 'Communication', description: 'Publish university circulars and emergency bulletins', icon: 'fa-bullhorn', path: '/admin/notices', roles: ['admin'] },
+  { id: 'adm-users', title: 'User Accounts & Role Access Control', category: 'Security', description: 'Authentication directory, RBAC roles, and status controls', icon: 'fa-users-gear', path: '/admin/users', roles: ['admin'] },
+  { id: 'adm-rep', title: 'Institutional Reports & Data Export', category: 'Reporting', description: '9 datasets with CSV, PDF, and print view exports', icon: 'fa-file-chart-column', path: '/admin/reports', roles: ['admin'] },
+  { id: 'adm-set', title: 'System Configuration & Settings', category: 'System', description: 'Institutional profile, term calendar, and security policies', icon: 'fa-sliders', path: '/admin/settings', roles: ['admin'] },
+
+  // Parent Portal
+  { id: 'par-dash', title: 'Parent Dashboard', category: 'Monitoring', description: 'Student summary, multi-student switch, and metrics', icon: 'fa-chart-simple', path: '/parent/dashboard', roles: ['parent'] },
+  { id: 'par-att', title: "Student's Attendance Logs", category: 'Monitoring', description: 'Subject-wise attendance breakdown and low-rate alerts', icon: 'fa-user-check', path: '/parent/attendance', roles: ['parent'] },
+  { id: 'par-acad', title: 'Academic Performance & Results', category: 'Monitoring', description: 'Cumulative GPA, semester grades, and marks transcript', icon: 'fa-award', path: '/parent/academics', roles: ['parent'] },
+  { id: 'par-asg', title: 'Homework & Coursework Tasks', category: 'Monitoring', description: 'Track assignments, submission status, and scores', icon: 'fa-file-invoice', path: '/parent/assignments', roles: ['parent'] },
+  { id: 'par-exam', title: 'Examination Timetable & Venues', category: 'Monitoring', description: 'Scheduled midterm dates, session timings, and hall slots', icon: 'fa-receipt', path: '/parent/exams', roles: ['parent'] },
+  { id: 'par-fees', title: 'Tuition Invoices & Payment Receipts', category: 'Finance', description: 'Verified payment receipts and outstanding balance', icon: 'fa-wallet', path: '/parent/fees', roles: ['parent'] },
+  { id: 'par-lib', title: 'Central Library Book Loans', category: 'Services', description: 'Borrowed book titles, due dates, and return status', icon: 'fa-book-bookmark', path: '/parent/library', roles: ['parent'] },
+  { id: 'par-host', title: 'Hostel Residency & Warden Contact', category: 'Services', description: 'Residential block, room allotment, and mess meal plan', icon: 'fa-hotel', path: '/parent/hostel', roles: ['parent'] },
+  { id: 'par-place', title: 'Placement Progress & Job Offers', category: 'Career', description: 'Recruitment applications, interview status, and offers', icon: 'fa-briefcase', path: '/parent/placements', roles: ['parent'] },
+  { id: 'par-not', title: 'Parent & Campus Circulars', category: 'Notices', description: 'Parent-Teacher conference advisories and holiday notices', icon: 'fa-bullhorn', path: '/parent/notices', roles: ['parent'] },
+  { id: 'par-set', title: 'Parent Profile & Alert Settings', category: 'Account', description: 'Guardian contact info and instant notification channels', icon: 'fa-user-gear', path: '/parent/settings', roles: ['parent'] }
 ];
 
 interface GlobalSearchProps {
@@ -59,19 +78,19 @@ interface GlobalSearchProps {
 export const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const userRole = user?.role || 'student';
 
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Filter search items matching query and user role
-  const userRole = user?.role || 'student';
-  const filtered = SEARCH_ITEMS.filter(
+  const filtered = GLOBAL_SEARCH_ENTRIES.filter(
     (item) =>
-      item.roles.includes(userRole) &&
+      item.roles.includes(userRole as any) &&
       (item.title.toLowerCase().includes(query.toLowerCase()) ||
-        item.id.toLowerCase().includes(query.toLowerCase()))
+        item.category.toLowerCase().includes(query.toLowerCase()) ||
+        item.description.toLowerCase().includes(query.toLowerCase()))
   );
 
   useEffect(() => {
@@ -112,90 +131,178 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) =
 
   if (!isOpen) return null;
 
-  const highlightText = (text: string, highlight: string) => {
-    if (!highlight.trim()) return text;
-    const regex = new RegExp(`(${highlight})`, 'gi');
-    const parts = text.split(regex);
-    return (
-      <>
-        {parts.map((part, index) =>
-          part.toLowerCase() === highlight.toLowerCase() ? (
-            <span key={index} style={{ color: 'var(--accent-highlight)', fontWeight: '700' }}>
-              {part}
-            </span>
-          ) : (
-            part
-          )
-        )}
-      </>
-    );
-  };
-
   return (
-    <div className="search-modal-overlay" onClick={onClose}>
-      <div className="search-modal-card" onClick={(e) => e.stopPropagation()}>
-        <div className="search-modal-header">
-          <i className="fa-solid fa-magnifying-glass"></i>
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        backgroundColor: 'rgba(6, 7, 19, 0.85)',
+        backdropFilter: 'blur(8px)',
+        zIndex: 1000,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'flex-start',
+        paddingTop: '80px',
+        fontFamily: 'Inter, system-ui, sans-serif'
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          width: '640px',
+          maxWidth: 'calc(100vw - 32px)',
+          backgroundColor: '#0c0e22',
+          border: '1px solid rgba(99, 102, 241, 0.4)',
+          borderRadius: '16px',
+          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(99, 102, 241, 0.25)',
+          overflow: 'hidden'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Search Header */}
+        <div
+          style={{
+            padding: '16px 20px',
+            borderBottom: '1px solid var(--border-subtle)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
+          }}
+        >
+          <i className="fa-solid fa-magnifying-glass" style={{ color: 'var(--accent-blue)', fontSize: '1.1rem' }}></i>
           <input
             ref={inputRef}
             type="text"
-            placeholder="Search Campus Hub..."
+            placeholder="Search CampusOne modules, courses, assignments, notices..."
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
               setSelectedIndex(0);
             }}
+            style={{
+              flex: 1,
+              background: 'transparent',
+              border: 'none',
+              color: '#ffffff',
+              fontSize: '1rem',
+              outline: 'none',
+              fontFamily: 'inherit'
+            }}
           />
-          <button type="button" className="btn-search-close" onClick={onClose}>
+          <span
+            style={{
+              fontSize: '0.6875rem',
+              padding: '3px 8px',
+              borderRadius: '4px',
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              color: 'var(--text-muted)',
+              border: '1px solid var(--border-subtle)'
+            }}
+          >
             ESC
-          </button>
+          </span>
         </div>
 
-        <div className="search-results-list">
+        {/* Results List */}
+        <div style={{ maxHeight: '420px', overflowY: 'auto', padding: '8px' }}>
           {filtered.length > 0 ? (
-            filtered.map((item, idx) => (
-              <div
-                key={item.id}
-                className={`search-result-item ${selectedIndex === idx ? 'selected' : ''}`}
-                onMouseEnter={() => setSelectedIndex(idx)}
-                onClick={() => {
-                  navigate(item.path);
-                  onClose();
-                }}
-              >
-                <div className="search-result-left">
-                  <div className="search-result-icon">
-                    <i className={`fa-solid ${item.icon}`}></i>
+            filtered.map((item, index) => {
+              const isSelected = index === selectedIndex;
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => {
+                    navigate(item.path);
+                    onClose();
+                  }}
+                  onMouseEnter={() => setSelectedIndex(index)}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: '10px',
+                    backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                    border: isSelected ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    transition: 'all 0.1s ease',
+                    marginBottom: '4px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '8px',
+                        backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.3)' : 'rgba(255, 255, 255, 0.04)',
+                        color: isSelected ? '#38bdf8' : 'var(--text-secondary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '1rem'
+                      }}
+                    >
+                      <i className={`fa-solid ${item.icon}`}></i>
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <strong style={{ color: '#ffffff', fontSize: '0.875rem' }}>{item.title}</strong>
+                        <span
+                          style={{
+                            fontSize: '0.6875rem',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                            color: 'var(--text-muted)'
+                          }}
+                        >
+                          {item.category}
+                        </span>
+                      </div>
+                      <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                        {item.description}
+                      </p>
+                    </div>
                   </div>
-                  <div className="search-result-text">
-                    <span className="search-result-title">{highlightText(item.title, query)}</span>
-                    <span className="search-result-path">Navigate to {item.path}</span>
-                  </div>
+
+                  <i className="fa-solid fa-arrow-right" style={{ color: isSelected ? '#38bdf8' : 'transparent', fontSize: '0.8125rem' }}></i>
                 </div>
-                <div className="search-result-action">
-                  <span>Go to</span> <i className="fa-solid fa-chevron-right" style={{ fontSize: '10px' }}></i>
-                </div>
-              </div>
-            ))
+              );
+            })
           ) : (
-            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              No matches found for "{query}"
+            <div style={{ padding: '36px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <i className="fa-solid fa-magnifying-glass" style={{ fontSize: '1.5rem', marginBottom: '8px', opacity: 0.5 }}></i>
+              <p style={{ margin: 0, fontSize: '0.875rem' }}>No results found matching "{query}"</p>
             </div>
           )}
         </div>
 
-        <div className="search-modal-footer">
-          <span>
-            <kbd>↑↓</kbd> Navigation
-          </span>
-          <span>
-            <kbd>Enter</kbd> Open
-          </span>
-          <span>
-            <kbd>Esc</kbd> Close
-          </span>
+        {/* Footer Navigation Hints */}
+        <div
+          style={{
+            padding: '10px 16px',
+            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+            borderTop: '1px solid var(--border-subtle)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: '0.6875rem',
+            color: 'var(--text-muted)'
+          }}
+        >
+          <div style={{ display: 'flex', gap: '14px' }}>
+            <span><kbd style={{ padding: '2px 5px', borderRadius: '3px', background: 'rgba(255,255,255,0.08)' }}>↑</kbd> <kbd style={{ padding: '2px 5px', borderRadius: '3px', background: 'rgba(255,255,255,0.08)' }}>↓</kbd> Navigate</span>
+            <span><kbd style={{ padding: '2px 5px', borderRadius: '3px', background: 'rgba(255,255,255,0.08)' }}>↵</kbd> Select</span>
+            <span><kbd style={{ padding: '2px 5px', borderRadius: '3px', background: 'rgba(255,255,255,0.08)' }}>ESC</kbd> Close</span>
+          </div>
+          <span>CampusOne Universal Search</span>
         </div>
       </div>
     </div>
   );
 };
+
+export default GlobalSearch;

@@ -1,275 +1,487 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getManagementData, StudentRecord } from '../../data/managementData';
+import { AppLayout } from '../../components/AppLayout';
+import { getManagementData } from '../../data/managementData';
+import { Modal } from '../../components/Modal';
+import { Toast } from '../../components/Toast';
+
+interface StudentAttendanceEntry {
+  id: string;
+  name: string;
+  status: 'Present' | 'Absent';
+}
+
+interface AttendanceHistoryRecord {
+  id: string;
+  date: string;
+  courseCode: string;
+  section: string;
+  presentCount: number;
+  absentCount: number;
+  totalStudents: number;
+  percentage: number;
+}
 
 export const FacultyAttendance: React.FC = () => {
-  const navigate = useNavigate();
+  const mgmt = getManagementData();
 
-  // Load students
-  const [students] = useState<StudentRecord[]>(() => {
-    return getManagementData().students;
-  });
-
-  const [selectedCourse, setSelectedCourse] = useState('CSE-301');
+  // Active section / course selection
+  const [selectedCourseCode, setSelectedCourseCode] = useState('CSE-301');
   const [selectedSection, setSelectedSection] = useState('A');
-  const [selectedDate, setSelectedDate] = useState(() => {
-    return new Date().toISOString().substring(0, 10);
-  });
+  const [attendanceDate, setAttendanceDate] = useState('2026-08-18');
 
-  // Roll call states (student-id -> present/absent/late)
-  const [rollCall, setRollCall] = useState<Record<string, 'P' | 'A' | 'L'>>(() => {
-    const initial: Record<string, 'P' | 'A' | 'L'> = {};
-    getManagementData().students.forEach((s) => {
-      initial[s.id] = 'P'; // default all present
-    });
-    return initial;
-  });
-
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
-
-  // Filter students by department/section
-  const filteredStudents = students.filter((s) => {
-    // CSE course vs CSE students (all CSE in A/B except Rahul in ECE)
-    if (selectedCourse.startsWith('CSE') && s.department !== 'CSE') return false;
-    if (selectedCourse.startsWith('ECE') && s.department !== 'ECE') return false;
-    return s.section === selectedSection;
-  });
-
-  // Calculate dynamic stats
-  const total = filteredStudents.length;
-  const present = filteredStudents.filter((s) => rollCall[s.id] === 'P').length;
-  const absent = filteredStudents.filter((s) => rollCall[s.id] === 'A').length;
-  const late = filteredStudents.filter((s) => rollCall[s.id] === 'L').length;
-  const percent = total > 0 ? Math.round(((present + late * 0.5) / total) * 100) : 100;
-
-  const handleMarkStatus = (studentId: string, status: 'P' | 'A' | 'L') => {
-    setRollCall((prev) => ({
-      ...prev,
-      [studentId]: status
+  // Active student roster entries for attendance
+  const [roster, setRoster] = useState<StudentAttendanceEntry[]>(() => {
+    return mgmt.students.map((s) => ({
+      id: s.id,
+      name: s.name,
+      status: s.attendancePercent > 70 ? 'Present' : 'Absent'
     }));
+  });
+
+  // Attendance History records
+  const [history, setHistory] = useState<AttendanceHistoryRecord[]>([
+    {
+      id: 'att-hist-1',
+      date: '17 Aug 2026',
+      courseCode: 'CSE-301',
+      section: 'Section A',
+      presentCount: 54,
+      absentCount: 6,
+      totalStudents: 60,
+      percentage: 90
+    },
+    {
+      id: 'att-hist-2',
+      date: '15 Aug 2026',
+      courseCode: 'CSE-302',
+      section: 'Section B',
+      presentCount: 52,
+      absentCount: 8,
+      totalStudents: 60,
+      percentage: 86
+    },
+    {
+      id: 'att-hist-3',
+      date: '14 Aug 2026',
+      courseCode: 'CSE-401',
+      section: 'Section A',
+      presentCount: 58,
+      absentCount: 2,
+      totalStudents: 60,
+      percentage: 96
+    }
+  ]);
+
+  // Modals & Dialogs
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'mark' | 'history'>('mark');
+
+  // Toast
+  const [toastMsg, setToastMsg] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
+
+  const showToast = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+    setToastMsg({ message, type });
+    setTimeout(() => setToastMsg(null), 3500);
   };
 
+  // Toggle individual student attendance
+  const handleToggleStatus = (id: string) => {
+    setRoster((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, status: s.status === 'Present' ? 'Absent' : 'Present' } : s))
+    );
+  };
+
+  // Bulk actions
   const handleMarkAllPresent = () => {
-    const nextRollCall = { ...rollCall };
-    filteredStudents.forEach((s) => {
-      nextRollCall[s.id] = 'P';
-    });
-    setRollCall(nextRollCall);
+    setRoster((prev) => prev.map((s) => ({ ...s, status: 'Present' })));
+    showToast('All students marked as Present.', 'info');
   };
 
-  const handleSaveAttendance = () => {
-    setToastMsg('Attendance saved successfully.');
-    setTimeout(() => setToastMsg(null), 2500);
+  const handleMarkAllAbsent = () => {
+    setRoster((prev) => prev.map((s) => ({ ...s, status: 'Absent' })));
+    showToast('All students marked as Absent.', 'warning');
+  };
+
+  const handleResetAttendance = () => {
+    setRoster(
+      mgmt.students.map((s) => ({
+        id: s.id,
+        name: s.name,
+        status: s.attendancePercent > 70 ? 'Present' : 'Absent'
+      }))
+    );
+    showToast('Attendance reset to defaults.', 'info');
+  };
+
+  // Derived counts
+  const presentCount = roster.filter((s) => s.status === 'Present').length;
+  const absentCount = roster.length - presentCount;
+  const currentPercentage = Math.round((presentCount / (roster.length || 1)) * 100);
+
+  // Confirm save
+  const handleConfirmSave = () => {
+    const newRecord: AttendanceHistoryRecord = {
+      id: `att-hist-${Date.now()}`,
+      date: new Date(attendanceDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      courseCode: selectedCourseCode,
+      section: `Section ${selectedSection}`,
+      presentCount,
+      absentCount,
+      totalStudents: roster.length,
+      percentage: currentPercentage
+    };
+
+    setHistory([newRecord, ...history]);
+    setIsConfirmModalOpen(false);
+    showToast(`Attendance recorded successfully for ${selectedCourseCode} (Section ${selectedSection})!`, 'success');
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Back button */}
-      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-        <button
-          type="button"
-          className="btn-sso"
-          onClick={() => navigate('/faculty')}
-          style={{ margin: 0, padding: '0 12px', height: '32px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}
-        >
-          <i className="fa-solid fa-arrow-left"></i> Faculty Panel
-        </button>
-        <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>Faculty / Attendance</span>
-      </div>
-
-      <div className="dashboard-header">
-        <h1>Attendance Management</h1>
-        <p>Take, mark, and save student presence records for course sections.</p>
-      </div>
-
-      {/* Toast Alert */}
-      {toastMsg && (
-        <div className="toast-msg">
-          <i className="fa-solid fa-circle-check" style={{ color: '#00d89a' }}></i>
-          <span>{toastMsg}</span>
-        </div>
-      )}
-
-      {/* Filter Options Panel */}
-      <div className="card-panel" style={{ padding: '16px 20px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
-          <div className="form-group">
-            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Select Course</label>
-            <select
-              value={selectedCourse}
-              onChange={(e) => setSelectedCourse(e.target.value)}
-              style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '12.5px', outline: 'none' }}
-            >
-              <option value="CSE-301">CSE-301 Data Structures</option>
-              <option value="CSE-302">CSE-302 Databases (DBMS)</option>
-              <option value="CSE-303">CSE-303 Computer Networks</option>
-              <option value="ECE-304">ECE-304 Embedded Systems</option>
-            </select>
+    <AppLayout>
+      <div className="academic-module-page">
+        {/* Header */}
+        <div className="module-header-row">
+          <div>
+            <div className="module-breadcrumbs">
+              <span>Faculty Portal</span>
+              <span className="crumb-sep">/</span>
+              <span className="crumb-current">Attendance Management</span>
+            </div>
+            <h1 className="module-title">Class Attendance & Roll Call</h1>
+            <p className="module-subtitle">
+              Mark student attendance for assigned lecture sessions, apply bulk markers, and review historical logs.
+            </p>
           </div>
 
-          <div className="form-group">
-            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Section</label>
-            <select
-              value={selectedSection}
-              onChange={(e) => setSelectedSection(e.target.value)}
-              style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '12.5px', outline: 'none' }}
-            >
-              <option value="A">Section A</option>
-              <option value="B">Section B</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Attendance Date</label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '12px', outline: 'none' }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Dynamic Summary Cards */}
-      <div className="stats-grid">
-        <div className="card-panel stat-card">
-          <div className="stat-card-desc" style={{ fontSize: '12px', textTransform: 'uppercase' }}>Total Students</div>
-          <div className="stat-card-value" style={{ marginTop: '4px' }}>{total}</div>
-        </div>
-        <div className="card-panel stat-card">
-          <div className="stat-card-desc" style={{ fontSize: '12px', textTransform: 'uppercase', color: '#00d89a' }}>Present</div>
-          <div className="stat-card-value" style={{ marginTop: '4px', color: '#00d89a' }}>{present}</div>
-        </div>
-        <div className="card-panel stat-card">
-          <div className="stat-card-desc" style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--color-error)' }}>Absent</div>
-          <div className="stat-card-value" style={{ marginTop: '4px', color: 'var(--color-error)' }}>{absent}</div>
-        </div>
-        <div className="card-panel stat-card">
-          <div className="stat-card-desc" style={{ fontSize: '12px', textTransform: 'uppercase', color: '#ffb236' }}>Late</div>
-          <div className="stat-card-value" style={{ marginTop: '4px', color: '#ffb236' }}>{late}</div>
-        </div>
-        <div className="card-panel stat-card">
-          <div className="stat-card-desc" style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--accent-highlight)' }}>Daily Percentage</div>
-          <div className="stat-card-value" style={{ marginTop: '4px', color: 'var(--accent-highlight)' }}>{percent}%</div>
-        </div>
-      </div>
-
-      {/* Student List Table */}
-      <div className="card-panel">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-          <h3 style={{ fontSize: '14.5px', fontWeight: '800', color: 'white' }}>Student Roll Call Desk</h3>
-          
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div className="module-header-meta">
             <button
               type="button"
-              className="btn-sso"
-              onClick={handleMarkAllPresent}
-              style={{ height: '32px', fontSize: '11.5px', margin: 0, padding: '0 12px', width: 'auto' }}
+              className="c1-btn c1-btn-gradient"
+              onClick={() => setIsConfirmModalOpen(true)}
             >
-              Mark All Present
-            </button>
-            <button
-              type="button"
-              className="btn-signin"
-              onClick={handleSaveAttendance}
-              style={{ height: '32px', fontSize: '11.5px', margin: 0, padding: '0 16px', width: 'auto' }}
-            >
-              Save Attendance
+              <i className="fa-solid fa-cloud-arrow-up"></i>
+              <span>Save Class Attendance</span>
             </button>
           </div>
         </div>
 
-        <div className="table-responsive" style={{ overflowX: 'auto' }}>
-          <table className="custom-table" style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', color: 'var(--text-secondary)' }}>
-                <th style={{ padding: '12px 14px' }}>Roll Number</th>
-                <th style={{ padding: '12px 14px' }}>Student Name</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Present</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Absent</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Late</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Current Attendance %</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredStudents.length > 0 ? (
-                filteredStudents.map((st) => (
-                  <tr key={st.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', color: 'white' }}>
-                    <td style={{ padding: '12px 14px', fontWeight: '700', color: 'var(--accent-highlight)' }}>{st.id}</td>
-                    <td style={{ padding: '12px 14px', fontWeight: '700' }}>{st.name}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleMarkStatus(st.id, 'P')}
-                        style={{
-                          width: '24px',
-                          height: '24px',
-                          borderRadius: '50%',
-                          border: '1px solid var(--border-color)',
-                          background: rollCall[st.id] === 'P' ? '#00d89a' : 'none',
-                          color: rollCall[st.id] === 'P' ? 'black' : 'var(--text-secondary)',
-                          cursor: 'pointer',
-                          fontSize: '10px',
-                          fontWeight: '800'
-                        }}
-                      >
-                        P
-                      </button>
-                    </td>
-                    <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleMarkStatus(st.id, 'A')}
-                        style={{
-                          width: '24px',
-                          height: '24px',
-                          borderRadius: '50%',
-                          border: '1px solid var(--border-color)',
-                          background: rollCall[st.id] === 'A' ? 'var(--color-error)' : 'none',
-                          color: rollCall[st.id] === 'A' ? 'white' : 'var(--text-secondary)',
-                          cursor: 'pointer',
-                          fontSize: '10px',
-                          fontWeight: '800'
-                        }}
-                      >
-                        A
-                      </button>
-                    </td>
-                    <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleMarkStatus(st.id, 'L')}
-                        style={{
-                          width: '24px',
-                          height: '24px',
-                          borderRadius: '50%',
-                          border: '1px solid var(--border-color)',
-                          background: rollCall[st.id] === 'L' ? '#ffb236' : 'none',
-                          color: rollCall[st.id] === 'L' ? 'black' : 'var(--text-secondary)',
-                          cursor: 'pointer',
-                          fontSize: '10px',
-                          fontWeight: '800'
-                        }}
-                      >
-                        L
-                      </button>
-                    </td>
-                    <td style={{ padding: '12px 14px', textAlign: 'center', fontWeight: '700' }}>{st.attendancePercent}%</td>
+        {/* 4 Summary Stat Cards */}
+        <div className="academic-stats-grid">
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
+              <i className="fa-solid fa-users"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">{roster.length} Students</span>
+              <span className="stat-label">Section Strength</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
+              <i className="fa-solid fa-circle-check"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num" style={{ color: '#34d399' }}>{presentCount}</span>
+              <span className="stat-label">Present Today</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(244, 63, 94, 0.15)', color: '#fb7185' }}>
+              <i className="fa-solid fa-circle-xmark"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num" style={{ color: '#fb7185' }}>{absentCount}</span>
+              <span className="stat-label">Absent Today</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
+              <i className="fa-solid fa-chart-pie"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">{currentPercentage}%</span>
+              <span className="stat-label">Session Attendance Rate</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Section Tabs */}
+        <div className="exam-section-tabs">
+          <button
+            type="button"
+            className={`section-tab-btn ${activeTab === 'mark' ? 'active' : ''}`}
+            onClick={() => setActiveTab('mark')}
+          >
+            <i className="fa-solid fa-clipboard-user"></i>
+            <span>Mark Attendance</span>
+          </button>
+          <button
+            type="button"
+            className={`section-tab-btn ${activeTab === 'history' ? 'active' : ''}`}
+            onClick={() => setActiveTab('history')}
+          >
+            <i className="fa-solid fa-clock-rotate-left"></i>
+            <span>Attendance History ({history.length})</span>
+          </button>
+        </div>
+
+        {/* ============================================================
+            TAB 1: MARK ATTENDANCE
+            ============================================================ */}
+        {activeTab === 'mark' && (
+          <div className="attendance-marking-view">
+            {/* Session Selector Toolbar */}
+            <div className="c1-card academic-filters-card" style={{ marginBottom: '24px' }}>
+              <div className="filters-row-wrap" style={{ width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                  <div className="filter-select-item">
+                    <label htmlFor="select-att-course">Course Subject</label>
+                    <select
+                      id="select-att-course"
+                      className="c1-select"
+                      value={selectedCourseCode}
+                      onChange={(e) => setSelectedCourseCode(e.target.value)}
+                    >
+                      <option value="CSE-301">CSE-301: Advanced Data Structures</option>
+                      <option value="CSE-302">CSE-302: Database Management Systems</option>
+                      <option value="CSE-401">CSE-401: Cloud Computing Architecture</option>
+                      <option value="CSE-402">CSE-402: Software Engineering & Agile</option>
+                    </select>
+                  </div>
+
+                  <div className="filter-select-item">
+                    <label htmlFor="select-att-sec">Section</label>
+                    <select
+                      id="select-att-sec"
+                      className="c1-select"
+                      value={selectedSection}
+                      onChange={(e) => setSelectedSection(e.target.value)}
+                    >
+                      <option value="A">Section A (Room CSE-204)</option>
+                      <option value="B">Section B (Computer Lab 2)</option>
+                    </select>
+                  </div>
+
+                  <div className="filter-select-item">
+                    <label htmlFor="select-att-date">Lecture Date</label>
+                    <input
+                      type="date"
+                      id="select-att-date"
+                      className="c1-input"
+                      value={attendanceDate}
+                      onChange={(e) => setAttendanceDate(e.target.value)}
+                      style={{ padding: '7px 12px' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Bulk Actions */}
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="c1-btn c1-btn-secondary"
+                    style={{ fontSize: '0.75rem', padding: '6px 12px' }}
+                    onClick={handleMarkAllPresent}
+                  >
+                    <i className="fa-solid fa-check-double"></i>
+                    <span>All Present</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="c1-btn c1-btn-secondary"
+                    style={{ fontSize: '0.75rem', padding: '6px 12px' }}
+                    onClick={handleMarkAllAbsent}
+                  >
+                    <i className="fa-solid fa-xmark"></i>
+                    <span>All Absent</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="c1-btn c1-btn-secondary"
+                    style={{ fontSize: '0.75rem', padding: '6px 12px' }}
+                    onClick={handleResetAttendance}
+                  >
+                    <i className="fa-solid fa-arrow-rotate-left"></i>
+                    <span>Reset</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Attendance Roster Table */}
+            <div className="c1-card attendance-roster-card">
+              <div className="c1-card-header">
+                <div>
+                  <h3 className="c1-card-title">{selectedCourseCode} (Section {selectedSection}) Attendance Roster</h3>
+                  <p className="c1-card-subtitle">Click student status button to toggle Present / Absent</p>
+                </div>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <span className="c1-badge c1-badge-success">{presentCount} Present</span>
+                  <span className="c1-badge c1-badge-error">{absentCount} Absent</span>
+                </div>
+              </div>
+
+              <div className="attendance-roster-table-wrap">
+                <table className="c1-table">
+                  <thead>
+                    <tr>
+                      <th>Roll Number</th>
+                      <th>Student Candidate</th>
+                      <th>Assigned Course</th>
+                      <th>Class Section</th>
+                      <th>Attendance Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {roster.map((stu) => (
+                      <tr key={stu.id}>
+                        <td><span className="course-code-cell">{stu.id}</span></td>
+                        <td>
+                          <strong style={{ color: '#ffffff' }}>{stu.name}</strong>
+                        </td>
+                        <td>{selectedCourseCode}</td>
+                        <td>Section {selectedSection}</td>
+                        <td>
+                          {stu.status === 'Present' ? (
+                            <span className="attendance-status-pill present">
+                              <i className="fa-solid fa-circle-check"></i> Present
+                            </span>
+                          ) : (
+                            <span className="attendance-status-pill absent">
+                              <i className="fa-solid fa-circle-xmark"></i> Absent
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className={`c1-btn ${stu.status === 'Present' ? 'c1-btn-secondary' : 'c1-btn-gradient'}`}
+                            style={{ padding: '6px 14px', fontSize: '0.75rem' }}
+                            onClick={() => handleToggleStatus(stu.id)}
+                          >
+                            <span>Toggle to {stu.status === 'Present' ? 'Absent' : 'Present'}</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================
+            TAB 2: ATTENDANCE HISTORY
+            ============================================================ */}
+        {activeTab === 'history' && (
+          <div className="c1-card attendance-history-card">
+            <div className="c1-card-header">
+              <div>
+                <h3 className="c1-card-title">Past Attendance Records</h3>
+                <p className="c1-card-subtitle">Historical log of class roll calls and section statistics</p>
+              </div>
+              <span className="c1-badge c1-badge-cyan">{history.length} Sessions Logged</span>
+            </div>
+
+            <div className="history-table-wrap">
+              <table className="c1-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Course Code</th>
+                    <th>Section</th>
+                    <th>Present</th>
+                    <th>Absent</th>
+                    <th>Attendance %</th>
+                    <th>Audit Status</th>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    No students found for this Section & Course.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                  {history.map((rec) => (
+                    <tr key={rec.id}>
+                      <td><strong>{rec.date}</strong></td>
+                      <td><span className="course-code-cell">{rec.courseCode}</span></td>
+                      <td>{rec.section}</td>
+                      <td><span style={{ color: 'var(--color-success)', fontWeight: 700 }}>{rec.presentCount} Students</span></td>
+                      <td><span style={{ color: 'var(--color-error)', fontWeight: 700 }}>{rec.absentCount} Students</span></td>
+                      <td>
+                        <strong style={{ color: '#38bdf8' }}>{rec.percentage}%</strong>
+                      </td>
+                      <td>
+                        <span className="c1-badge c1-badge-success">
+                          <i className="fa-solid fa-check"></i> Recorded
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================
+            MODAL: CONFIRM SAVE ATTENDANCE DIALOG
+            ============================================================ */}
+        {isConfirmModalOpen && (
+          <Modal
+            isOpen={true}
+            onClose={() => setIsConfirmModalOpen(false)}
+            title="Confirm Attendance Submission"
+            maxWidth="sm"
+          >
+            <div className="confirm-dialog-content">
+              <div className="confirm-icon-box">
+                <i className="fa-solid fa-clipboard-check"></i>
+              </div>
+              <h3 className="confirm-heading">Submit Class Attendance?</h3>
+              <p className="confirm-body-text">
+                You are about to save attendance records for <strong>{roster.length} students</strong> in <strong>{selectedCourseCode} ({`Section ${selectedSection}`})</strong> for lecture date <strong>{attendanceDate}</strong>.
+              </p>
+
+              <div className="confirm-summary-pill-row">
+                <span className="c1-badge c1-badge-success">{presentCount} Present</span>
+                <span className="c1-badge c1-badge-error">{absentCount} Absent</span>
+                <span className="c1-badge c1-badge-cyan">{currentPercentage}% Attendance</span>
+              </div>
+
+              <div className="modal-dialog-footer">
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setIsConfirmModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-gradient"
+                  onClick={handleConfirmSave}
+                >
+                  <i className="fa-solid fa-check"></i>
+                  <span>Confirm & Save</span>
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
+
+        {/* Toast Notification Container */}
+        {toastMsg && (
+          <Toast
+            message={toastMsg.message}
+            type={toastMsg.type}
+            onClose={() => setToastMsg(null)}
+          />
+        )}
       </div>
-    </div>
+    </AppLayout>
   );
 };
+
 export default FacultyAttendance;

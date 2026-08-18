@@ -6,16 +6,7 @@ export interface AttendanceLog {
   status: 'Present' | 'Absent';
 }
 
-export interface AttendanceSubjectDetail {
-  id: string;
-  name: string;
-  total: number;
-  present: number;
-  absent: number;
-  percentage: number;
-  status: 'safe' | 'warning' | 'critical';
-  faculty: string;
-}
+
 
 export interface TimetableSlot {
   time: string;
@@ -47,7 +38,6 @@ export interface AcademicData {
     presentCount: number;
     absentCount: number;
     totalCount: number;
-    subjects: AttendanceSubjectDetail[];
   };
   attendanceHistory: AttendanceLog[];
   timetable: Record<string, TimetableSlot[]>;
@@ -59,14 +49,7 @@ export const academicData: AcademicData = {
     overall: 86,
     presentCount: 142,
     absentCount: 23,
-    totalCount: 165,
-    subjects: [
-      { id: 'ds', name: 'Data Structures', total: 40, present: 37, absent: 3, percentage: 92, status: 'safe', faculty: 'Dr. Kumar' },
-      { id: 'db', name: 'Database Management', total: 35, present: 31, absent: 4, percentage: 88, status: 'safe', faculty: 'Prof. Priya' },
-      { id: 'cn', name: 'Computer Networks', total: 30, present: 23, absent: 7, percentage: 76, status: 'warning', faculty: 'Prof. Ravi' },
-      { id: 'os', name: 'Operating Systems', total: 32, present: 27, absent: 5, percentage: 84, status: 'safe', faculty: 'Dr. Anitha' },
-      { id: 'se', name: 'Software Engineering', total: 28, present: 25, absent: 3, percentage: 89, status: 'safe', faculty: 'Prof. Suresh' }
-    ]
+    totalCount: 165
   },
   attendanceHistory: [
     { date: '15 Aug 2026', subject: 'Data Structures', time: '09:00 AM', faculty: 'Dr. Kumar', status: 'Present' },

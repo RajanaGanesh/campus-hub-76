@@ -1,488 +1,676 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getManagementData, saveManagementData, StudentRecord } from '../../data/managementData';
+import React, { useState, useMemo } from 'react';
+import { AppLayout } from '../../components/AppLayout';
+import { getManagementData, StudentRecord } from '../../data/managementData';
+import { Modal } from '../../components/Modal';
+import { Toast } from '../../components/Toast';
 
 export const AdminStudents: React.FC = () => {
-  const navigate = useNavigate();
+  const mgmt = getManagementData();
 
-  // Load management database
-  const [data, setData] = useState(() => getManagementData());
-  const [students, setStudents] = useState<StudentRecord[]>(() => {
-    return getManagementData().students;
-  });
+  // Students state
+  const [students, setStudents] = useState<StudentRecord[]>(mgmt.students);
 
-  const [search, setSearch] = useState('');
-  const [filterDept, setFilterDept] = useState('All');
+  // Search & Filter
+  const [searchQuery, setSearchQuery] = useState('');
+  const [deptFilter, setDeptFilter] = useState('All');
+  const [yearFilter, setYearFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
 
-  // Modals selectors
-  const [showAddModal, setShowAddModal] = useState(false);
+  // Modals state
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<StudentRecord | null>(null);
   const [viewingStudent, setViewingStudent] = useState<StudentRecord | null>(null);
+  const [deactivatingStudent, setDeactivatingStudent] = useState<StudentRecord | null>(null);
 
-  // Add Form Fields
+  // Add Form State
   const [name, setName] = useState('');
-  const [studentId, setStudentId] = useState('');
+  const [rollNo, setRollNo] = useState('');
   const [email, setEmail] = useState('');
-  const [dept, setDept] = useState('CSE');
-  const [year, setYear] = useState('IV Year');
-  const [section, setSection] = useState('A');
-  const [cgpa, setCgpa] = useState(8.0);
   const [phone, setPhone] = useState('');
+  const [department, setDepartment] = useState('Computer Science');
+  const [year, setYear] = useState('4');
+  const [section, setSection] = useState('A');
 
-  const [formError, setFormError] = useState<string | null>(null);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  // Toast
+  const [toastMsg, setToastMsg] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
 
-  const handleOpenAdd = () => {
-    setName('');
-    setStudentId('');
-    setEmail('');
-    setDept('CSE');
-    setYear('IV Year');
-    setSection('A');
-    setCgpa(8.0);
-    setPhone('');
-    setFormError(null);
-    setEditingStudent(null);
-    setShowAddModal(true);
+  const showToast = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+    setToastMsg({ message, type });
+    setTimeout(() => setToastMsg(null), 3500);
   };
 
-  const handleOpenEdit = (st: StudentRecord) => {
-    setEditingStudent(st);
-    setName(st.name);
-    setStudentId(st.id);
-    setEmail(st.email);
-    setDept(st.department);
-    setYear(st.year);
-    setSection(st.section);
-    setCgpa(st.cgpa);
-    setPhone(st.phone);
-    setFormError(null);
-    setShowAddModal(true);
-  };
-
-  const handleToggleStatus = (stId: string) => {
-    const nextStudents = students.map((s) => {
-      if (s.id === stId) {
-        const nextStatus = s.status === 'Active' ? 'Deactivated' as const : 'Active' as const;
-        setToastMsg(`Student "${s.name}" is now ${nextStatus}.`);
-        setTimeout(() => setToastMsg(null), 2500);
-        return {
-          ...s,
-          status: nextStatus
-        };
-      }
-      return s;
-    });
-
-    setStudents(nextStudents);
-    const updatedData = { ...data, students: nextStudents };
-    setData(updatedData);
-    saveManagementData(updatedData);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  // Add Student Handler
+  const handleAddStudent = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !studentId.trim() || !email.trim() || !phone.trim()) {
-      setFormError('Please fill in all required fields (Name, ID, Email, and Phone).');
+    if (!name.trim() || !rollNo.trim() || !email.trim()) {
+      showToast('Please fill out all required fields.', 'error');
       return;
     }
 
-    if (cgpa < 0 || cgpa > 10) {
-      setFormError('CGPA score must be between 0.0 and 10.0.');
+    if (students.some((s) => s.id === rollNo.trim())) {
+      showToast(`A student with Roll Number ${rollNo} already exists.`, 'error');
       return;
     }
 
-    if (editingStudent) {
-      // Edit
-      const nextStudents = students.map((s) => {
-        if (s.id === editingStudent.id) {
-          return {
-            ...s,
-            name,
-            id: studentId,
-            email,
-            department: dept,
-            year,
-            section,
-            cgpa,
-            phone
-          };
-        }
-        return s;
-      });
+    const newStu: StudentRecord = {
+      id: rollNo.trim().toUpperCase(),
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone || '+91 98765 43210',
+      department,
+      year,
+      section,
+      cgpa: 8.0,
+      attendancePercent: 90,
+      assignmentsCompleted: 0,
+      performance: 'Good',
+      status: 'Active'
+    };
 
-      setStudents(nextStudents);
-      const updatedData = { ...data, students: nextStudents };
-      setData(updatedData);
-      saveManagementData(updatedData);
-
-      setShowAddModal(false);
-      setToastMsg('Student profile updated successfully.');
-      setTimeout(() => setToastMsg(null), 2500);
-    } else {
-      // Add
-      if (students.some((s) => s.id === studentId)) {
-        setFormError('Error: A student with this Roll Number ID already exists.');
-        return;
-      }
-
-      const newStudent: StudentRecord = {
-        id: studentId,
-        name,
-        email,
-        department: dept,
-        year,
-        section,
-        cgpa,
-        phone,
-        status: 'Active',
-        attendancePercent: 100,
-        assignmentsCompleted: 0,
-        performance: 'Good'
-      };
-
-      const nextStudents = [...students, newStudent];
-      setStudents(nextStudents);
-      const updatedData = { ...data, students: nextStudents };
-      setData(updatedData);
-      saveManagementData(updatedData);
-
-      setShowAddModal(false);
-      setToastMsg('Student added successfully.');
-      setTimeout(() => setToastMsg(null), 2500);
-    }
+    setStudents([newStu, ...students]);
+    setIsAddModalOpen(false);
+    setName('');
+    setRollNo('');
+    setEmail('');
+    setPhone('');
+    showToast(`Student ${newStu.name} (${newStu.id}) registered successfully!`, 'success');
   };
 
-  const filteredStudents = students.filter((s) => {
-    if (search && !s.name.toLowerCase().includes(search.toLowerCase()) && !s.id.toLowerCase().includes(search.toLowerCase())) return false;
-    if (filterDept !== 'All' && s.department !== filterDept) return false;
-    return true;
-  });
+  // Edit Student Handler
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStudent) return;
+
+    setStudents((prev) =>
+      prev.map((s) => (s.id === editingStudent.id ? editingStudent : s))
+    );
+
+    setEditingStudent(null);
+    showToast(`Student ${editingStudent.name} updated successfully!`, 'success');
+  };
+
+  // Toggle Status Handler
+  const handleConfirmToggleStatus = () => {
+    if (!deactivatingStudent) return;
+    const newStatus = deactivatingStudent.status === 'Active' ? 'Deactivated' : 'Active';
+
+    setStudents((prev) =>
+      prev.map((s) => (s.id === deactivatingStudent.id ? { ...s, status: newStatus } : s))
+    );
+
+    setDeactivatingStudent(null);
+    showToast(`Student status updated to ${newStatus}.`, 'info');
+  };
+
+  // Filtering
+  const filteredStudents = useMemo(() => {
+    return students.filter((s) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchQ =
+        !q ||
+        s.name.toLowerCase().includes(q) ||
+        s.id.toLowerCase().includes(q) ||
+        s.email.toLowerCase().includes(q) ||
+        s.department.toLowerCase().includes(q);
+
+      const matchDept = deptFilter === 'All' || s.department.toLowerCase().includes(deptFilter.toLowerCase());
+      const matchYear = yearFilter === 'All' || s.year === yearFilter;
+      const matchStatus = statusFilter === 'All' || s.status === statusFilter;
+
+      return matchQ && matchDept && matchYear && matchStatus;
+    });
+  }, [students, searchQuery, deptFilter, yearFilter, statusFilter]);
+
+  const activeCount = students.filter((s) => s.status === 'Active').length;
+  const lowAttCount = students.filter((s) => s.attendancePercent < 75).length;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Back nav */}
-      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-        <button
-          type="button"
-          className="btn-sso"
-          onClick={() => navigate('/admin')}
-          style={{ margin: 0, padding: '0 12px', height: '32px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}
-        >
-          <i className="fa-solid fa-arrow-left"></i> Admin Console
-        </button>
-        <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>Admin / Students</span>
-      </div>
-
-      <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
-        <div>
-          <h1>Student Management</h1>
-          <p>Register new student candidate profiles, activate/deactivate accounts, and edit performance score records.</p>
-        </div>
-
-        <button
-          type="button"
-          className="btn-signin"
-          style={{ width: 'auto', padding: '0 16px', height: '36px', margin: 0 }}
-          onClick={handleOpenAdd}
-        >
-          <i className="fa-solid fa-user-plus" style={{ marginRight: '6px' }}></i> Add Student
-        </button>
-      </div>
-
-      {/* Toast alert */}
-      {toastMsg && (
-        <div className="toast-msg">
-          <i className="fa-solid fa-circle-check" style={{ color: '#00d89a' }}></i>
-          <span>{toastMsg}</span>
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="card-panel" style={{ padding: '16px 20px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '14px' }}>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <i className="fa-solid fa-magnifying-glass" style={{ position: 'absolute', left: '12px', fontSize: '11px', color: 'var(--text-secondary)' }}></i>
-            <input
-              type="text"
-              placeholder="Search by student name or Roll No ID..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px 8px 32px', fontSize: '12.5px', color: 'white', outline: 'none' }}
-            />
+    <AppLayout>
+      <div className="academic-module-page">
+        {/* Header */}
+        <div className="module-header-row">
+          <div>
+            <div className="module-breadcrumbs">
+              <span>Admin Portal</span>
+              <span className="crumb-sep">/</span>
+              <span className="crumb-current">Student Management</span>
+            </div>
+            <h1 className="module-title">Student Directory & Admissions</h1>
+            <p className="module-subtitle">
+              Manage student enrollment records, academic standings, department allocations, and credentials.
+            </p>
           </div>
 
-          <select
-            value={filterDept}
-            onChange={(e) => setFilterDept(e.target.value)}
-            style={{ background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '12.5px', outline: 'none' }}
-          >
-            <option value="All">All Departments</option>
-            <option value="CSE">Computer Science (CSE)</option>
-            <option value="ECE">Electronics (ECE)</option>
-          </select>
+          <div className="module-header-meta">
+            <button
+              type="button"
+              className="c1-btn c1-btn-gradient"
+              onClick={() => setIsAddModalOpen(true)}
+            >
+              <i className="fa-solid fa-user-plus"></i>
+              <span>Add New Student</span>
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Roster table */}
-      <div className="card-panel">
-        <div className="table-responsive" style={{ overflowX: 'auto' }}>
-          <table className="custom-table" style={{ width: '100%', minWidth: '800px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', color: 'var(--text-secondary)' }}>
-                <th style={{ padding: '12px 14px' }}>Student ID</th>
-                <th style={{ padding: '12px 14px' }}>Student Name</th>
-                <th style={{ padding: '12px 14px' }}>Department</th>
-                <th style={{ padding: '12px 14px' }}>Year</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Section</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>CGPA</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Status</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredStudents.length > 0 ? (
-                filteredStudents.map((st) => (
-                  <tr key={st.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', color: 'white' }}>
-                    <td style={{ padding: '12px 14px', fontWeight: '700', color: 'var(--accent-highlight)' }}>{st.id}</td>
-                    <td style={{ padding: '12px 14px', fontWeight: '700' }}>{st.name}</td>
-                    <td style={{ padding: '12px 14px' }}>{st.department}</td>
-                    <td style={{ padding: '12px 14px' }}>{st.year}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'center' }}>{st.section}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'center', fontWeight: '800' }}>{st.cgpa.toFixed(2)}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                      <span className={`subject-att-status ${st.status === 'Active' ? 'good' : 'critical'}`} style={{ fontSize: '8.5px' }}>
-                        {st.status}
+        {/* 4 Summary Stat Cards */}
+        <div className="academic-stats-grid">
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
+              <i className="fa-solid fa-users"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">{students.length * 20}</span>
+              <span className="stat-label">Total Enrolled Students</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
+              <i className="fa-solid fa-user-check"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num" style={{ color: '#34d399' }}>{activeCount * 20}</span>
+              <span className="stat-label">Active Academic Accounts</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(244, 63, 94, 0.15)', color: '#fb7185' }}>
+              <i className="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num" style={{ color: '#fb7185' }}>{lowAttCount}</span>
+              <span className="stat-label">Low Attendance (&lt;75%)</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
+              <i className="fa-solid fa-chart-line"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">8.42</span>
+              <span className="stat-label">Institutional Avg CGPA</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Search & Filter Toolbar */}
+        <div className="c1-card academic-filters-card" style={{ marginBottom: '24px' }}>
+          <div className="search-filter-input-wrap">
+            <i className="fa-solid fa-magnifying-glass search-icon"></i>
+            <input
+              type="text"
+              className="c1-input search-filter-input"
+              placeholder="Search students by name, roll number (236F1A0551), email, or department..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="clear-search-btn"
+                onClick={() => setSearchQuery('')}
+              >
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            )}
+          </div>
+
+          <div className="filters-row-wrap">
+            <div className="filter-select-item">
+              <label htmlFor="select-admin-dept">Department</label>
+              <select
+                id="select-admin-dept"
+                className="c1-select"
+                value={deptFilter}
+                onChange={(e) => setDeptFilter(e.target.value)}
+              >
+                <option value="All">All Departments</option>
+                <option value="Computer Science">Computer Science (CSE)</option>
+                <option value="Electronics">Electronics (ECE)</option>
+                <option value="Information Technology">Information Tech (IT)</option>
+                <option value="Mechanical">Mechanical (MECH)</option>
+              </select>
+            </div>
+
+            <div className="filter-select-item">
+              <label htmlFor="select-admin-year">Academic Year</label>
+              <select
+                id="select-admin-year"
+                className="c1-select"
+                value={yearFilter}
+                onChange={(e) => setYearFilter(e.target.value)}
+              >
+                <option value="All">All Years</option>
+                <option value="1">1st Year</option>
+                <option value="2">2nd Year</option>
+                <option value="3">3rd Year</option>
+                <option value="4">4th Year</option>
+              </select>
+            </div>
+
+            <div className="filter-select-item">
+              <label htmlFor="select-admin-status">Account Status</label>
+              <select
+                id="select-admin-status"
+                className="c1-select"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="All">All Statuses</option>
+                <option value="Active">Active</option>
+                <option value="Deactivated">Deactivated</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Students Table */}
+        <div className="c1-card student-roster-card">
+          <div className="c1-card-header">
+            <div>
+              <h3 className="c1-card-title">Enrolled Candidates ({filteredStudents.length} Records)</h3>
+              <p className="c1-card-subtitle">Official university student ledger and authorization directory</p>
+            </div>
+            <button
+              type="button"
+              className="c1-btn c1-btn-secondary"
+              onClick={() => setIsAddModalOpen(true)}
+            >
+              <i className="fa-solid fa-plus"></i>
+              <span>Add Candidate</span>
+            </button>
+          </div>
+
+          <div className="student-roster-table-wrap">
+            <table className="c1-table">
+              <thead>
+                <tr>
+                  <th>Roll Number</th>
+                  <th>Student Candidate</th>
+                  <th>Department</th>
+                  <th>Year & Sec</th>
+                  <th>CGPA</th>
+                  <th>Attendance</th>
+                  <th>Account Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredStudents.map((stu) => (
+                  <tr key={stu.id}>
+                    <td><span className="course-code-cell">{stu.id}</span></td>
+                    <td>
+                      <div>
+                        <strong style={{ color: '#ffffff' }}>{stu.name}</strong>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{stu.email}</div>
+                      </div>
+                    </td>
+                    <td>{stu.department}</td>
+                    <td>Year {stu.year} • Sec {stu.section}</td>
+                    <td><strong style={{ color: '#38bdf8' }}>{stu.cgpa.toFixed(1)}</strong></td>
+                    <td>
+                      <span style={{ color: stu.attendancePercent >= 75 ? '#34d399' : '#fb7185', fontWeight: 700 }}>
+                        {stu.attendancePercent}%
                       </span>
                     </td>
-                    <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                    <td>
+                      <span className={`c1-badge ${stu.status === 'Active' ? 'c1-badge-success' : 'c1-badge-error'}`}>
+                        {stu.status}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '6px' }}>
                         <button
                           type="button"
-                          className="btn-sso"
-                          style={{ height: '26px', fontSize: '11px', padding: '0 8px', margin: 0, width: 'auto' }}
-                          onClick={() => setViewingStudent(st)}
+                          className="c1-btn c1-btn-secondary"
+                          style={{ padding: '6px 10px', fontSize: '0.75rem' }}
+                          onClick={() => setViewingStudent(stu)}
+                          title="View student profile"
                         >
-                          View
+                          <i className="fa-solid fa-eye"></i>
                         </button>
                         <button
                           type="button"
-                          className="btn-sso"
-                          style={{ height: '26px', fontSize: '11px', padding: '0 8px', margin: 0, width: 'auto' }}
-                          onClick={() => handleOpenEdit(st)}
+                          className="c1-btn c1-btn-secondary"
+                          style={{ padding: '6px 10px', fontSize: '0.75rem' }}
+                          onClick={() => setEditingStudent(stu)}
+                          title="Edit student"
                         >
-                          Edit
+                          <i className="fa-solid fa-pen"></i>
                         </button>
                         <button
                           type="button"
-                          className="btn-retry-err"
-                          style={{
-                            height: '26px',
-                            fontSize: '11px',
-                            padding: '0 8px',
-                            margin: 0,
-                            width: 'auto',
-                            background: st.status === 'Active' ? 'rgba(217, 83, 79, 0.05)' : 'rgba(0, 216, 154, 0.05)',
-                            borderColor: st.status === 'Active' ? 'var(--color-error)' : '#00d89a',
-                            color: st.status === 'Active' ? 'var(--color-error)' : '#00d89a'
-                          }}
-                          onClick={() => handleToggleStatus(st.id)}
+                          className="c1-btn c1-btn-secondary"
+                          style={{ padding: '6px 10px', fontSize: '0.75rem', color: stu.status === 'Active' ? 'var(--color-error)' : 'var(--color-success)' }}
+                          onClick={() => setDeactivatingStudent(stu)}
+                          title={stu.status === 'Active' ? 'Deactivate student' : 'Activate student'}
                         >
-                          {st.status === 'Active' ? 'Suspend' : 'Activate'}
+                          <i className={`fa-solid ${stu.status === 'Active' ? 'fa-user-slash' : 'fa-user-check'}`}></i>
                         </button>
                       </div>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={8} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    No students listed.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      {/* Add / Edit Student Modal */}
-      {showAddModal && (
-        <div className="search-modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="search-modal-card" style={{ maxWidth: '460px' }} onClick={(e) => e.stopPropagation()}>
-            <div className="search-modal-header" style={{ justifyContent: 'space-between', padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <div>
-                <span style={{ fontSize: '10px', color: 'var(--accent-highlight)', display: 'block', textTransform: 'uppercase' }}>Student Roster</span>
-                <h2 style={{ fontSize: '16.5px', marginTop: '2px' }}>{editingStudent ? 'Edit Student Profile' : 'Add Student Record'}</h2>
-              </div>
-              <button type="button" className="btn-search-close" onClick={() => setShowAddModal(false)}>
-                <i className="fa-solid fa-xmark" style={{ fontSize: '14px' }}></i>
-              </button>
-            </div>
-
-            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', maxHeight: '70vh' }}>
-              {formError && (
-                <div className="login-error-box" style={{ margin: 0, padding: '10px 14px' }}>
-                  <i className="fa-solid fa-circle-exclamation"></i>
-                  <span>{formError}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div className="form-group">
-                  <label htmlFor="st-name" style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Full Name</label>
+        {/* ============================================================
+            MODAL 1: ADD STUDENT MODAL
+            ============================================================ */}
+        {isAddModalOpen && (
+          <Modal
+            isOpen={true}
+            onClose={() => setIsAddModalOpen(false)}
+            title="Register New Student"
+            maxWidth="md"
+          >
+            <form onSubmit={handleAddStudent} className="faculty-form-stack">
+              <div className="form-fields-two-col">
+                <div className="form-field-wrap">
+                  <label className="form-label">Full Name</label>
                   <input
-                    id="st-name"
                     type="text"
-                    placeholder="Enter student name..."
+                    className="c1-input"
+                    placeholder="e.g. Rahul Sharma"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '12.5px', outline: 'none' }}
+                    required
                   />
                 </div>
 
-                <div className="form-group">
-                  <label htmlFor="st-id" style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Roll Number (Student ID)</label>
+                <div className="form-field-wrap">
+                  <label className="form-label">University Roll Number</label>
                   <input
-                    id="st-id"
                     type="text"
-                    placeholder="e.g. 236F1A0551"
-                    value={studentId}
-                    onChange={(e) => setStudentId(e.target.value)}
-                    disabled={!!editingStudent}
-                    style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '12.5px', outline: 'none' }}
+                    className="c1-input"
+                    placeholder="e.g. 236F1A0562"
+                    value={rollNo}
+                    onChange={(e) => setRollNo(e.target.value)}
+                    required
                   />
                 </div>
+              </div>
 
-                <div className="form-group">
-                  <label htmlFor="st-email" style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Email Address</label>
+              <div className="form-fields-two-col">
+                <div className="form-field-wrap">
+                  <label className="form-label">Institutional Email</label>
                   <input
-                    id="st-email"
                     type="email"
-                    placeholder="Enter email address..."
+                    className="c1-input"
+                    placeholder="e.g. rahul.sharma@campushub.edu"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '12.5px', outline: 'none' }}
+                    required
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div className="form-group">
-                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Department</label>
-                    <select
-                      value={dept}
-                      onChange={(e) => setDept(e.target.value)}
-                      style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '6px 8px', color: 'white', fontSize: '12.5px' }}
-                    >
-                      <option value="CSE">CSE</option>
-                      <option value="ECE">ECE</option>
-                    </select>
-                  </div>
+                <div className="form-field-wrap">
+                  <label className="form-label">Contact Phone</label>
+                  <input
+                    type="tel"
+                    className="c1-input"
+                    placeholder="+91 98765 43210"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                </div>
+              </div>
 
-                  <div className="form-group">
-                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Year Level</label>
-                    <select
-                      value={year}
-                      onChange={(e) => setYear(e.target.value)}
-                      style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '6px 8px', color: 'white', fontSize: '12.5px' }}
-                    >
-                      <option value="I Year">I Year</option>
-                      <option value="II Year">II Year</option>
-                      <option value="III Year">III Year</option>
-                      <option value="IV Year">IV Year</option>
-                    </select>
-                  </div>
+              <div className="form-fields-two-col">
+                <div className="form-field-wrap">
+                  <label className="form-label">Academic Department</label>
+                  <select
+                    className="c1-select"
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                  >
+                    <option value="Computer Science">Computer Science & Engineering</option>
+                    <option value="Electronics & Communication">Electronics & Communication</option>
+                    <option value="Information Technology">Information Technology</option>
+                    <option value="Mechanical Engineering">Mechanical Engineering</option>
+                  </select>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div className="form-group">
-                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Section</label>
+                <div className="form-field-wrap">
+                  <label className="form-label">Year & Section</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
                     <select
+                      className="c1-select"
+                      value={year}
+                      onChange={(e) => setYear(e.target.value)}
+                    >
+                      <option value="1">Year 1</option>
+                      <option value="2">Year 2</option>
+                      <option value="3">Year 3</option>
+                      <option value="4">Year 4</option>
+                    </select>
+                    <select
+                      className="c1-select"
                       value={section}
                       onChange={(e) => setSection(e.target.value)}
-                      style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '6px 8px', color: 'white', fontSize: '12.5px' }}
                     >
                       <option value="A">Section A</option>
                       <option value="B">Section B</option>
+                      <option value="C">Section C</option>
                     </select>
                   </div>
-
-                  <div className="form-group">
-                    <label htmlFor="st-cgpa" style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>CGPA Score</label>
-                    <input
-                      id="st-cgpa"
-                      type="number"
-                      step={0.01}
-                      min={0}
-                      max={10}
-                      value={cgpa}
-                      onChange={(e) => setCgpa(Number(e.target.value))}
-                      style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '6px 8px', color: 'white', fontSize: '12.5px' }}
-                    />
-                  </div>
                 </div>
+              </div>
 
-                <div className="form-group">
-                  <label htmlFor="st-phone" style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Phone Number</label>
+              <div className="modal-dialog-footer">
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setIsAddModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="c1-btn c1-btn-gradient"
+                >
+                  <i className="fa-solid fa-check"></i>
+                  <span>Register Student</span>
+                </button>
+              </div>
+            </form>
+          </Modal>
+        )}
+
+        {/* ============================================================
+            MODAL 2: EDIT STUDENT MODAL
+            ============================================================ */}
+        {editingStudent && (
+          <Modal
+            isOpen={true}
+            onClose={() => setEditingStudent(null)}
+            title={`Edit Student: ${editingStudent.id}`}
+            maxWidth="md"
+          >
+            <form onSubmit={handleSaveEdit} className="faculty-form-stack">
+              <div className="form-fields-two-col">
+                <div className="form-field-wrap">
+                  <label className="form-label">Full Name</label>
                   <input
-                    id="st-phone"
                     type="text"
-                    placeholder="Enter phone number..."
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '12.5px', outline: 'none' }}
+                    className="c1-input"
+                    value={editingStudent.name}
+                    onChange={(e) => setEditingStudent({ ...editingStudent, name: e.target.value })}
+                    required
                   />
                 </div>
 
-                <button type="submit" className="btn-signin" style={{ height: '40px', margin: 0, marginTop: '10px', fontSize: '13px' }}>
-                  {editingStudent ? 'Save Profile' : 'Add Student'}
+                <div className="form-field-wrap">
+                  <label className="form-label">Institutional Email</label>
+                  <input
+                    type="email"
+                    className="c1-input"
+                    value={editingStudent.email}
+                    onChange={(e) => setEditingStudent({ ...editingStudent, email: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-fields-two-col">
+                <div className="form-field-wrap">
+                  <label className="form-label">Department</label>
+                  <input
+                    type="text"
+                    className="c1-input"
+                    value={editingStudent.department}
+                    onChange={(e) => setEditingStudent({ ...editingStudent, department: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="form-field-wrap">
+                  <label className="form-label">Section</label>
+                  <input
+                    type="text"
+                    className="c1-input"
+                    value={editingStudent.section}
+                    onChange={(e) => setEditingStudent({ ...editingStudent, section: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="modal-dialog-footer">
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setEditingStudent(null)}
+                >
+                  Cancel
                 </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Viewing dossier profile modal */}
-      {viewingStudent && (
-        <div className="search-modal-overlay" onClick={() => setViewingStudent(null)}>
-          <div className="search-modal-card" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
-            <div className="search-modal-header" style={{ justifyContent: 'space-between', padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <div>
-                <span style={{ fontSize: '10px', color: 'var(--accent-highlight)', display: 'block', textTransform: 'uppercase' }}>STUDENT ACCOUNT DETAILS</span>
-                <h2 style={{ fontSize: '16.5px', marginTop: '2px' }}>Dossier View</h2>
+                <button
+                  type="submit"
+                  className="c1-btn c1-btn-gradient"
+                >
+                  <i className="fa-solid fa-floppy-disk"></i>
+                  <span>Save Changes</span>
+                </button>
               </div>
-              <button type="button" className="btn-search-close" onClick={() => setViewingStudent(null)}>
-                <i className="fa-solid fa-xmark" style={{ fontSize: '14px' }}></i>
-              </button>
-            </div>
+            </form>
+          </Modal>
+        )}
 
-            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-                <div>Name: <strong style={{ color: 'white' }}>{viewingStudent.name}</strong></div>
-                <div>ID: <strong style={{ color: 'white' }}>{viewingStudent.id}</strong></div>
-                <div>Email: <strong style={{ color: 'white' }}>{viewingStudent.email}</strong></div>
-                <div>Phone: <strong style={{ color: 'white' }}>{viewingStudent.phone}</strong></div>
-                <div>Dept: <strong style={{ color: 'white' }}>{viewingStudent.department}</strong></div>
-                <div>Year: <strong style={{ color: 'white' }}>{viewingStudent.year}</strong></div>
-                <div>Section: <strong style={{ color: 'white' }}>{viewingStudent.section}</strong></div>
-                <div>CGPA: <strong style={{ color: 'var(--accent-highlight)' }}>{viewingStudent.cgpa}</strong></div>
-                <div>Status: <span className={`subject-att-status ${viewingStudent.status === 'Active' ? 'good' : 'critical'}`} style={{ fontSize: '9px' }}>{viewingStudent.status}</span></div>
+        {/* ============================================================
+            MODAL 3: VIEW PROFILE MODAL
+            ============================================================ */}
+        {viewingStudent && (
+          <Modal
+            isOpen={true}
+            onClose={() => setViewingStudent(null)}
+            title={`Student Details: ${viewingStudent.name}`}
+            maxWidth="md"
+          >
+            <div className="student-profile-dialog-content">
+              <div className="student-dialog-header">
+                <div className="student-avatar-badge">
+                  {viewingStudent.name.substring(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="stu-name">{viewingStudent.name}</h3>
+                  <span className="stu-sub">
+                    Roll No: <strong>{viewingStudent.id}</strong> • {viewingStudent.email}
+                  </span>
+                </div>
               </div>
 
-              <button
-                type="button"
-                className="btn-signin"
-                style={{ width: '100%', height: '36px', margin: 0, fontSize: '12.5px' }}
-                onClick={() => setViewingStudent(null)}
-              >
-                Close View
-              </button>
+              <div className="student-profile-metrics-grid">
+                <div className="d-cell">
+                  <span className="d-lbl">Department:</span>
+                  <span className="d-val">{viewingStudent.department}</span>
+                </div>
+                <div className="d-cell">
+                  <span className="d-lbl">Year & Section:</span>
+                  <span className="d-val">Year {viewingStudent.year} (Section {viewingStudent.section})</span>
+                </div>
+                <div className="d-cell">
+                  <span className="d-lbl">CGPA:</span>
+                  <span className="d-val" style={{ color: '#38bdf8' }}>{viewingStudent.cgpa} / 10.0</span>
+                </div>
+                <div className="d-cell">
+                  <span className="d-lbl">Attendance:</span>
+                  <span className="d-val" style={{ color: viewingStudent.attendancePercent >= 75 ? '#34d399' : '#fb7185' }}>
+                    {viewingStudent.attendancePercent}%
+                  </span>
+                </div>
+              </div>
+
+              <div className="modal-dialog-footer">
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setViewingStudent(null)}
+                >
+                  Close
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
-    </div>
+          </Modal>
+        )}
+
+        {/* ============================================================
+            MODAL 4: DEACTIVATE / ACTIVATE CONFIRMATION
+            ============================================================ */}
+        {deactivatingStudent && (
+          <Modal
+            isOpen={true}
+            onClose={() => setDeactivatingStudent(null)}
+            title="Confirm Status Change"
+            maxWidth="sm"
+          >
+            <div className="confirm-dialog-content">
+              <div className="confirm-icon-box" style={{ background: 'rgba(244, 63, 94, 0.15)', color: '#fb7185' }}>
+                <i className="fa-solid fa-user-slash"></i>
+              </div>
+              <h3 className="confirm-heading">
+                {deactivatingStudent.status === 'Active' ? 'Deactivate Account?' : 'Reactivate Account?'}
+              </h3>
+              <p className="confirm-body-text">
+                Are you sure you want to {deactivatingStudent.status === 'Active' ? 'deactivate' : 'reactivate'} the student account for <strong>{deactivatingStudent.name} ({deactivatingStudent.id})</strong>?
+              </p>
+
+              <div className="modal-dialog-footer">
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setDeactivatingStudent(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-gradient"
+                  style={{ background: deactivatingStudent.status === 'Active' ? 'var(--color-error)' : 'var(--color-success)' }}
+                  onClick={handleConfirmToggleStatus}
+                >
+                  {deactivatingStudent.status === 'Active' ? 'Deactivate' : 'Reactivate'}
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
+
+        {/* Toast Notification Container */}
+        {toastMsg && (
+          <Toast
+            message={toastMsg.message}
+            type={toastMsg.type}
+            onClose={() => setToastMsg(null)}
+          />
+        )}
+      </div>
+    </AppLayout>
   );
 };
+
 export default AdminStudents;

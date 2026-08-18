@@ -1,97 +1,221 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { AppLayout } from '../../components/AppLayout';
+import { Modal } from '../../components/Modal';
+import { Toast } from '../../components/Toast';
+
+export interface AdminJobItem {
+  id: string;
+  company: string;
+  title: string;
+  packageStr: string;
+  type: string;
+  location: string;
+  cgpaRequired: number;
+  deadline: string;
+  applicationsCount: number;
+  status: 'Active' | 'Closed';
+}
 
 export const AdminPlacements: React.FC = () => {
-  const navigate = useNavigate();
+  const [jobs, setJobs] = useState<AdminJobItem[]>([
+    {
+      id: 'job-1',
+      company: 'TechNova Solutions',
+      title: 'Associate Software Engineer',
+      packageStr: '₹8.5 LPA',
+      type: 'Full Time',
+      location: 'Bangalore / Hybrid',
+      cgpaRequired: 7.5,
+      deadline: '30 Aug 2026',
+      applicationsCount: 42,
+      status: 'Active'
+    },
+    {
+      id: 'job-2',
+      company: 'CloudCore Technologies',
+      title: 'Cloud DevOps Associate',
+      packageStr: '₹10.0 LPA',
+      type: 'Full Time',
+      location: 'Hyderabad',
+      cgpaRequired: 8.0,
+      deadline: '05 Sep 2026',
+      applicationsCount: 38,
+      status: 'Active'
+    },
+    {
+      id: 'job-3',
+      company: 'Quantum Dynamics',
+      title: 'Full Stack Developer',
+      packageStr: '₹14.0 LPA',
+      type: 'Full Time',
+      location: 'Bangalore',
+      cgpaRequired: 8.5,
+      deadline: '10 Sep 2026',
+      applicationsCount: 56,
+      status: 'Active'
+    }
+  ]);
 
-  // Mock Placement Stats
-  const placementRate = 82;
-  const companiesCount = 18;
-  const opportunitiesCount = 36;
-  const applicationsCount = 148;
-  const selectedCount = 92;
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [company, setCompany] = useState('');
+  const [title, setTitle] = useState('');
+  const [packageStr, setPackageStr] = useState('₹8.0 LPA');
+  const [location, setLocation] = useState('Bangalore');
+  const [cgpaRequired, setCgpaRequired] = useState<number>(7.5);
 
-  const demoCompanies = [
-    { name: 'TechNova Solutions', jobs: 3, hires: 12, contact: 'recruitment@technova.com', status: 'Active' },
-    { name: 'Quantum Leap Labs', jobs: 2, hires: 8, contact: 'hr@quantumlabs.io', status: 'Active' },
-    { name: 'Apex Systems Inc.', jobs: 4, hires: 15, contact: 'careers@apexsys.com', status: 'Active' },
-    { name: 'Microsoft Corporation', jobs: 1, hires: 4, contact: 'ur-hiring@microsoft.com', status: 'Active' },
-    { name: 'Google Cloud Services', jobs: 2, hires: 3, contact: 'campus@google.com', status: 'Active' }
-  ];
+  const [toastMsg, setToastMsg] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
+
+  const showToast = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+    setToastMsg({ message, type });
+    setTimeout(() => setToastMsg(null), 3500);
+  };
+
+  const handleAddJob = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!company.trim() || !title.trim()) {
+      showToast('Please fill out all fields.', 'error');
+      return;
+    }
+
+    const newJob: AdminJobItem = {
+      id: `job-${Date.now()}`,
+      company: company.trim(),
+      title: title.trim(),
+      packageStr,
+      type: 'Full Time',
+      location,
+      cgpaRequired,
+      deadline: '15 Sep 2026',
+      applicationsCount: 0,
+      status: 'Active'
+    };
+
+    setJobs([newJob, ...jobs]);
+    setIsAddModalOpen(false);
+    setCompany('');
+    setTitle('');
+    showToast(`Job opening at ${newJob.company} published for eligible students!`, 'success');
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Back button */}
-      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-        <button
-          type="button"
-          className="btn-sso"
-          onClick={() => navigate('/admin')}
-          style={{ margin: 0, padding: '0 12px', height: '32px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}
-        >
-          <i className="fa-solid fa-arrow-left"></i> Admin Console
-        </button>
-        <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>Admin / Placements Overview</span>
-      </div>
-
-      <div className="dashboard-header">
-        <h1>Placement & Career Management</h1>
-        <p>Monitor company drives, registered job opportunities, selection rates, and recruiter contacts.</p>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="stats-grid">
-        <div className="card-panel stat-card">
-          <div className="stat-card-desc" style={{ fontSize: '12px', textTransform: 'uppercase' }}>Partner Companies</div>
-          <div className="stat-card-value" style={{ marginTop: '4px' }}>{companiesCount}</div>
-        </div>
-        <div className="card-panel stat-card">
-          <div className="stat-card-desc" style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--accent-highlight)' }}>Job Roles</div>
-          <div className="stat-card-value" style={{ marginTop: '4px', color: 'var(--accent-highlight)' }}>{opportunitiesCount}</div>
-        </div>
-        <div className="card-panel stat-card">
-          <div className="stat-card-desc" style={{ fontSize: '12px', textTransform: 'uppercase', color: '#ffb236' }}>Total Applications</div>
-          <div className="stat-card-value" style={{ marginTop: '4px', color: '#ffb236' }}>{applicationsCount}</div>
-        </div>
-        <div className="card-panel stat-card">
-          <div className="stat-card-desc" style={{ fontSize: '12px', textTransform: 'uppercase', color: '#00d89a' }}>Placed Students</div>
-          <div className="stat-card-value" style={{ marginTop: '4px', color: '#00d89a' }}>{selectedCount}</div>
-        </div>
-        <div className="card-panel stat-card">
-          <div className="stat-card-desc" style={{ fontSize: '12px', textTransform: 'uppercase', color: '#00d89a' }}>Placement Rate</div>
-          <div className="stat-card-value" style={{ marginTop: '4px', color: '#00d89a' }}>{placementRate}%</div>
-        </div>
-      </div>
-
-      {/* Grid: Companies list on left, selection rate progress on right */}
-      <div className="dashboard-main-grid">
-        {/* Companies list */}
-        <div className="card-panel" style={{ flex: 1.4 }}>
-          <div className="card-panel-header" style={{ marginBottom: '16px' }}>
-            <h3>Registered Recruiting Companies</h3>
-            <i className="fa-solid fa-building" style={{ color: 'var(--text-secondary)' }}></i>
+    <AppLayout>
+      <div className="academic-module-page">
+        {/* Header */}
+        <div className="module-header-row">
+          <div>
+            <div className="module-breadcrumbs">
+              <span>Admin Portal</span>
+              <span className="crumb-sep">/</span>
+              <span className="crumb-current">Placement Management</span>
+            </div>
+            <h1 className="module-title">Placement & Corporate Relations</h1>
+            <p className="module-subtitle">
+              Manage hiring partners, publish recruitment job listings, monitor candidate applications, and track offers.
+            </p>
           </div>
 
-          <div className="table-responsive" style={{ overflowX: 'auto' }}>
-            <table className="custom-table" style={{ width: '100%', minWidth: '500px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+          <div className="module-header-meta">
+            <button
+              type="button"
+              className="c1-btn c1-btn-gradient"
+              onClick={() => setIsAddModalOpen(true)}
+            >
+              <i className="fa-solid fa-briefcase"></i>
+              <span>Post New Job Opening</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 4 Summary Stat Cards */}
+        <div className="academic-stats-grid">
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
+              <i className="fa-solid fa-building"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">48</span>
+              <span className="stat-label">Hiring Corporate Partners</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
+              <i className="fa-solid fa-briefcase"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">{jobs.length * 8}</span>
+              <span className="stat-label">Active Job Openings</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
+              <i className="fa-solid fa-award"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num" style={{ color: '#34d399' }}>142 Offers</span>
+              <span className="stat-label">Offers Extended</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>
+              <i className="fa-solid fa-sack-dollar"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num" style={{ color: '#fbbf24' }}>₹14.0 LPA</span>
+              <span className="stat-label">Highest Package</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Jobs Table */}
+        <div className="c1-card student-roster-card">
+          <div className="c1-card-header">
+            <div>
+              <h3 className="c1-card-title">Corporate Job Opportunities ({jobs.length} Active Posts)</h3>
+              <p className="c1-card-subtitle">Active placements published to student careers portal</p>
+            </div>
+            <button
+              type="button"
+              className="c1-btn c1-btn-secondary"
+              onClick={() => setIsAddModalOpen(true)}
+            >
+              <i className="fa-solid fa-plus"></i>
+              <span>Add Opening</span>
+            </button>
+          </div>
+
+          <div className="student-roster-table-wrap">
+            <table className="c1-table">
               <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', color: 'var(--text-secondary)' }}>
-                  <th style={{ padding: '10px 12px' }}>Company Name</th>
-                  <th style={{ padding: '10px 12px', textAlign: 'center' }}>Active Jobs</th>
-                  <th style={{ padding: '10px 12px', textAlign: 'center' }}>Recruits Hired</th>
-                  <th style={{ padding: '10px 12px' }}>Contact email</th>
-                  <th style={{ padding: '10px 12px', textAlign: 'center' }}>Status</th>
+                <tr>
+                  <th>Company Partner</th>
+                  <th>Job Title</th>
+                  <th>Salary Package</th>
+                  <th>Location</th>
+                  <th>Min CGPA</th>
+                  <th>Applications</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
-                {demoCompanies.map((c, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', color: 'white' }}>
-                    <td style={{ padding: '10px 12px', fontWeight: '700' }}>{c.name}</td>
-                    <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: '700', color: 'var(--accent-highlight)' }}>{c.jobs}</td>
-                    <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: '700', color: '#00d89a' }}>{c.hires}</td>
-                    <td style={{ padding: '10px 12px' }}>{c.contact}</td>
-                    <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                      <span className="subject-att-status good" style={{ fontSize: '8.5px' }}>{c.status}</span>
+                {jobs.map((j) => (
+                  <tr key={j.id}>
+                    <td>
+                      <strong style={{ color: '#ffffff' }}>{j.company}</strong>
+                    </td>
+                    <td>{j.title}</td>
+                    <td><strong style={{ color: '#38bdf8' }}>{j.packageStr}</strong></td>
+                    <td>{j.location}</td>
+                    <td>Min {j.cgpaRequired} CGPA</td>
+                    <td>
+                      <span className="c1-badge c1-badge-cyan">
+                        <i className="fa-solid fa-users"></i> {j.applicationsCount} Applicants
+                      </span>
+                    </td>
+                    <td>
+                      <span className="c1-badge c1-badge-success">{j.status}</span>
                     </td>
                   </tr>
                 ))}
@@ -100,37 +224,112 @@ export const AdminPlacements: React.FC = () => {
           </div>
         </div>
 
-        {/* Dynamic selection pipeline progress */}
-        <div className="card-panel" style={{ flex: 1 }}>
-          <div className="card-panel-header" style={{ marginBottom: '16px' }}>
-            <h3>Selection Funnel Pipeline</h3>
-            <i className="fa-solid fa-chart-simple" style={{ color: 'var(--text-secondary)' }}></i>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {[
-              { step: 'Applied', val: 148, total: 148, color: 'var(--accent-primary)' },
-              { step: 'Shortlisted', val: 110, total: 148, color: 'var(--accent-highlight)' },
-              { step: 'Interviewed', val: 95, total: 148, color: '#ffb236' },
-              { step: 'Selected', val: 92, total: 148, color: '#00d89a' }
-            ].map((f, idx) => {
-              const rate = Math.round((f.val / f.total) * 100);
-              return (
-                <div key={idx}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                    <span style={{ color: 'white', fontWeight: '700' }}>{f.step}</span>
-                    <span style={{ color: 'var(--text-secondary)' }}>{f.val} ({rate}%)</span>
-                  </div>
-                  <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: `${rate}%`, height: '100%', background: f.color, borderRadius: '4px' }} />
-                  </div>
+        {/* ============================================================
+            MODAL: ADD JOB MODAL
+            ============================================================ */}
+        {isAddModalOpen && (
+          <Modal
+            isOpen={true}
+            onClose={() => setIsAddModalOpen(false)}
+            title="Post Corporate Job Opportunity"
+            maxWidth="md"
+          >
+            <form onSubmit={handleAddJob} className="faculty-form-stack">
+              <div className="form-fields-two-col">
+                <div className="form-field-wrap">
+                  <label className="form-label">Company Name</label>
+                  <input
+                    type="text"
+                    className="c1-input"
+                    placeholder="e.g. Amazon Web Services"
+                    value={company}
+                    onChange={(e) => setCompany(e.target.value)}
+                    required
+                  />
                 </div>
-              );
-            })}
-          </div>
-        </div>
+
+                <div className="form-field-wrap">
+                  <label className="form-label">Role Title</label>
+                  <input
+                    type="text"
+                    className="c1-input"
+                    placeholder="e.g. Cloud Support Associate"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-fields-two-col">
+                <div className="form-field-wrap">
+                  <label className="form-label">Salary Package</label>
+                  <input
+                    type="text"
+                    className="c1-input"
+                    value={packageStr}
+                    onChange={(e) => setPackageStr(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-field-wrap">
+                  <label className="form-label">Location / Mode</label>
+                  <input
+                    type="text"
+                    className="c1-input"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-field-wrap">
+                <label className="form-label">Minimum CGPA Requirement</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  className="c1-input"
+                  value={cgpaRequired}
+                  onChange={(e) => setCgpaRequired(Number(e.target.value))}
+                  min={5.0}
+                  max={10.0}
+                  required
+                />
+              </div>
+
+              <div className="modal-dialog-footer">
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setIsAddModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="c1-btn c1-btn-gradient"
+                >
+                  <i className="fa-solid fa-paper-plane"></i>
+                  <span>Publish Job Listing</span>
+                </button>
+              </div>
+            </form>
+          </Modal>
+        )}
+
+        {/* Toast Notification Container */}
+        {toastMsg && (
+          <Toast
+            message={toastMsg.message}
+            type={toastMsg.type}
+            onClose={() => setToastMsg(null)}
+          />
+        )}
       </div>
-    </div>
+    </AppLayout>
   );
 };
+
 export default AdminPlacements;

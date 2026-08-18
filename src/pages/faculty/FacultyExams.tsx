@@ -1,378 +1,433 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getManagementData, saveManagementData, ExamMarkRecord } from '../../data/managementData';
+import { AppLayout } from '../../components/AppLayout';
+import { Modal } from '../../components/Modal';
+import { Toast } from '../../components/Toast';
+
+export interface FacultyExamItem {
+  id: string;
+  name: string;
+  courseCode: string;
+  courseName: string;
+  date: string;
+  time: string;
+  duration: string;
+  room: string;
+  maxMarks: number;
+  instructions: string;
+  studentCount: number;
+  status: 'Scheduled' | 'Completed' | 'Valuation Active';
+}
 
 export const FacultyExams: React.FC = () => {
   const navigate = useNavigate();
 
-  // Load management database
-  const [data, setData] = useState(() => getManagementData());
-  const [examMarks, setExamMarks] = useState<ExamMarkRecord[]>(() => {
-    return getManagementData().examMarks;
-  });
-
-  // Entering marks forms state
-  const [showEntryModal, setShowEntryModal] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState('CSE-301');
-  const [selectedExam, setSelectedExam] = useState('Midterm 1');
-  const [selectedSection, setSelectedSection] = useState('A');
-
-  // Candidate mark values inputs (studentId -> { internal, external })
-  const [inputMarks, setInputMarks] = useState<Record<string, { internal: number; external: number }>>(() => {
-    const initial: Record<string, { internal: number; external: number }> = {};
-    getManagementData().students.forEach((s) => {
-      // Find existing marks
-      const existing = getManagementData().examMarks.find(
-        (m) => m.studentId === s.id && m.courseCode === 'CSE-301' && m.examName === 'Midterm 1'
-      );
-      initial[s.id] = {
-        internal: existing ? existing.internalMarks : 0,
-        external: existing ? existing.externalMarks : 0
-      };
-    });
-    return initial;
-  });
-
-  const [formError, setFormError] = useState<string | null>(null);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
-
-  const filteredStudents = data.students.filter((s) => {
-    if (selectedCourse.startsWith('CSE') && s.department !== 'CSE') return false;
-    if (selectedCourse.startsWith('ECE') && s.department !== 'ECE') return false;
-    return s.section === selectedSection;
-  });
-
-  const handleOpenMarksEntry = () => {
-    setFormError(null);
-    setShowEntryModal(true);
-  };
-
-  const handleMarkChange = (studentId: string, type: 'internal' | 'external', val: number) => {
-    setInputMarks((prev) => ({
-      ...prev,
-      [studentId]: {
-        ...prev[studentId],
-        [type]: val
-      }
-    }));
-  };
-
-  // Grade calculation algorithm
-  const calculateGradeInfo = (internal: number, external: number) => {
-    const total = internal + external;
-    let grade = 'F';
-    let point = 0;
-
-    if (total >= 90) {
-      grade = 'A+';
-      point = 10;
-    } else if (total >= 80) {
-      grade = 'A';
-      point = 9;
-    } else if (total >= 70) {
-      grade = 'B';
-      point = 8;
-    } else if (total >= 60) {
-      grade = 'C';
-      point = 7;
-    } else if (total >= 50) {
-      grade = 'D';
-      point = 6;
+  // Exams state
+  const [exams, setExams] = useState<FacultyExamItem[]>([
+    {
+      id: 'exam-mid-1',
+      name: 'Mid-Semester Theory Examination (Midterm 1)',
+      courseCode: 'CSE-301',
+      courseName: 'Advanced Data Structures & Algorithms',
+      date: '25 Aug 2026',
+      time: '10:00 AM – 12:00 PM',
+      duration: '120 Minutes',
+      room: 'Room CSE-204',
+      maxMarks: 30,
+      instructions: 'Closed-book theoretical assessment. Calculators are allowed for algorithmic complexity calculations.',
+      studentCount: 60,
+      status: 'Scheduled'
+    },
+    {
+      id: 'exam-lab-1',
+      name: 'DBMS End-Semester Practical & Viva Assessment',
+      courseCode: 'CSE-302',
+      courseName: 'Database Management Systems',
+      date: '28 Aug 2026',
+      time: '02:00 PM – 05:00 PM',
+      duration: '180 Minutes',
+      room: 'Computer Lab 3 (Systems 1–60)',
+      maxMarks: 70,
+      instructions: 'Hands-on SQL schema normalization and PL/SQL stored procedure coding live demonstration.',
+      studentCount: 60,
+      status: 'Scheduled'
     }
+  ]);
 
-    return { total, grade, point };
+  // Modal State
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [selectedExam, setSelectedExam] = useState<FacultyExamItem | null>(null);
+
+  // Form fields
+  const [examName, setExamName] = useState('');
+  const [examCourse, setExamCourse] = useState('CSE-301');
+  const [examDate, setExamDate] = useState('2026-09-05');
+  const [examTime, setExamTime] = useState('10:00 AM - 01:00 PM');
+  const [examRoom, setExamRoom] = useState('Room CSE-204');
+  const [examMarks, setExamMarks] = useState<number>(30);
+  const [examInstructions, setExamInstructions] = useState('');
+
+  // Toast
+  const [toastMsg, setToastMsg] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
+
+  const showToast = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+    setToastMsg({ message, type });
+    setTimeout(() => setToastMsg(null), 3500);
   };
 
-  const handleSaveMarks = (e: React.FormEvent) => {
+  const handleCreateExam = (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Validations
-    let hasErr = false;
-    filteredStudents.forEach((s) => {
-      const marks = inputMarks[s.id] || { internal: 0, external: 0 };
-      if (marks.internal < 0 || marks.internal > 30 || marks.external < 0 || marks.external > 70) {
-        hasErr = true;
-      }
-    });
-
-    if (hasErr) {
-      setFormError('Error: Internal marks must be 0-30, and External marks must be 0-70.');
+    if (!examName.trim()) {
+      showToast('Please provide an exam title.', 'error');
       return;
     }
 
-    setFormError(null);
-
-    // Save
-    const nextExamMarks = [...examMarks];
-    filteredStudents.forEach((s) => {
-      const marks = inputMarks[s.id] || { internal: 0, external: 0 };
-      const idx = nextExamMarks.findIndex(
-        (m) => m.studentId === s.id && m.courseCode === selectedCourse && m.examName === selectedExam
-      );
-
-      const record: ExamMarkRecord = {
-        studentId: s.id,
-        studentName: s.name,
-        courseCode: selectedCourse,
-        examName: selectedExam,
-        internalMarks: marks.internal,
-        externalMarks: marks.external
-      };
-
-      if (idx >= 0) {
-        nextExamMarks[idx] = record;
-      } else {
-        nextExamMarks.push(record);
-      }
-    });
-
-    setExamMarks(nextExamMarks);
-    const updatedData = {
-      ...data,
-      examMarks: nextExamMarks
+    const newEx: FacultyExamItem = {
+      id: `exam-${Date.now()}`,
+      name: examName,
+      courseCode: examCourse,
+      courseName: examCourse === 'CSE-301' ? 'Advanced Data Structures' : 'Computer Science Course',
+      date: new Date(examDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      time: examTime,
+      duration: '180 Minutes',
+      room: examRoom,
+      maxMarks: examMarks,
+      instructions: examInstructions || 'Standard institutional examination regulations apply.',
+      studentCount: 60,
+      status: 'Scheduled'
     };
-    setData(updatedData);
-    saveManagementData(updatedData);
 
-    setShowEntryModal(false);
-    setToastMsg('Marks saved successfully.');
-    setTimeout(() => setToastMsg(null), 2500);
+    setExams([...exams, newEx]);
+    setIsCreateModalOpen(false);
+    setExamName('');
+    showToast(`Examination "${examName}" scheduled and published!`, 'success');
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Back button */}
-      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-        <button
-          type="button"
-          className="btn-sso"
-          onClick={() => navigate('/faculty')}
-          style={{ margin: 0, padding: '0 12px', height: '32px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}
-        >
-          <i className="fa-solid fa-arrow-left"></i> Faculty Panel
-        </button>
-        <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>Faculty / Examinations</span>
-      </div>
-
-      <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
-        <div>
-          <h1>Examination Management</h1>
-          <p>Schedule quizzes, view subject performances, and upload internal/external exam grades.</p>
-        </div>
-
-        <button
-          type="button"
-          className="btn-signin"
-          style={{ width: 'auto', padding: '0 16px', height: '36px', margin: 0 }}
-          onClick={handleOpenMarksEntry}
-        >
-          <i className="fa-solid fa-file-pen" style={{ marginRight: '6px' }}></i> Enter Exam Marks
-        </button>
-      </div>
-
-      {/* Toast Alert */}
-      {toastMsg && (
-        <div className="toast-msg">
-          <i className="fa-solid fa-circle-check" style={{ color: '#00d89a' }}></i>
-          <span>{toastMsg}</span>
-        </div>
-      )}
-
-      {/* Grid: Upcoming Exams vs Past Marks sheets */}
-      <div className="dashboard-main-grid">
-        {/* Exam lists */}
-        <div className="card-panel" style={{ flex: 1 }}>
-          <div className="card-panel-header" style={{ marginBottom: '16px' }}>
-            <h3>Upcoming Examinations</h3>
-            <i className="fa-solid fa-calendar-days" style={{ color: 'var(--text-secondary)' }}></i>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {[
-              { title: 'Database Midterms Theory', course: 'CSE-302', date: '21 Aug 2026', duration: '90 Mins' },
-              { title: 'Computer Networks Lab', course: 'CSE-303', date: '25 Aug 2026', duration: '180 Mins' }
-            ].map((ex, idx) => (
-              <div key={idx} className="timetable-item" style={{ padding: '14px', justifyContent: 'space-between' }}>
-                <div>
-                  <strong style={{ color: 'white', fontSize: '13.5px', display: 'block' }}>{ex.title}</strong>
-                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Course: {ex.course} • Duration: {ex.duration}</span>
-                </div>
-                <span style={{ fontSize: '12px', color: 'var(--accent-highlight)', fontWeight: '700' }}>{ex.date}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Existing Marks list preview */}
-        <div className="card-panel" style={{ flex: 1.2 }}>
-          <div className="card-panel-header" style={{ marginBottom: '16px' }}>
-            <h3>Submitted Exam Grades</h3>
-            <i className="fa-solid fa-award" style={{ color: 'var(--text-secondary)' }}></i>
-          </div>
-
-          <div className="table-responsive" style={{ overflowX: 'auto' }}>
-            <table className="custom-table" style={{ width: '100%', minWidth: '400px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', color: 'var(--text-secondary)' }}>
-                  <th style={{ padding: '8px 10px' }}>Student</th>
-                  <th style={{ padding: '8px 10px' }}>Course</th>
-                  <th style={{ padding: '8px 10px' }}>Exam</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>Int (30)</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>Ext (70)</th>
-                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>Grade</th>
-                </tr>
-              </thead>
-              <tbody>
-                {examMarks.length > 0 ? (
-                  examMarks.map((m, idx) => {
-                    const info = calculateGradeInfo(m.internalMarks, m.externalMarks);
-                    return (
-                      <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', color: 'white' }}>
-                        <td style={{ padding: '8px 10px', fontWeight: '700' }}>{m.studentName}</td>
-                        <td style={{ padding: '8px 10px', color: 'var(--accent-highlight)' }}>{m.courseCode}</td>
-                        <td style={{ padding: '8px 10px' }}>{m.examName}</td>
-                        <td style={{ padding: '8px 10px', textAlign: 'center' }}>{m.internalMarks}</td>
-                        <td style={{ padding: '8px 10px', textAlign: 'center' }}>{m.externalMarks}</td>
-                        <td style={{ padding: '8px 10px', textAlign: 'center' }}>
-                          <span className={`subject-att-status ${info.grade !== 'F' ? 'safe' : 'critical'}`} style={{ fontSize: '8.5px' }}>
-                            {info.grade}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={6} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                      No grades entered yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {/* Marks entry Modal */}
-      {showEntryModal && (
-        <div className="search-modal-overlay" onClick={() => setShowEntryModal(false)}>
-          <div className="search-modal-card" style={{ maxWidth: '520px' }} onClick={(e) => e.stopPropagation()}>
-            <div className="search-modal-header" style={{ justifyContent: 'space-between', padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <div>
-                <span style={{ fontSize: '10px', color: 'var(--accent-highlight)', display: 'block', textTransform: 'uppercase' }}>Academic Portal</span>
-                <h2 style={{ fontSize: '16.5px', marginTop: '2px' }}>Enter Exam Marks</h2>
-              </div>
-              <button type="button" className="btn-search-close" onClick={() => setShowEntryModal(false)}>
-                <i className="fa-solid fa-xmark" style={{ fontSize: '14px' }}></i>
-              </button>
+    <AppLayout>
+      <div className="academic-module-page">
+        {/* Header */}
+        <div className="module-header-row">
+          <div>
+            <div className="module-breadcrumbs">
+              <span>Faculty Portal</span>
+              <span className="crumb-sep">/</span>
+              <span className="crumb-current">Examination Management</span>
             </div>
+            <h1 className="module-title">Examinations & Invigilation</h1>
+            <p className="module-subtitle">
+              Manage mid-semester evaluations, practical lab assessments, room allocations, and marks valuation entries.
+            </p>
+          </div>
 
-            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', maxHeight: '70vh' }}>
-              {formError && (
-                <div className="login-error-box" style={{ margin: 0, padding: '10px 14px' }}>
-                  <i className="fa-solid fa-circle-exclamation"></i>
-                  <span>{formError}</span>
+          <div className="module-header-meta">
+            <button
+              type="button"
+              className="c1-btn c1-btn-gradient"
+              onClick={() => setIsCreateModalOpen(true)}
+            >
+              <i className="fa-solid fa-plus"></i>
+              <span>Schedule New Exam</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 4 Summary Stat Cards */}
+        <div className="academic-stats-grid">
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
+              <i className="fa-solid fa-receipt"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">{exams.length}</span>
+              <span className="stat-label">Scheduled Exams</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
+              <i className="fa-solid fa-users"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">120</span>
+              <span className="stat-label">Supervised Candidates</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
+              <i className="fa-solid fa-door-open"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">2 Halls</span>
+              <span className="stat-label">Assigned Examination Venues</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>
+              <i className="fa-solid fa-chart-line"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num" style={{ color: '#fbbf24' }}>Ready</span>
+              <span className="stat-label">Valuation Ledger Portal</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Exams List */}
+        <div className="faculty-exams-grid">
+          {exams.map((ex) => (
+            <div key={ex.id} className="c1-card faculty-exam-card">
+              <div className="exam-card-header-row">
+                <span className="course-code-tag">{ex.courseCode}</span>
+                <span className="c1-badge c1-badge-cyan">
+                  <i className="fa-solid fa-calendar-check"></i> {ex.status}
+                </span>
+              </div>
+
+              <h3 className="exam-title-text">{ex.name}</h3>
+              <span className="exam-subject-sub">{ex.courseName}</span>
+
+              <div className="exam-metrics-grid-box">
+                <div className="e-metric-cell">
+                  <span className="e-lbl">Date & Time</span>
+                  <span className="e-val">{ex.date} • {ex.time}</span>
                 </div>
-              )}
-
-              <form onSubmit={handleSaveMarks} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-                  <div className="form-group">
-                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Course</label>
-                    <select
-                      value={selectedCourse}
-                      onChange={(e) => setSelectedCourse(e.target.value)}
-                      style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '6px 8px', color: 'white', fontSize: '12px' }}
-                    >
-                      <option value="CSE-301">CSE-301 DS</option>
-                      <option value="CSE-302">CSE-302 DBMS</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Exam</label>
-                    <select
-                      value={selectedExam}
-                      onChange={(e) => setSelectedExam(e.target.value)}
-                      style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '6px 8px', color: 'white', fontSize: '12px' }}
-                    >
-                      <option value="Midterm 1">Midterm 1</option>
-                      <option value="Sem End">Sem End</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Section</label>
-                    <select
-                      value={selectedSection}
-                      onChange={(e) => setSelectedSection(e.target.value)}
-                      style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '6px 8px', color: 'white', fontSize: '12px' }}
-                    >
-                      <option value="A">Section A</option>
-                      <option value="B">Section B</option>
-                    </select>
-                  </div>
+                <div className="e-metric-cell">
+                  <span className="e-lbl">Exam Hall</span>
+                  <span className="e-val">{ex.room}</span>
                 </div>
-
-                <div style={{ borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '12px' }}>
-                  <h4 style={{ fontSize: '13px', color: 'white', marginBottom: '10px' }}>Enter Student Scores</h4>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {filteredStudents.map((s) => {
-                      const marks = inputMarks[s.id] || { internal: 0, external: 0 };
-                      const info = calculateGradeInfo(marks.internal, marks.external);
-
-                      return (
-                        <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '10px', alignItems: 'center', padding: '10px', background: 'rgba(255,255,255,0.01)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                          <div>
-                            <strong style={{ color: 'white', fontSize: '12.5px', display: 'block' }}>{s.name}</strong>
-                            <span style={{ fontSize: '10.5px', color: 'var(--text-secondary)' }}>ID: {s.id}</span>
-                          </div>
-                          
-                          <div>
-                            <label style={{ fontSize: '9px', color: 'var(--text-secondary)', display: 'block' }}>Int (30)</label>
-                            <input
-                              type="number"
-                              min={0}
-                              max={30}
-                              value={marks.internal}
-                              onChange={(e) => handleMarkChange(s.id, 'internal', Number(e.target.value))}
-                              style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '4px 6px', color: 'white', fontSize: '12px' }}
-                            />
-                          </div>
-
-                          <div>
-                            <label style={{ fontSize: '9px', color: 'var(--text-secondary)', display: 'block' }}>Ext (70)</label>
-                            <input
-                              type="number"
-                              min={0}
-                              max={70}
-                              value={marks.external}
-                              onChange={(e) => handleMarkChange(s.id, 'external', Number(e.target.value))}
-                              style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '4px 6px', color: 'white', fontSize: '12px' }}
-                            />
-                          </div>
-
-                          <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: '9px', color: 'var(--text-secondary)' }}>Grade</span>
-                            <strong style={{ color: 'var(--accent-highlight)', fontSize: '13px' }}>{info.grade} ({info.total})</strong>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                <div className="e-metric-cell">
+                  <span className="e-lbl">Max Marks</span>
+                  <span className="e-val">{ex.maxMarks} Marks ({ex.maxMarks <= 30 ? 'Internal' : 'External'})</span>
                 </div>
+                <div className="e-metric-cell">
+                  <span className="e-lbl">Cohort Size</span>
+                  <span className="e-val">{ex.studentCount} Students</span>
+                </div>
+              </div>
 
-                <button type="submit" className="btn-signin" style={{ height: '40px', margin: 0, marginTop: '10px', fontSize: '13px' }}>
-                  Save Student Marks
+              <p className="exam-instructions-snippet">{ex.instructions}</p>
+
+              <div className="exam-card-actions">
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setSelectedExam(ex)}
+                >
+                  <i className="fa-solid fa-circle-info"></i>
+                  <span>Exam Details</span>
                 </button>
-              </form>
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-gradient"
+                  onClick={() => navigate('/faculty/results')}
+                >
+                  <i className="fa-solid fa-chart-line"></i>
+                  <span>Enter / View Results</span>
+                </button>
+              </div>
             </div>
-          </div>
+          ))}
         </div>
-      )}
-    </div>
+
+        {/* ============================================================
+            MODAL 1: CREATE EXAM MODAL
+            ============================================================ */}
+        {isCreateModalOpen && (
+          <Modal
+            isOpen={true}
+            onClose={() => setIsCreateModalOpen(false)}
+            title="Schedule Course Examination"
+            maxWidth="md"
+          >
+            <form onSubmit={handleCreateExam} className="faculty-form-stack">
+              <div className="form-field-wrap">
+                <label className="form-label">Examination Name / Title</label>
+                <input
+                  type="text"
+                  className="c1-input"
+                  placeholder="e.g. Mid-Semester Assessment 2"
+                  value={examName}
+                  onChange={(e) => setExamName(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-fields-two-col">
+                <div className="form-field-wrap">
+                  <label className="form-label">Course Subject</label>
+                  <select
+                    className="c1-select"
+                    value={examCourse}
+                    onChange={(e) => setExamCourse(e.target.value)}
+                  >
+                    <option value="CSE-301">CSE-301: Advanced Data Structures</option>
+                    <option value="CSE-302">CSE-302: Database Management Systems</option>
+                    <option value="CSE-401">CSE-401: Cloud Computing Architecture</option>
+                  </select>
+                </div>
+
+                <div className="form-field-wrap">
+                  <label className="form-label">Examination Date</label>
+                  <input
+                    type="date"
+                    className="c1-input"
+                    value={examDate}
+                    onChange={(e) => setExamDate(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-fields-two-col">
+                <div className="form-field-wrap">
+                  <label className="form-label">Time & Duration</label>
+                  <input
+                    type="text"
+                    className="c1-input"
+                    placeholder="10:00 AM - 12:00 PM"
+                    value={examTime}
+                    onChange={(e) => setExamTime(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-field-wrap">
+                  <label className="form-label">Hall / Lab Venue</label>
+                  <input
+                    type="text"
+                    className="c1-input"
+                    value={examRoom}
+                    onChange={(e) => setExamRoom(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-field-wrap">
+                <label className="form-label">Maximum Assessment Marks</label>
+                <input
+                  type="number"
+                  className="c1-input"
+                  value={examMarks}
+                  onChange={(e) => setExamMarks(Number(e.target.value))}
+                  min={10}
+                  max={100}
+                  required
+                />
+              </div>
+
+              <div className="form-field-wrap">
+                <label className="form-label">Instructions for Students</label>
+                <textarea
+                  className="c1-textarea"
+                  rows={3}
+                  placeholder="Specify allowed stationery, calculators, and exam guidelines..."
+                  value={examInstructions}
+                  onChange={(e) => setExamInstructions(e.target.value)}
+                ></textarea>
+              </div>
+
+              <div className="modal-dialog-footer">
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setIsCreateModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="c1-btn c1-btn-gradient"
+                >
+                  <i className="fa-solid fa-paper-plane"></i>
+                  <span>Publish Examination</span>
+                </button>
+              </div>
+            </form>
+          </Modal>
+        )}
+
+        {/* ============================================================
+            MODAL 2: EXAM DETAILS MODAL
+            ============================================================ */}
+        {selectedExam && (
+          <Modal
+            isOpen={true}
+            onClose={() => setSelectedExam(null)}
+            title={`Exam Details: ${selectedExam.courseCode}`}
+            maxWidth="md"
+          >
+            <div className="exam-details-dialog-content">
+              <div className="dialog-meta-row">
+                <span className="course-code-tag">{selectedExam.courseCode}</span>
+                <span className="c1-badge c1-badge-cyan">{selectedExam.status}</span>
+              </div>
+
+              <h3 className="dialog-exam-name">{selectedExam.name}</h3>
+              <p className="dialog-course-sub">{selectedExam.courseName}</p>
+
+              <div className="dialog-exam-meta-grid">
+                <div className="d-cell">
+                  <span className="d-lbl">Scheduled Date:</span>
+                  <span className="d-val">{selectedExam.date}</span>
+                </div>
+                <div className="d-cell">
+                  <span className="d-lbl">Session Timing:</span>
+                  <span className="d-val">{selectedExam.time} ({selectedExam.duration})</span>
+                </div>
+                <div className="d-cell">
+                  <span className="d-lbl">Examination Hall:</span>
+                  <span className="d-val">{selectedExam.room}</span>
+                </div>
+                <div className="d-cell">
+                  <span className="d-lbl">Max Marks:</span>
+                  <span className="d-val">{selectedExam.maxMarks} Marks</span>
+                </div>
+              </div>
+
+              <div className="dialog-instructions-box">
+                <h4>Guidelines & Instructions</h4>
+                <p>{selectedExam.instructions}</p>
+              </div>
+
+              <div className="modal-dialog-footer">
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setSelectedExam(null)}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-gradient"
+                  onClick={() => {
+                    setSelectedExam(null);
+                    navigate('/faculty/results');
+                  }}
+                >
+                  <i className="fa-solid fa-chart-line"></i>
+                  <span>Enter Student Marks</span>
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
+
+        {/* Toast Notification Container */}
+        {toastMsg && (
+          <Toast
+            message={toastMsg.message}
+            type={toastMsg.type}
+            onClose={() => setToastMsg(null)}
+          />
+        )}
+      </div>
+    </AppLayout>
   );
 };
+
 export default FacultyExams;

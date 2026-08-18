@@ -1,102 +1,184 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { AppLayout } from '../../components/AppLayout';
+import { Toast } from '../../components/Toast';
 
 export const AdminHostel: React.FC = () => {
-  const navigate = useNavigate();
+  const [toastMsg, setToastMsg] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
 
-  // Mock Hostel stats
-  const hostels = [
-    { name: 'Krishna Boys Hostel (A Block)', totalRooms: 100, occupied: 90, available: 10, maintenance: 0 },
-    { name: 'Krishna Boys Hostel (B Block)', totalRooms: 100, occupied: 90, available: 10, maintenance: 0 },
-    { name: 'Ganga Girls Hostel (A Block)', totalRooms: 120, occupied: 110, available: 8, maintenance: 2 },
-    { name: 'Ganga Girls Hostel (B Block)', totalRooms: 80, occupied: 72, available: 6, maintenance: 2 }
+  const showToast = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+    setToastMsg({ message, type });
+    setTimeout(() => setToastMsg(null), 3500);
+  };
+
+  const blocks = [
+    { code: 'Block A', name: 'Boys Senior Hostel (Block A)', rooms: 100, occupied: 94, vacant: 4, maintenance: 2, warden: 'Mr. K. Sharma (+91 98765 11111)' },
+    { code: 'Block B', name: 'Boys Junior Hostel (Block B)', rooms: 100, occupied: 92, vacant: 6, maintenance: 2, warden: 'Mr. R. Varma (+91 98765 22222)' },
+    { code: 'Block C', name: 'Girls Senior Hostel (Block C)', rooms: 100, occupied: 96, vacant: 2, maintenance: 2, warden: 'Dr. Sunita Rao (+91 98765 33333)' },
+    { code: 'Block D', name: 'Girls Junior Hostel (Block D)', rooms: 100, occupied: 78, vacant: 20, maintenance: 2, warden: 'Ms. Anita Nair (+91 98765 44444)' }
   ];
 
-  const totalRooms = hostels.reduce((acc, h) => acc + h.totalRooms, 0);
-  const totalOccupied = hostels.reduce((acc, h) => acc + h.occupied, 0);
-  const totalAvailable = hostels.reduce((acc, h) => acc + h.available, 0);
-  const totalMaintenance = hostels.reduce((acc, h) => acc + h.maintenance, 0);
-  const occupancyRate = Math.round((totalOccupied / totalRooms) * 100);
+  const allocations = [
+    { student: 'Aditya Sharma (236F1A0551)', block: 'Block A', room: 'Room A-204 (Double AC)', status: 'Active Occupant', joined: '15 Jul 2024' },
+    { student: 'Rohan Gupta (236F1A0553)', block: 'Block A', room: 'Room A-204 (Double AC)', status: 'Active Occupant', joined: '15 Jul 2024' },
+    { student: 'Sneha Patel (236F1A0552)', block: 'Block C', room: 'Room C-302 (Single Non-AC)', status: 'Active Occupant', joined: '18 Jul 2024' },
+    { student: 'Pooja Reddy (236F1A0554)', block: 'Block C', room: 'Room C-108 (Double Non-AC)', status: 'Active Occupant', joined: '20 Jul 2024' }
+  ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Back button */}
-      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-        <button
-          type="button"
-          className="btn-sso"
-          onClick={() => navigate('/admin')}
-          style={{ margin: 0, padding: '0 12px', height: '32px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}
-        >
-          <i className="fa-solid fa-arrow-left"></i> Admin Console
-        </button>
-        <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>Admin / Hostel Management</span>
-      </div>
+    <AppLayout>
+      <div className="academic-module-page">
+        {/* Header */}
+        <div className="module-header-row">
+          <div>
+            <div className="module-breadcrumbs">
+              <span>Admin Portal</span>
+              <span className="crumb-sep">/</span>
+              <span className="crumb-current">Hostel Management</span>
+            </div>
+            <h1 className="module-title">Campus Hostel & Residency Management</h1>
+            <p className="module-subtitle">
+              Manage residential blocks, room allocations, warden contacts, maintenance requests, and occupant registries.
+            </p>
+          </div>
 
-      <div className="dashboard-header">
-        <h1>Hostel Management Overview</h1>
-        <p>Monitor room allocation capacities, pending maintenance requests, and lodging occupancy ratios.</p>
-      </div>
+          <div className="module-header-meta">
+            <button
+              type="button"
+              className="c1-btn c1-btn-gradient"
+              onClick={() => showToast('Room allotment allocation wizard initiated.', 'info')}
+            >
+              <i className="fa-solid fa-hotel"></i>
+              <span>Allocate Room</span>
+            </button>
+          </div>
+        </div>
 
-      {/* Stats summary */}
-      <div className="stats-grid">
-        <div className="card-panel stat-card">
-          <div className="stat-card-desc" style={{ fontSize: '12px', textTransform: 'uppercase' }}>Total Rooms</div>
-          <div className="stat-card-value" style={{ marginTop: '4px' }}>{totalRooms}</div>
-        </div>
-        <div className="card-panel stat-card">
-          <div className="stat-card-desc" style={{ fontSize: '12px', textTransform: 'uppercase', color: '#00d89a' }}>Occupied</div>
-          <div className="stat-card-value" style={{ marginTop: '4px', color: '#00d89a' }}>{totalOccupied}</div>
-        </div>
-        <div className="card-panel stat-card">
-          <div className="stat-card-desc" style={{ fontSize: '12px', textTransform: 'uppercase', color: '#ffb236' }}>Available</div>
-          <div className="stat-card-value" style={{ marginTop: '4px', color: '#ffb236' }}>{totalAvailable}</div>
-        </div>
-        <div className="card-panel stat-card">
-          <div className="stat-card-desc" style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--color-error)' }}>Under Maintenance</div>
-          <div className="stat-card-value" style={{ marginTop: '4px', color: 'var(--color-error)' }}>{totalMaintenance}</div>
-        </div>
-        <div className="card-panel stat-card">
-          <div className="stat-card-desc" style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--accent-highlight)' }}>Occupancy Rate</div>
-          <div className="stat-card-value" style={{ marginTop: '4px', color: 'var(--accent-highlight)' }}>{occupancyRate}%</div>
-        </div>
-      </div>
+        {/* 4 Summary Stat Cards */}
+        <div className="academic-stats-grid">
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
+              <i className="fa-solid fa-hotel"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">400 Rooms</span>
+              <span className="stat-label">Total Residential Rooms</span>
+            </div>
+          </div>
 
-      {/* Hostel Wise details list */}
-      <div className="card-panel">
-        <h3 style={{ fontSize: '14.5px', fontWeight: '800', color: 'white', marginBottom: '16px' }}>Hostel-wise Blocks Capacity</h3>
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
+              <i className="fa-solid fa-bed"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num" style={{ color: '#34d399' }}>360 Occupied</span>
+              <span className="stat-label">Resident Students (90%)</span>
+            </div>
+          </div>
 
-        <div className="table-responsive" style={{ overflowX: 'auto' }}>
-          <table className="custom-table" style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', color: 'var(--text-secondary)' }}>
-                <th style={{ padding: '12px 14px' }}>Hostel Blocks</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Total Rooms</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Occupied</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Available</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Maintenance</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Occupancy Rate</th>
-              </tr>
-            </thead>
-            <tbody>
-              {hostels.map((h, idx) => {
-                const rate = Math.round((h.occupied / h.totalRooms) * 100);
-                return (
-                  <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', color: 'white' }}>
-                    <td style={{ padding: '12px 14px', fontWeight: '700' }}>{h.name}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'center' }}>{h.totalRooms}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'center', color: 'var(--accent-highlight)', fontWeight: '700' }}>{h.occupied}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'center', color: '#00d89a', fontWeight: '700' }}>{h.available}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'center', color: h.maintenance > 0 ? 'var(--color-error)' : 'var(--text-secondary)' }}>{h.maintenance}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'center', fontWeight: '700' }}>{rate}%</td>
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
+              <i className="fa-solid fa-door-open"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num" style={{ color: '#38bdf8' }}>32 Available</span>
+              <span className="stat-label">Vacant Rooms</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>
+              <i className="fa-solid fa-screwdriver-wrench"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num" style={{ color: '#fbbf24' }}>8 Rooms</span>
+              <span className="stat-label">Under Maintenance</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Blocks Grid */}
+        <div className="faculty-courses-full-grid" style={{ marginBottom: '24px' }}>
+          {blocks.map((b) => (
+            <div key={b.code} className="c1-card faculty-course-card-full">
+              <div className="f-card-header">
+                <div>
+                  <span className="course-code-tag">{b.code}</span>
+                  <h3 className="course-title-text">{b.name}</h3>
+                  <span className="course-dept-text">Warden: {b.warden}</span>
+                </div>
+                <span className="c1-badge c1-badge-cyan">{b.occupied} / {b.rooms} Beds</span>
+              </div>
+
+              <div className="course-info-grid-compact">
+                <div className="c-info-cell">
+                  <i className="fa-solid fa-bed"></i>
+                  <span>Occupied: <strong>{b.occupied}</strong></span>
+                </div>
+                <div className="c-info-cell">
+                  <i className="fa-solid fa-door-open"></i>
+                  <span>Vacant: <strong>{b.vacant}</strong></span>
+                </div>
+                <div className="c-info-cell">
+                  <i className="fa-solid fa-wrench"></i>
+                  <span>Repairs: <strong>{b.maintenance}</strong></span>
+                </div>
+                <div className="c-info-cell">
+                  <i className="fa-solid fa-chart-pie"></i>
+                  <span>Occupancy: <strong>{Math.round((b.occupied / b.rooms) * 100)}%</strong></span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Allocations Table */}
+        <div className="c1-card student-roster-card">
+          <div className="c1-card-header">
+            <div>
+              <h3 className="c1-card-title">Resident Student Room Ledger</h3>
+              <p className="c1-card-subtitle">Active student room allocations and verification dates</p>
+            </div>
+          </div>
+
+          <div className="student-roster-table-wrap">
+            <table className="c1-table">
+              <thead>
+                <tr>
+                  <th>Student Candidate</th>
+                  <th>Residential Block</th>
+                  <th>Allotted Room</th>
+                  <th>Join Date</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allocations.map((a) => (
+                  <tr key={a.student}>
+                    <td><strong style={{ color: '#ffffff' }}>{a.student}</strong></td>
+                    <td><span className="course-code-tag">{a.block}</span></td>
+                    <td><strong style={{ color: '#38bdf8' }}>{a.room}</strong></td>
+                    <td>{a.joined}</td>
+                    <td>
+                      <span className="c1-badge c1-badge-success">{a.status}</span>
+                    </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
+
+        {/* Toast Notification Container */}
+        {toastMsg && (
+          <Toast
+            message={toastMsg.message}
+            type={toastMsg.type}
+            onClose={() => setToastMsg(null)}
+          />
+        )}
       </div>
-    </div>
+    </AppLayout>
   );
 };
+
 export default AdminHostel;

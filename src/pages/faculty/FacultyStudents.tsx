@@ -1,220 +1,314 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AppLayout } from '../../components/AppLayout';
 import { getManagementData, StudentRecord } from '../../data/managementData';
+import { Modal } from '../../components/Modal';
 
 export const FacultyStudents: React.FC = () => {
   const navigate = useNavigate();
+  const mgmt = getManagementData();
 
-  // Load students
-  const [students] = useState<StudentRecord[]>(() => {
-    return getManagementData().students;
-  });
+  // Load students belonging to this faculty's cohort
+  const [students] = useState<StudentRecord[]>(mgmt.students);
 
-  const [search, setSearch] = useState('');
-  const [filterSection, setFilterSection] = useState('All');
-  const [filterPerformance, setFilterPerformance] = useState('All');
-
-  // Selected student details modal
+  // Search & Filter
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sectionFilter, setSectionFilter] = useState('All');
   const [selectedStudent, setSelectedStudent] = useState<StudentRecord | null>(null);
 
-  const filteredStudents = students.filter((s) => {
-    if (search && !s.name.toLowerCase().includes(search.toLowerCase()) && !s.id.toLowerCase().includes(search.toLowerCase())) {
-      return false;
+  const filteredStudents = useMemo(() => {
+    return students.filter((s) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchQuery =
+        !q ||
+        s.name.toLowerCase().includes(q) ||
+        s.id.toLowerCase().includes(q) ||
+        s.email.toLowerCase().includes(q);
+
+      const matchSection = sectionFilter === 'All' || s.section === sectionFilter;
+
+      return matchQuery && matchSection;
+    });
+  }, [students, searchQuery, sectionFilter]);
+
+  const avgAttendance = Math.round(
+    students.reduce((sum, s) => sum + s.attendancePercent, 0) / (students.length || 1)
+  );
+  const avgCgpa = (
+    students.reduce((sum, s) => sum + s.cgpa, 0) / (students.length || 1)
+  ).toFixed(2);
+
+  const getPerformanceBadge = (perf: StudentRecord['performance']) => {
+    switch (perf) {
+      case 'Excellent':
+        return <span className="c1-badge c1-badge-success"><i className="fa-solid fa-star"></i> Excellent</span>;
+      case 'Good':
+        return <span className="c1-badge c1-badge-cyan"><i className="fa-solid fa-circle-check"></i> Good</span>;
+      case 'Needs Improvement':
+        return <span className="c1-badge c1-badge-warning"><i className="fa-solid fa-triangle-exclamation"></i> Needs Attention</span>;
+      default:
+        return <span className="c1-badge c1-badge-purple">Average</span>;
     }
-    if (filterSection !== 'All' && s.section !== filterSection) {
-      return false;
-    }
-    if (filterPerformance !== 'All' && s.performance !== filterPerformance) {
-      return false;
-    }
-    return true;
-  });
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Back navigation */}
-      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-        <button
-          type="button"
-          className="btn-sso"
-          onClick={() => navigate('/faculty')}
-          style={{ margin: 0, padding: '0 12px', height: '32px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}
-        >
-          <i className="fa-solid fa-arrow-left"></i> Faculty Panel
-        </button>
-        <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>Faculty / Students</span>
-      </div>
-
-      <div className="dashboard-header">
-        <h1>Faculty Student Roster</h1>
-        <p>Browse, search, and inspect the academic profile of students in your sections.</p>
-      </div>
-
-      {/* Filter panel */}
-      <div className="card-panel" style={{ padding: '16px 20px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '14px', alignItems: 'center' }}>
-          {/* Search */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <i className="fa-solid fa-magnifying-glass" style={{ position: 'absolute', left: '12px', fontSize: '11px', color: 'var(--text-secondary)' }}></i>
-            <input
-              type="text"
-              placeholder="Search by name or Roll No..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px 8px 32px', fontSize: '12.5px', color: 'white', outline: 'none' }}
-            />
+    <AppLayout>
+      <div className="academic-module-page">
+        {/* Header */}
+        <div className="module-header-row">
+          <div>
+            <div className="module-breadcrumbs">
+              <span>Faculty Portal</span>
+              <span className="crumb-sep">/</span>
+              <span className="crumb-current">Enrolled Students Roster</span>
+            </div>
+            <h1 className="module-title">Student Cohorts & Academic Roster</h1>
+            <p className="module-subtitle">
+              Monitor candidate attendance records, assignment submission metrics, and individual student academic summaries.
+            </p>
           </div>
 
-          {/* Section */}
-          <select
-            value={filterSection}
-            onChange={(e) => setFilterSection(e.target.value)}
-            style={{ background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '12.5px', outline: 'none' }}
-          >
-            <option value="All">All Sections</option>
-            <option value="A">Section A</option>
-            <option value="B">Section B</option>
-          </select>
-
-          {/* Performance */}
-          <select
-            value={filterPerformance}
-            onChange={(e) => setFilterPerformance(e.target.value)}
-            style={{ background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '12.5px', outline: 'none' }}
-          >
-            <option value="All">All Performance Levels</option>
-            <option value="Excellent">Excellent</option>
-            <option value="Good">Good</option>
-            <option value="Average">Average</option>
-            <option value="Needs Improvement">Needs Improvement</option>
-          </select>
+          <div className="module-header-meta">
+            <button
+              type="button"
+              className="c1-btn c1-btn-gradient"
+              onClick={() => navigate('/faculty/attendance')}
+            >
+              <i className="fa-solid fa-clipboard-user"></i>
+              <span>Mark Attendance</span>
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Roster list */}
-      <div className="card-panel">
-        <div className="table-responsive" style={{ overflowX: 'auto' }}>
-          <table className="custom-table" style={{ width: '100%', minWidth: '800px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', color: 'var(--text-secondary)' }}>
-                <th style={{ padding: '12px 14px' }}>Roll Number</th>
-                <th style={{ padding: '12px 14px' }}>Student Name</th>
-                <th style={{ padding: '12px 14px' }}>Department</th>
-                <th style={{ padding: '12px 14px' }}>Year</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Section</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Attendance</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Performance</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Status</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredStudents.length > 0 ? (
-                filteredStudents.map((st) => (
-                  <tr key={st.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', color: 'white' }}>
-                    <td style={{ padding: '12px 14px', fontWeight: '700', color: 'var(--accent-highlight)' }}>{st.id}</td>
-                    <td style={{ padding: '12px 14px', fontWeight: '700' }}>{st.name}</td>
-                    <td style={{ padding: '12px 14px' }}>{st.department}</td>
-                    <td style={{ padding: '12px 14px' }}>{st.year}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'center' }}>{st.section}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'center', fontWeight: '700' }}>{st.attendancePercent}%</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                      <span className={`subject-att-status ${st.performance === 'Excellent' || st.performance === 'Good' ? 'safe' : st.performance === 'Average' ? 'warning' : 'critical'}`} style={{ fontSize: '8.5px' }}>
-                        {st.performance}
+        {/* 4 Summary Stat Cards */}
+        <div className="academic-stats-grid">
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
+              <i className="fa-solid fa-users"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">{students.length}</span>
+              <span className="stat-label">Enrolled Students</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
+              <i className="fa-solid fa-user-check"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">{avgAttendance}%</span>
+              <span className="stat-label">Cohort Attendance Average</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
+              <i className="fa-solid fa-chart-line"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">{avgCgpa}</span>
+              <span className="stat-label">Average Cohort CGPA</span>
+            </div>
+          </div>
+
+          <div className="c1-card academic-stat-card">
+            <div className="stat-card-icon-wrap" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>
+              <i className="fa-solid fa-file-invoice"></i>
+            </div>
+            <div className="stat-card-data">
+              <span className="stat-num">92%</span>
+              <span className="stat-label">Assignment Submission Rate</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Search & Filter Toolbar */}
+        <div className="c1-card academic-filters-card" style={{ marginBottom: '24px' }}>
+          <div className="search-filter-input-wrap">
+            <i className="fa-solid fa-magnifying-glass search-icon"></i>
+            <input
+              type="text"
+              className="c1-input search-filter-input"
+              placeholder="Search students by name, roll number (236F1A0551), or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="clear-search-btn"
+                onClick={() => setSearchQuery('')}
+              >
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            )}
+          </div>
+
+          <div className="filters-row-wrap">
+            <div className="filter-select-item">
+              <label htmlFor="filter-student-section">Class Section</label>
+              <select
+                id="filter-student-section"
+                className="c1-select"
+                value={sectionFilter}
+                onChange={(e) => setSectionFilter(e.target.value)}
+              >
+                <option value="All">All Sections (A & B)</option>
+                <option value="A">Section A (CSE-301 / 401)</option>
+                <option value="B">Section B (CSE-302)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Student Table */}
+        <div className="c1-card student-roster-card">
+          <div className="c1-card-header">
+            <div>
+              <h3 className="c1-card-title">Class Cohort Roster ({filteredStudents.length} Students)</h3>
+              <p className="c1-card-subtitle">Official candidate enrollment for B.Tech CSE IV Year</p>
+            </div>
+            <span className="c1-badge c1-badge-cyan">Active Semester 8</span>
+          </div>
+
+          <div className="student-roster-table-wrap">
+            <table className="c1-table">
+              <thead>
+                <tr>
+                  <th>Roll Number</th>
+                  <th>Student Name</th>
+                  <th>Section</th>
+                  <th>Attendance</th>
+                  <th>Assignments</th>
+                  <th>CGPA</th>
+                  <th>Academic Standing</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredStudents.map((stu) => (
+                  <tr key={stu.id}>
+                    <td><span className="course-code-cell">{stu.id}</span></td>
+                    <td>
+                      <div>
+                        <strong style={{ color: '#ffffff' }}>{stu.name}</strong>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{stu.email}</div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="c1-badge c1-badge-purple">Section {stu.section}</span>
+                    </td>
+                    <td>
+                      <span
+                        style={{
+                          fontWeight: 700,
+                          color:
+                            stu.attendancePercent >= 85
+                              ? 'var(--color-success)'
+                              : stu.attendancePercent >= 75
+                              ? 'var(--accent-blue)'
+                              : 'var(--color-error)'
+                        }}
+                      >
+                        {stu.attendancePercent}%
                       </span>
                     </td>
-                    <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                      <span className="subject-att-status good" style={{ fontSize: '8.5px' }}>ACTIVE</span>
+                    <td>
+                      <span>{stu.assignmentsCompleted} / 12</span>
                     </td>
-                    <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                    <td>
+                      <strong style={{ color: '#ffffff' }}>{stu.cgpa.toFixed(1)}</strong>
+                    </td>
+                    <td>{getPerformanceBadge(stu.performance)}</td>
+                    <td>
                       <button
                         type="button"
-                        className="btn-sso"
-                        style={{ height: '28px', fontSize: '11px', padding: '0 10px', margin: 0, width: 'auto' }}
-                        onClick={() => setSelectedStudent(st)}
+                        className="c1-btn c1-btn-secondary"
+                        style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                        onClick={() => setSelectedStudent(stu)}
                       >
-                        Profile
+                        <i className="fa-solid fa-id-card"></i>
+                        <span>Profile</span>
                       </button>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={9} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    No students matched the criteria.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      {/* Details Academic Profile Modal */}
-      {selectedStudent && (
-        <div className="search-modal-overlay" onClick={() => setSelectedStudent(null)}>
-          <div className="search-modal-card" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
-            <div className="search-modal-header" style={{ justifyContent: 'space-between', padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <div>
-                <span style={{ fontSize: '10px', color: 'var(--accent-highlight)', display: 'block', textTransform: 'uppercase' }}>STUDENT DOSSIER</span>
-                <h2 style={{ fontSize: '16.5px', marginTop: '2px' }}>Academic Profile</h2>
-              </div>
-              <button type="button" className="btn-search-close" onClick={() => setSelectedStudent(null)}>
-                <i className="fa-solid fa-xmark" style={{ fontSize: '14px' }}></i>
-              </button>
-            </div>
-
-            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', borderBottom: '1px solid rgba(255,255,255,0.04)', paddingBottom: '16px' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: '800', fontSize: '16px' }}>
-                  {selectedStudent.name.split(' ').map((n) => n[0]).join('')}
+        {/* ============================================================
+            MODAL: STUDENT ACADEMIC PROFILE MODAL
+            ============================================================ */}
+        {selectedStudent && (
+          <Modal
+            isOpen={true}
+            onClose={() => setSelectedStudent(null)}
+            title={`Student Academic Profile: ${selectedStudent.name}`}
+            maxWidth="md"
+          >
+            <div className="student-profile-dialog-content">
+              <div className="student-dialog-header">
+                <div className="student-avatar-badge">
+                  {selectedStudent.name.substring(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '15.5px', fontWeight: '800', color: 'white' }}>{selectedStudent.name}</h3>
-                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>ID: {selectedStudent.id}</span>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', fontSize: '12.5px' }}>
-                <div>Department: <strong style={{ color: 'white' }}>{selectedStudent.department}</strong></div>
-                <div>Year Level: <strong style={{ color: 'white' }}>{selectedStudent.year}</strong></div>
-                <div>Section: <strong style={{ color: 'white' }}>{selectedStudent.section}</strong></div>
-                <div>CGPA Score: <strong style={{ color: 'var(--accent-highlight)' }}>{selectedStudent.cgpa}</strong></div>
-                <div>Phone No: <strong style={{ color: 'white' }}>{selectedStudent.phone}</strong></div>
-                <div>Email ID: <strong style={{ color: 'white' }}>{selectedStudent.email}</strong></div>
-              </div>
-
-              <div style={{ borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12.5px' }}>
-                <h4 style={{ color: 'white', fontSize: '13px', fontWeight: '700' }}>Academic Progress Metrics</h4>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Course Attendance:</span>
-                  <strong style={{ color: selectedStudent.attendancePercent >= 75 ? '#00d89a' : 'var(--color-error)' }}>{selectedStudent.attendancePercent}%</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Assignments Done:</span>
-                  <strong style={{ color: 'white' }}>{selectedStudent.assignmentsCompleted} / 12</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Overall Rating:</span>
-                  <span className={`subject-att-status ${selectedStudent.performance === 'Excellent' || selectedStudent.performance === 'Good' ? 'safe' : 'warning'}`} style={{ fontSize: '8.5px' }}>
-                    {selectedStudent.performance}
+                  <h3 className="stu-name">{selectedStudent.name}</h3>
+                  <span className="stu-sub">
+                    Roll No: <strong>{selectedStudent.id}</strong> • Department of {selectedStudent.department}
                   </span>
                 </div>
               </div>
 
-              <button
-                type="button"
-                className="btn-signin"
-                style={{ width: '100%', height: '36px', margin: 0, marginTop: '10px', fontSize: '12.5px' }}
-                onClick={() => setSelectedStudent(null)}
-              >
-                Close Profile
-              </button>
+              <div className="student-profile-metrics-grid">
+                <div className="d-cell">
+                  <span className="d-lbl">Class Section:</span>
+                  <span className="d-val">Section {selectedStudent.section} (B.Tech Year {selectedStudent.year})</span>
+                </div>
+                <div className="d-cell">
+                  <span className="d-lbl">Cumulative CGPA:</span>
+                  <span className="d-val" style={{ color: '#38bdf8' }}>{selectedStudent.cgpa} / 10.0</span>
+                </div>
+                <div className="d-cell">
+                  <span className="d-lbl">Attendance Percentage:</span>
+                  <span className="d-val" style={{ color: selectedStudent.attendancePercent >= 75 ? '#34d399' : '#fb7185' }}>
+                    {selectedStudent.attendancePercent}% ({selectedStudent.attendancePercent >= 75 ? 'Satisfactory' : 'Low Attendance Alert'})
+                  </span>
+                </div>
+                <div className="d-cell">
+                  <span className="d-lbl">Assignment Progress:</span>
+                  <span className="d-val">{selectedStudent.assignmentsCompleted} of 12 Tasks Submitted</span>
+                </div>
+              </div>
+
+              <div className="modal-dialog-footer">
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setSelectedStudent(null)}
+                >
+                  Close Profile
+                </button>
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-gradient"
+                  onClick={() => {
+                    setSelectedStudent(null);
+                    navigate('/faculty/results');
+                  }}
+                >
+                  <i className="fa-solid fa-chart-line"></i>
+                  <span>Enter Student Marks</span>
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
-    </div>
+          </Modal>
+        )}
+      </div>
+    </AppLayout>
   );
 };
+
 export default FacultyStudents;

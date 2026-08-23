@@ -133,6 +133,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) =
 
   return (
     <div
+      className="search-modal-overlay"
       style={{
         position: 'fixed',
         top: 0,
@@ -145,12 +146,12 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) =
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'flex-start',
-        paddingTop: '80px',
         fontFamily: 'Inter, system-ui, sans-serif'
       }}
       onClick={onClose}
     >
       <div
+        className="search-modal-card"
         style={{
           width: '640px',
           maxWidth: 'calc(100vw - 32px)',

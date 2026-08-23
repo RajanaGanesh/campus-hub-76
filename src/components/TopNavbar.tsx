@@ -49,21 +49,56 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
     '/student/ai-assistant': ['Intelligence', 'CampusOne AI Assistant'],
     '/student/profile': ['Account', 'Student Profile'],
     '/student/settings': ['Account', 'Settings'],
-    '/attendance': ['Academic', 'Attendance'],
-    '/timetable': ['Academic', 'Timetable'],
-    '/assignments': ['Academic', 'Assignments'],
-    '/exams': ['Academic', 'Examinations'],
-    '/results': ['Academic', 'Results'],
-    '/learning': ['Academic', 'LMS Learning'],
-    '/library': ['Services', 'Library'],
-    '/fees': ['Services', 'Fees & Payments'],
-    '/placements': ['Services', 'Placements'],
-    '/hostel': ['Services', 'Hostel Mess'],
-    '/transport': ['Services', 'Transport'],
-    '/notifications': ['Communication', 'Notifications'],
-    '/assistant': ['Intelligence', 'Campus AI'],
-    '/profile': ['Account', 'Profile'],
-    '/settings': ['Account', 'Settings'],
+    // Faculty Portal
+    '/faculty': ['Faculty Portal', 'Dashboard'],
+    '/faculty/dashboard': ['Faculty Portal', 'Dashboard'],
+    '/faculty/courses': ['Faculty Portal', 'My Courses'],
+    '/faculty/students': ['Faculty Portal', 'Student Directory'],
+    '/faculty/attendance': ['Faculty Portal', 'Mark Attendance'],
+    '/faculty/assignments': ['Faculty Portal', 'Assignments & Grading'],
+    '/faculty/exams': ['Faculty Portal', 'Examinations'],
+    '/faculty/results': ['Faculty Portal', 'Marks Valuation'],
+    '/faculty/materials': ['Faculty Portal', 'Study Materials'],
+    '/faculty/notices': ['Faculty Portal', 'Academic Notices'],
+    '/faculty/notifications': ['Faculty Portal', 'Notifications'],
+
+    // Admin Portal
+    '/admin': ['Admin Portal', 'Executive Dashboard'],
+    '/admin/dashboard': ['Admin Portal', 'Executive Dashboard'],
+    '/admin/students': ['Admin Portal', 'Student Admissions'],
+    '/admin/faculty': ['Admin Portal', 'Faculty Roster'],
+    '/admin/courses': ['Admin Portal', 'Course Management'],
+    '/admin/departments': ['Admin Portal', 'Academic Departments'],
+    '/admin/attendance': ['Admin Portal', 'Attendance Audit'],
+    '/admin/assignments': ['Admin Portal', 'Assignments Overview'],
+    '/admin/exams': ['Admin Portal', 'Examinations & Conflicts'],
+    '/admin/results': ['Admin Portal', 'Results Ledger'],
+    '/admin/fees': ['Admin Portal', 'Fee Realization'],
+    '/admin/library': ['Admin Portal', 'Central Library Master'],
+    '/admin/hostel': ['Admin Portal', 'Hostel Management'],
+    '/admin/transport': ['Admin Portal', 'Transport Fleet'],
+    '/admin/placements': ['Admin Portal', 'Placements & Corporate'],
+    '/admin/notices': ['Admin Portal', 'Institutional Notices'],
+    '/admin/notifications': ['Admin Portal', 'System Notifications'],
+    '/admin/users': ['Admin Portal', 'User RBAC Accounts'],
+    '/admin/reports': ['Admin Portal', 'Reports & Data Export'],
+    '/admin/settings': ['Admin Portal', 'System Settings'],
+
+    // Parent Portal
+    '/parent': ['Parent Portal', 'Parent Dashboard'],
+    '/parent/dashboard': ['Parent Portal', 'Parent Dashboard'],
+    '/parent/attendance': ['Parent Portal', "Student's Attendance"],
+    '/parent/academics': ['Parent Portal', 'Academic Results & GPA'],
+    '/parent/results': ['Parent Portal', 'Academic Results & GPA'],
+    '/parent/assignments': ['Parent Portal', 'Coursework & Homework'],
+    '/parent/exams': ['Parent Portal', 'Examination Schedules'],
+    '/parent/fees': ['Parent Portal', 'Tuition Fees & Receipts'],
+    '/parent/library': ['Parent Portal', 'Library Book Loans'],
+    '/parent/hostel': ['Parent Portal', 'Hostel Accommodation'],
+    '/parent/placements': ['Parent Portal', 'Placements & Job Offers'],
+    '/parent/notices': ['Parent Portal', 'Parent Circulars'],
+    '/parent/notifications': ['Parent Portal', 'Notification Center'],
+    '/parent/settings': ['Parent Portal', 'Guardian Profile & Alerts'],
   };
 
   const currentPath = location.pathname;
@@ -127,6 +162,15 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
       </div>
 
       <div className="navbar-right">
+        <button
+          type="button"
+          className="btn-nav-action btn-mobile-search"
+          onClick={onSearchOpen}
+          aria-label="Search Campus Hub"
+        >
+          <i className="fa-solid fa-magnifying-glass"></i>
+        </button>
+
         <button
           type="button"
           className="btn-nav-action btn-ai-shortcut"

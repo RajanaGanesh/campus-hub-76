@@ -125,7 +125,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
       {/* Dropdown Notification panel placement */}
       {isNotificationsOpen && (
-        <div style={{ position: 'fixed', top: '70px', right: '100px', zIndex: 1000 }} onClick={(e) => e.stopPropagation()}>
+        <div className="notifications-portal-wrapper" onClick={(e) => e.stopPropagation()}>
           <NotificationPanel
             isOpen={isNotificationsOpen}
             notifications={notifications}

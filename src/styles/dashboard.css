@@ -8014,30 +8014,428 @@
   color: var(--text-muted);
 }
 
-/* RESPONSIVE LAYOUT ADJUSTMENTS FOR FACULTY */
+/* ==========================================================================
+   GLOBAL COMPREHENSIVE RESPONSIVE STYLES (DESKTOP, TABLET, MOBILE)
+   ========================================================================== */
+
+/* Default Navbar Mobile Search (Hidden on desktop) */
+.btn-mobile-search {
+  display: none;
+}
+
+.notifications-portal-wrapper {
+  position: fixed;
+  top: 70px;
+  right: 80px;
+  z-index: 1000;
+}
+
+/* ==========================================================================
+   1. LAPTOP & SMALL DESKTOP (<= 1024px)
+   ========================================================================== */
 @media (max-width: 1024px) {
+  .dashboard-main-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
   .faculty-courses-full-grid {
     grid-template-columns: 1fr;
   }
+
+  .stats-grid,
+  .academic-stats-grid,
+  .faculty-dashboard-metrics,
+  .admin-stats-grid,
+  .parent-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .student-dashboard-page {
+    padding: 20px 24px 40px;
+  }
+
+  .page-container {
+    padding: 24px 20px;
+  }
 }
 
+/* ==========================================================================
+   2. TABLET (<= 768px)
+   ========================================================================== */
 @media (max-width: 768px) {
-  .faculty-shortcuts-grid {
+  /* Layout & Sidebar */
+  .app-layout {
+    width: 100%;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .main-content {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -290px;
+    width: 280px;
+    height: 100vh;
+    height: 100dvh;
+    z-index: 1000;
+    transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+  }
+
+  .sidebar.mobile-open {
+    left: 0;
+  }
+
+  .sidebar.collapsed {
+    width: 280px;
+    left: -290px;
+  }
+
+  .sidebar.collapsed.mobile-open {
+    left: 0;
+  }
+
+  .sidebar.collapsed .brand-text {
+    display: flex;
+  }
+
+  .page-container {
+    padding: 16px 14px;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* Top Navbar */
+  .top-navbar {
+    padding: 0 12px;
+    height: 62px;
+  }
+
+  .navbar-left {
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .btn-sidebar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    flex-shrink: 0;
+  }
+
+  .page-title-area {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .page-title-area .breadcrumb {
+    display: none;
+  }
+
+  .page-title-area h2 {
+    font-size: 15px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .navbar-search {
+    display: none;
+  }
+
+  .btn-mobile-search {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-ai-shortcut {
+    display: none;
+  }
+
+  .user-info-text {
+    display: none;
+  }
+
+  .user-menu-trigger i.fa-chevron-down {
+    display: none;
+  }
+
+  .user-menu-trigger {
+    padding: 4px 6px;
+  }
+
+  /* Notification panel positioning */
+  .notifications-portal-wrapper {
+    top: 64px;
+    right: 8px;
+    left: 8px;
+    width: auto;
+    max-width: calc(100vw - 16px);
+  }
+
+  .notification-dropdown-panel {
+    width: 100%;
+    max-width: 100%;
+    max-height: 80vh;
+    max-height: 80dvh;
+  }
+
+  /* Welcome Banner */
+  .student-welcome-banner,
+  .faculty-welcome-banner,
+  .admin-welcome-banner,
+  .parent-welcome-banner {
+    padding: 22px 18px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    border-radius: 16px;
+  }
+
+  .welcome-title {
+    font-size: 1.45rem;
+  }
+
+  /* Grids & Cards */
+  .faculty-shortcuts-grid,
+  .course-info-grid-compact,
+  .course-dialog-metrics-grid,
+  .student-profile-metrics-grid,
+  .dialog-exam-meta-grid,
+  .exam-metrics-grid-box {
     grid-template-columns: 1fr;
   }
-  .course-info-grid-compact {
-    grid-template-columns: 1fr;
+
+  .quick-access-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
   }
-  .course-dialog-metrics-grid {
-    grid-template-columns: 1fr;
+
+  /* Module Headers & Action Bars */
+  .c1-module-header,
+  .faculty-header,
+  .admin-header,
+  .parent-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
   }
-  .student-profile-metrics-grid {
-    grid-template-columns: 1fr;
+
+  .c1-header-actions,
+  .faculty-actions,
+  .admin-actions {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
   }
-  .dialog-exam-meta-grid {
-    grid-template-columns: 1fr;
+
+  .c1-header-actions .c1-btn,
+  .faculty-actions .c1-btn,
+  .admin-actions .c1-btn {
+    flex: 1 1 auto;
+  }
+
+  /* Tabs Navigation Horizontal Scroll */
+  .c1-tabs-nav,
+  .nav-tabs,
+  .sub-nav-tabs,
+  .role-switcher-tabs {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    width: 100%;
+    max-width: 100%;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+
+  .c1-tabs-nav::-webkit-scrollbar,
+  .nav-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Search & Filter Toolbars */
+  .c1-filter-bar,
+  .faculty-filter-bar,
+  .admin-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .c1-search-input-wrap,
+  .faculty-search-box,
+  .admin-search-box {
+    width: 100%;
+    max-width: 100%;
   }
 }
+
+/* ==========================================================================
+   3. MOBILE PHONES (<= 480px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .page-container {
+    padding: 12px 10px;
+  }
+
+  .student-dashboard-page {
+    padding: 12px 8px 36px;
+  }
+
+  .stats-grid,
+  .academic-stats-grid,
+  .faculty-dashboard-metrics,
+  .admin-stats-grid,
+  .parent-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .quick-access-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .card-panel,
+  .c1-card {
+    padding: 16px 14px;
+    border-radius: 12px;
+  }
+
+  .attendance-card-body {
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  /* Modals on Mobile */
+  .modal-backdrop,
+  .search-modal-overlay {
+    padding: 10px;
+    align-items: flex-start;
+    padding-top: 20px;
+  }
+
+  .modal-card,
+  .c1-modal-card,
+  .search-modal-card {
+    width: 100% !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100vh - 40px) !important;
+    max-height: calc(100dvh - 40px) !important;
+    padding: 16px 12px !important;
+    border-radius: 14px !important;
+  }
+
+  /* Search Modal results */
+  .search-results-list {
+    max-height: 260px;
+  }
+
+  .search-modal-footer {
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 9.5px;
+  }
+
+  /* Floating AI Assistant on Mobile */
+  .campus-ai-assistant {
+    bottom: 16px;
+    right: 16px;
+  }
+
+  .btn-ai-floating {
+    padding: 9px 14px;
+    font-size: 0.8125rem;
+  }
+
+  /* Form Stacking on Mobile */
+  .form-row,
+  .c1-form-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .form-row > *,
+  .c1-form-row > * {
+    width: 100% !important;
+  }
+
+  /* Tables inside cards */
+  .c1-table th,
+  .c1-table td,
+  .custom-table th,
+  .custom-table td {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+}
+
+/* ==========================================================================
+   4. ULTRA-SMALL MOBILE (<= 375px & 360px)
+   ========================================================================== */
+@media (max-width: 375px) {
+  .page-container {
+    padding: 10px 8px;
+  }
+
+  .top-navbar {
+    padding: 0 8px;
+    height: 58px;
+  }
+
+  .page-title-area h2 {
+    font-size: 13.5px;
+    max-width: 130px;
+  }
+
+  .card-panel,
+  .c1-card {
+    padding: 14px 10px;
+  }
+
+  .welcome-title {
+    font-size: 1.3rem;
+  }
+
+  .stat-card-value {
+    font-size: 22px;
+  }
+
+  .btn-nav-action {
+    width: 32px;
+    height: 32px;
+  }
+
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+}
+
 
 
 

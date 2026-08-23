@@ -101,6 +101,7 @@ export const CampusAIAssistant: React.FC = () => {
       {!isOpen && (
         <button
           type="button"
+          className="campus-ai-btn"
           onClick={() => setIsOpen(true)}
           style={{
             position: 'fixed',
@@ -145,6 +146,7 @@ export const CampusAIAssistant: React.FC = () => {
       {/* Slide-in Assistant Panel */}
       {isOpen && (
         <div
+          className="campus-ai-panel"
           style={{
             position: 'fixed',
             bottom: '24px',

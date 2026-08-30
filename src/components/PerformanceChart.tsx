@@ -77,7 +77,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ data }) => {
                   y1={y}
                   x2={width - marginRight}
                   y2={y}
-                  stroke="rgba(255,255,255,0.04)"
+                  stroke="var(--border-subtle)"
                   strokeDasharray="4 4"
                   strokeWidth="1"
                 />
@@ -135,7 +135,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ data }) => {
                 cx={p.x}
                 cy={p.y}
                 r={hoveredIndex === index ? 6 : 4}
-                fill="#100f28"
+                fill="var(--bg-card)"
                 stroke={hoveredIndex === index ? 'var(--accent-highlight)' : 'var(--accent-primary)'}
                 strokeWidth="2.5"
                 style={{ transition: 'all 0.15s' }}
@@ -157,13 +157,13 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ data }) => {
               position: 'absolute',
               left: `${points[hoveredIndex].x - 40}px`,
               top: `${points[hoveredIndex].y - 38}px`,
-              background: '#100f2e',
-              border: '1px solid var(--accent-highlight)',
-              boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-focus)',
+              boxShadow: 'var(--shadow-card)',
               borderRadius: '6px',
               padding: '4px 8px',
               fontSize: '11px',
-              color: 'white',
+              color: 'var(--text-primary)',
               fontWeight: '700',
               pointerEvents: 'none',
               zIndex: 10,

@@ -2,6 +2,7 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { UserProfileMenu } from './UserProfileMenu';
+import { ThemeToggle } from './ThemeToggle';
 
 interface TopNavbarProps {
   onSidebarToggle: () => void;
@@ -179,6 +180,8 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
         >
           <i className="fa-solid fa-robot"></i>
         </button>
+
+        <ThemeToggle variant="dropdown" />
 
         <button
           type="button"

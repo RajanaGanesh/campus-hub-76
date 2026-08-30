@@ -37,8 +37,8 @@ export class ErrorBoundary extends Component<Props, State> {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#060713',
-            color: '#f8fafc',
+            backgroundColor: 'var(--bg-primary)',
+            color: 'var(--text-primary)',
             fontFamily: 'Inter, system-ui, sans-serif',
             padding: '24px'
           }}
@@ -47,12 +47,12 @@ export class ErrorBoundary extends Component<Props, State> {
             style={{
               maxWidth: '520px',
               width: '100%',
-              backgroundColor: 'rgba(15, 23, 42, 0.85)',
-              border: '1px solid rgba(244, 63, 94, 0.3)',
+              backgroundColor: 'var(--bg-card)',
+              border: '1px solid var(--border-medium)',
               borderRadius: '16px',
               padding: '36px 28px',
               textAlign: 'center',
-              boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+              boxShadow: 'var(--shadow-modal)'
             }}
           >
             <div
@@ -60,8 +60,8 @@ export class ErrorBoundary extends Component<Props, State> {
                 width: '64px',
                 height: '64px',
                 borderRadius: '50%',
-                backgroundColor: 'rgba(244, 63, 94, 0.15)',
-                color: '#fb7185',
+                backgroundColor: 'var(--color-error-bg)',
+                color: 'var(--color-error)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -71,10 +71,10 @@ export class ErrorBoundary extends Component<Props, State> {
             >
               <i className="fa-solid fa-triangle-exclamation"></i>
             </div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ffffff', marginBottom: '8px' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>
               Something went wrong
             </h2>
-            <p style={{ color: '#94a3b8', fontSize: '0.875rem', lineHeight: 1.6, marginBottom: '24px' }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.6, marginBottom: '24px' }}>
               An unexpected error occurred while rendering this page. Our technical team has been notified. You can safely return to your dashboard.
             </p>
             <button
@@ -83,12 +83,12 @@ export class ErrorBoundary extends Component<Props, State> {
                 padding: '12px 28px',
                 borderRadius: '10px',
                 border: 'none',
-                background: 'linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%)',
+                background: 'var(--gradient-primary)',
                 color: '#ffffff',
                 fontWeight: 700,
                 fontSize: '0.9375rem',
                 cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(79, 70, 229, 0.4)'
+                boxShadow: 'var(--glow-primary)'
               }}
             >
               <i className="fa-solid fa-rotate-right" style={{ marginRight: '8px' }}></i>

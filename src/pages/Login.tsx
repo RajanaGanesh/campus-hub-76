@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Logo } from '../components/Logo';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { InputField } from '../components/InputField';
 import { PasswordField } from '../components/PasswordField';
 import { AuthAlert } from '../components/AuthAlert';
@@ -160,7 +161,11 @@ export const Login: React.FC = () => {
       {/* ================================================================
           RIGHT PANEL - AUTHENTICATION FORM CARD
           ================================================================ */}
-      <div className="login-right">
+      <div className="login-right" style={{ position: 'relative' }}>
+        <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 10 }}>
+          <ThemeToggle variant="dropdown" />
+        </div>
+
         <div className="login-card">
           {/* Mobile-only logo */}
           <div className="login-mobile-header">

@@ -2,66 +2,72 @@
    CAMPUSONE DESIGN SYSTEM - CORE VARIABLES & GLOBAL UTILITIES (theme.css)
    ========================================================================== */
 
-:root {
+/* 1. DEFAULT THEME TOKENS (LIGHT MODE AS PRIMARY DEFAULT) */
+:root,
+[data-theme="light"],
+.theme-light {
   /* Surface & Background Colors */
-  --bg-primary: #060713;          /* Deepest dark navy / black */
-  --bg-secondary: #0c0e22;        /* Dark navy-purple panel background */
-  --bg-card: #11132b;             /* Dark card surface */
-  --bg-elevated: #171a38;         /* Elevated surface for popovers/menus */
-  --bg-input: rgba(255, 255, 255, 0.03);
-  --bg-input-focus: rgba(255, 255, 255, 0.06);
+  --bg-primary: #F8FAFC;          /* Clean light canvas */
+  --bg-secondary: #FFFFFF;        /* Pure white panel */
+  --bg-card: #FFFFFF;             /* Pure white card surface */
+  --bg-elevated: #FFFFFF;         /* Pure white elevated surface */
+  --bg-input: #FFFFFF;            /* White form input */
+  --bg-input-focus: #FFFFFF;
+  --bg-hover: #F1F5F9;
+  --border-color: #E2E8F0;
 
   /* Primary Brand Gradients */
-  --gradient-primary: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
-  --gradient-logo: linear-gradient(135deg, #6366f1 0%, #38bdf8 100%);
-  --gradient-accent: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
-  --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
-  --gradient-glow: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+  --gradient-primary: linear-gradient(135deg, #6C4BFF 0%, #2196F3 100%);
+  --gradient-logo: linear-gradient(135deg, #6C4BFF 0%, #06B6D4 100%);
+  --gradient-accent: linear-gradient(135deg, #8B5CF6 0%, #6C4BFF 100%);
+  --gradient-card: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+  --gradient-glow: radial-gradient(circle, rgba(108, 75, 255, 0.08) 0%, transparent 70%);
 
   /* Accent & Highlight Colors */
-  --accent-primary: #6366f1;      /* Indigo / violet */
-  --accent-secondary: #3b82f6;    /* Electric blue */
-  --accent-blue: #38bdf8;         /* Cyan-blue highlight */
-  --accent-purple: #7c5cff;       /* Purple highlight */
-  --accent-violet: #8b5cf6;       /* Violet accent */
-  --accent-cyan: #06b6d4;         /* Teal / cyan */
+  --accent-primary: #6C4BFF;      /* Signature CampusOne Purple */
+  --accent-secondary: #2196F3;    /* Electric Blue */
+  --accent-blue: #0284C7;         /* Cyan-blue highlight */
+  --accent-purple: #7C3AED;       /* Purple highlight */
+  --accent-violet: #8B5CF6;       /* Violet accent */
+  --accent-cyan: #06B6D4;         /* Teal / cyan */
+  --accent-highlight: #0284C7;
 
   /* Status Colors */
-  --color-success: #10b981;
-  --color-success-bg: rgba(16, 185, 129, 0.1);
-  --color-success-border: rgba(16, 185, 129, 0.25);
+  --color-success: #16A34A;
+  --color-success-bg: #DCFCE7;
+  --color-success-border: #86EFAC;
 
-  --color-warning: #f59e0b;
-  --color-warning-bg: rgba(245, 158, 11, 0.1);
-  --color-warning-border: rgba(245, 158, 11, 0.25);
+  --color-warning: #F59E0B;
+  --color-warning-bg: #FEF3C7;
+  --color-warning-border: #FDE68A;
 
-  --color-error: #f43f5e;         /* Vibrant red-pink */
-  --color-error-bg: rgba(244, 63, 94, 0.1);
-  --color-error-border: rgba(244, 63, 94, 0.25);
+  --color-error: #DC2626;
+  --color-error-bg: #FEE2E2;
+  --color-error-border: #FECACA;
 
-  --color-info: #38bdf8;
-  --color-info-bg: rgba(56, 189, 248, 0.1);
-  --color-info-border: rgba(56, 189, 248, 0.25);
+  --color-info: #0284C7;
+  --color-info-bg: #E0F2FE;
+  --color-info-border: #BAE6FD;
 
   /* Typography Text Colors */
-  --text-primary: #ffffff;
-  --text-secondary: #94a3b8;      /* Slate-400 */
-  --text-muted: #64748b;          /* Slate-500 */
-  --text-dim: #475569;            /* Slate-600 */
-  --text-inverse: #060713;
+  --text-primary: #111827;        /* Crisp dark text */
+  --text-secondary: #475569;      /* Slate-600 */
+  --text-muted: #64748B;          /* Slate-500 */
+  --text-dim: #94A3B8;            /* Slate-400 */
+  --text-inverse: #FFFFFF;
 
   /* Borders & Dividers */
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-medium: rgba(255, 255, 255, 0.12);
-  --border-focus: #6366f1;
-  --border-hover: rgba(255, 255, 255, 0.18);
+  --border-subtle: #E2E8F0;
+  --border-medium: #CBD5E1;
+  --border-focus: #6C4BFF;
+  --border-hover: #94A3B8;
 
   /* Shadows & Glows */
-  --glow-primary: 0 4px 20px rgba(99, 102, 241, 0.35);
-  --glow-accent: 0 0 25px rgba(56, 189, 248, 0.2);
-  --glow-focus: 0 0 0 3px rgba(99, 102, 241, 0.25);
-  --shadow-card: 0 12px 36px -4px rgba(0, 0, 0, 0.5);
-  --shadow-modal: 0 24px 48px -8px rgba(0, 0, 0, 0.7);
+  --glow-primary: 0 4px 20px rgba(108, 75, 255, 0.2);
+  --glow-accent: 0 0 25px rgba(6, 182, 212, 0.15);
+  --glow-focus: 0 0 0 3px rgba(108, 75, 255, 0.2);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+  --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
 
   /* Typography Scale */
   --font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -78,6 +84,97 @@
   --transition-fast: 0.15s ease;
   --transition-normal: 0.25s ease;
   --transition-smooth: 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-theme: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* 2. DARK THEME TOKENS */
+[data-theme="dark"],
+.theme-dark {
+  /* Surface & Background Colors */
+  --bg-primary: #0B1020;          /* Soft modern dark canvas */
+  --bg-secondary: #111827;        /* Dark navy-slate panel */
+  --bg-card: #172033;             /* Dark card surface */
+  --bg-elevated: #1E293B;         /* Elevated popovers & menus */
+  --bg-input: rgba(255, 255, 255, 0.04);
+  --bg-input-focus: rgba(255, 255, 255, 0.08);
+  --bg-hover: rgba(255, 255, 255, 0.05);
+  --border-color: rgba(255, 255, 255, 0.08);
+
+  /* Primary Brand Gradients */
+  --gradient-primary: linear-gradient(135deg, #6C4BFF 0%, #2196F3 100%);
+  --gradient-logo: linear-gradient(135deg, #6C4BFF 0%, #06B6D4 100%);
+  --gradient-accent: linear-gradient(135deg, #8B5CF6 0%, #6C4BFF 100%);
+  --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+  --gradient-glow: radial-gradient(circle, rgba(108, 75, 255, 0.18) 0%, transparent 70%);
+
+  /* Accent & Highlight Colors */
+  --accent-primary: #6C4BFF;
+  --accent-secondary: #2196F3;
+  --accent-blue: #38BDF8;
+  --accent-purple: #7C5CFF;
+  --accent-violet: #8B5CF6;
+  --accent-cyan: #06B6D4;
+  --accent-highlight: #06B6D4;
+
+  /* Status Colors */
+  --color-success: #10B981;
+  --color-success-bg: rgba(16, 185, 129, 0.12);
+  --color-success-border: rgba(16, 185, 129, 0.25);
+
+  --color-warning: #F59E0B;
+  --color-warning-bg: rgba(245, 158, 11, 0.12);
+  --color-warning-border: rgba(245, 158, 11, 0.25);
+
+  --color-error: #F43F5E;
+  --color-error-bg: rgba(244, 63, 94, 0.12);
+  --color-error-border: rgba(244, 63, 94, 0.25);
+
+  --color-info: #38BDF8;
+  --color-info-bg: rgba(56, 189, 248, 0.12);
+  --color-info-border: rgba(56, 189, 248, 0.25);
+
+  /* Typography Text Colors */
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --text-dim: #475569;
+  --text-inverse: #0B1020;
+
+  /* Borders & Dividers */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.12);
+  --border-focus: #6C4BFF;
+  --border-hover: rgba(255, 255, 255, 0.18);
+
+  /* Shadows & Glows */
+  --glow-primary: 0 4px 20px rgba(108, 75, 255, 0.35);
+  --glow-accent: 0 0 25px rgba(6, 182, 212, 0.2);
+  --glow-focus: 0 0 0 3px rgba(108, 75, 255, 0.25);
+  --shadow-card: 0 12px 36px -4px rgba(0, 0, 0, 0.5);
+  --shadow-modal: 0 24px 48px -8px rgba(0, 0, 0, 0.7);
+}
+
+/* 3. SMOOTH THEME TRANSITION */
+@media (prefers-reduced-motion: no-preference) {
+  body,
+  .app-layout,
+  .sidebar,
+  .top-navbar,
+  .card-panel,
+  .c1-card,
+  .modal-card,
+  .c1-modal-card,
+  .dropdown-menu,
+  .theme-dropdown-menu,
+  .search-modal-card,
+  .campus-ai-panel,
+  .c1-btn,
+  .nav-item,
+  input,
+  select,
+  textarea {
+    transition: var(--transition-theme);
+  }
 }
 
 /* ==========================================================================

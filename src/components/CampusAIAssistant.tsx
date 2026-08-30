@@ -155,10 +155,10 @@ export const CampusAIAssistant: React.FC = () => {
             maxWidth: 'calc(100vw - 32px)',
             height: '600px',
             maxHeight: 'calc(100vh - 48px)',
-            backgroundColor: '#0c0e22',
-            border: '1px solid rgba(99, 102, 241, 0.3)',
+            backgroundColor: 'var(--bg-card)',
+            border: '1px solid var(--border-medium)',
             borderRadius: '16px',
-            boxShadow: '0 25px 60px rgba(0, 0, 0, 0.6), 0 0 30px rgba(99, 102, 241, 0.2)',
+            boxShadow: 'var(--shadow-modal)',
             zIndex: 999,
             display: 'flex',
             flexDirection: 'column',
@@ -170,8 +170,8 @@ export const CampusAIAssistant: React.FC = () => {
           <div
             style={{
               padding: '16px 20px',
-              background: 'linear-gradient(135deg, rgba(30, 27, 75, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%)',
-              borderBottom: '1px solid rgba(99, 102, 241, 0.2)',
+              background: 'var(--bg-secondary)',
+              borderBottom: '1px solid var(--border-subtle)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center'
@@ -183,21 +183,21 @@ export const CampusAIAssistant: React.FC = () => {
                   width: '36px',
                   height: '36px',
                   borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%)',
+                  background: 'var(--gradient-logo)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: '#ffffff',
                   fontSize: '1rem',
-                  boxShadow: '0 0 12px rgba(99, 102, 241, 0.4)'
+                  boxShadow: 'var(--glow-primary)'
                 }}
               >
                 <i className="fa-solid fa-wand-magic-sparkles"></i>
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#ffffff' }}>CampusOne Assistant</h3>
-                <span style={{ fontSize: '0.6875rem', color: '#34d399', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#34d399', display: 'inline-block' }}></span>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>CampusOne Assistant</h3>
+                <span style={{ fontSize: '0.6875rem', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#16a34a', display: 'inline-block' }}></span>
                   Online • {userRole.toUpperCase()} MODE
                 </span>
               </div>
@@ -243,7 +243,7 @@ export const CampusAIAssistant: React.FC = () => {
           <div
             style={{
               padding: '10px 14px',
-              backgroundColor: 'rgba(255, 255, 255, 0.02)',
+              backgroundColor: 'var(--bg-primary)',
               borderBottom: '1px solid var(--border-subtle)',
               display: 'flex',
               gap: '6px',
@@ -261,9 +261,9 @@ export const CampusAIAssistant: React.FC = () => {
                   padding: '5px 10px',
                   fontSize: '0.75rem',
                   borderRadius: '9999px',
-                  border: '1px solid rgba(99, 102, 241, 0.25)',
-                  backgroundColor: 'rgba(99, 102, 241, 0.08)',
-                  color: '#c7d2fe',
+                  border: '1px solid var(--border-medium)',
+                  backgroundColor: 'var(--bg-card)',
+                  color: 'var(--accent-primary)',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease'
                 }}
@@ -281,7 +281,8 @@ export const CampusAIAssistant: React.FC = () => {
               overflowY: 'auto',
               display: 'flex',
               flexDirection: 'column',
-              gap: '14px'
+              gap: '14px',
+              backgroundColor: 'var(--bg-card)'
             }}
           >
             {messages.map((m) => (
@@ -298,11 +299,12 @@ export const CampusAIAssistant: React.FC = () => {
                     maxWidth: '85%',
                     padding: '12px 16px',
                     borderRadius: m.sender === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                    backgroundColor: m.sender === 'user' ? '#4f46e5' : 'rgba(30, 41, 59, 0.8)',
-                    color: '#ffffff',
+                    backgroundColor: m.sender === 'user' ? 'var(--accent-primary)' : 'var(--bg-secondary)',
+                    color: m.sender === 'user' ? '#ffffff' : 'var(--text-primary)',
                     fontSize: '0.84375rem',
                     lineHeight: 1.5,
                     border: m.sender === 'ai' ? '1px solid var(--border-subtle)' : 'none',
+                    boxShadow: 'var(--shadow-card)',
                     whiteSpace: 'pre-line'
                   }}
                 >
@@ -319,9 +321,9 @@ export const CampusAIAssistant: React.FC = () => {
                         gap: '6px',
                         padding: '6px 12px',
                         borderRadius: '6px',
-                        border: '1px solid rgba(56, 189, 248, 0.4)',
-                        backgroundColor: 'rgba(56, 189, 248, 0.15)',
-                        color: '#38bdf8',
+                        border: '1px solid var(--accent-secondary)',
+                        backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                        color: 'var(--accent-secondary)',
                         fontSize: '0.75rem',
                         fontWeight: 700,
                         cursor: 'pointer'
@@ -355,7 +357,7 @@ export const CampusAIAssistant: React.FC = () => {
             }}
             style={{
               padding: '12px 16px',
-              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              backgroundColor: 'var(--bg-secondary)',
               borderTop: '1px solid var(--border-subtle)',
               display: 'flex',
               gap: '8px'
@@ -373,7 +375,9 @@ export const CampusAIAssistant: React.FC = () => {
                 fontSize: '0.8125rem',
                 padding: '10px 14px',
                 borderRadius: '9999px',
-                backgroundColor: 'rgba(255, 255, 255, 0.04)'
+                backgroundColor: 'var(--bg-input)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-subtle)'
               }}
             />
             <button
@@ -384,8 +388,8 @@ export const CampusAIAssistant: React.FC = () => {
                 height: '38px',
                 borderRadius: '50%',
                 border: 'none',
-                background: input.trim() ? 'linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%)' : 'rgba(255, 255, 255, 0.1)',
-                color: '#ffffff',
+                background: input.trim() ? 'var(--gradient-primary)' : 'var(--bg-input)',
+                color: input.trim() ? '#ffffff' : 'var(--text-muted)',
                 cursor: input.trim() ? 'pointer' : 'default',
                 display: 'flex',
                 alignItems: 'center',

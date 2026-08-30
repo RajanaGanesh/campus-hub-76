@@ -155,10 +155,10 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) =
         style={{
           width: '640px',
           maxWidth: 'calc(100vw - 32px)',
-          backgroundColor: '#0c0e22',
-          border: '1px solid rgba(99, 102, 241, 0.4)',
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--border-medium)',
           borderRadius: '16px',
-          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.8), 0 0 35px rgba(99, 102, 241, 0.25)',
+          boxShadow: 'var(--shadow-modal)',
           overflow: 'hidden'
         }}
         onClick={(e) => e.stopPropagation()}
@@ -173,7 +173,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) =
             gap: '12px'
           }}
         >
-          <i className="fa-solid fa-magnifying-glass" style={{ color: 'var(--accent-blue)', fontSize: '1.1rem' }}></i>
+          <i className="fa-solid fa-magnifying-glass" style={{ color: 'var(--accent-primary)', fontSize: '1.1rem' }}></i>
           <input
             ref={inputRef}
             type="text"
@@ -187,7 +187,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) =
               flex: 1,
               background: 'transparent',
               border: 'none',
-              color: '#ffffff',
+              color: 'var(--text-primary)',
               fontSize: '1rem',
               outline: 'none',
               fontFamily: 'inherit'
@@ -198,7 +198,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) =
               fontSize: '0.6875rem',
               padding: '3px 8px',
               borderRadius: '4px',
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              backgroundColor: 'var(--bg-input)',
               color: 'var(--text-muted)',
               border: '1px solid var(--border-subtle)'
             }}
@@ -223,8 +223,8 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) =
                   style={{
                     padding: '12px 14px',
                     borderRadius: '10px',
-                    backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                    border: isSelected ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid transparent',
+                    backgroundColor: isSelected ? 'rgba(108, 75, 255, 0.1)' : 'transparent',
+                    border: isSelected ? '1px solid var(--border-medium)' : '1px solid transparent',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -239,8 +239,8 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) =
                         width: '36px',
                         height: '36px',
                         borderRadius: '8px',
-                        backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.3)' : 'rgba(255, 255, 255, 0.04)',
-                        color: isSelected ? '#38bdf8' : 'var(--text-secondary)',
+                        backgroundColor: isSelected ? 'rgba(108, 75, 255, 0.2)' : 'var(--bg-input)',
+                        color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -251,13 +251,13 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) =
                     </div>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <strong style={{ color: '#ffffff', fontSize: '0.875rem' }}>{item.title}</strong>
+                        <strong style={{ color: 'var(--text-primary)', fontSize: '0.875rem' }}>{item.title}</strong>
                         <span
                           style={{
                             fontSize: '0.6875rem',
                             padding: '2px 6px',
                             borderRadius: '4px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                            backgroundColor: 'var(--bg-input)',
                             color: 'var(--text-muted)'
                           }}
                         >
@@ -270,7 +270,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) =
                     </div>
                   </div>
 
-                  <i className="fa-solid fa-arrow-right" style={{ color: isSelected ? '#38bdf8' : 'transparent', fontSize: '0.8125rem' }}></i>
+                  <i className="fa-solid fa-arrow-right" style={{ color: isSelected ? 'var(--accent-primary)' : 'transparent', fontSize: '0.8125rem' }}></i>
                 </div>
               );
             })
@@ -286,7 +286,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) =
         <div
           style={{
             padding: '10px 16px',
-            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+            backgroundColor: 'var(--bg-secondary)',
             borderTop: '1px solid var(--border-subtle)',
             display: 'flex',
             justifyContent: 'space-between',
@@ -295,9 +295,9 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) =
           }}
         >
           <div style={{ display: 'flex', gap: '14px' }}>
-            <span><kbd style={{ padding: '2px 5px', borderRadius: '3px', background: 'rgba(255,255,255,0.08)' }}>↑</kbd> <kbd style={{ padding: '2px 5px', borderRadius: '3px', background: 'rgba(255,255,255,0.08)' }}>↓</kbd> Navigate</span>
-            <span><kbd style={{ padding: '2px 5px', borderRadius: '3px', background: 'rgba(255,255,255,0.08)' }}>↵</kbd> Select</span>
-            <span><kbd style={{ padding: '2px 5px', borderRadius: '3px', background: 'rgba(255,255,255,0.08)' }}>ESC</kbd> Close</span>
+            <span><kbd style={{ padding: '2px 5px', borderRadius: '3px', background: 'var(--bg-input)', border: '1px solid var(--border-subtle)' }}>↑</kbd> <kbd style={{ padding: '2px 5px', borderRadius: '3px', background: 'var(--bg-input)', border: '1px solid var(--border-subtle)' }}>↓</kbd> Navigate</span>
+            <span><kbd style={{ padding: '2px 5px', borderRadius: '3px', background: 'var(--bg-input)', border: '1px solid var(--border-subtle)' }}>↵</kbd> Select</span>
+            <span><kbd style={{ padding: '2px 5px', borderRadius: '3px', background: 'var(--bg-input)', border: '1px solid var(--border-subtle)' }}>ESC</kbd> Close</span>
           </div>
           <span>CampusOne Universal Search</span>
         </div>

@@ -3,9 +3,11 @@ import { AppLayout } from '../../components/AppLayout';
 import { useAuth } from '../../context/AuthContext';
 import { getParentLinkedStudents } from '../../data/parentData';
 import { Toast } from '../../components/Toast';
+import { useTheme, ThemeMode } from '../../context/ThemeContext';
 
 export const ParentSettings: React.FC = () => {
   const { user } = useAuth();
+  const { theme, setTheme } = useTheme();
   const linkedStudents = getParentLinkedStudents();
 
   const [parentName, setParentName] = useState(user?.name || 'Rajesh Sharma');
@@ -24,6 +26,12 @@ export const ParentSettings: React.FC = () => {
     e.preventDefault();
     showToast('Parent profile and notification preferences saved successfully!', 'success');
   };
+
+  const themeCards: { mode: ThemeMode; label: string; icon: string; desc: string }[] = [
+    { mode: 'light', label: 'Light', icon: 'fa-sun', desc: 'Bright and clean interface with high contrast.' },
+    { mode: 'dark', label: 'Dark', icon: 'fa-moon', desc: 'Comfortable for low-light environments.' },
+    { mode: 'system', label: 'System', icon: 'fa-desktop', desc: 'Automatically match your device settings.' }
+  ];
 
   return (
     <AppLayout>
@@ -54,10 +62,64 @@ export const ParentSettings: React.FC = () => {
           </div>
         </div>
 
+        {/* Theme & Appearance Preference Card */}
+        <div className="c1-card" style={{ padding: '24px', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+            <i className="fa-solid fa-palette" style={{ color: 'var(--accent-primary)', fontSize: '1.15rem' }}></i>
+            <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', fontWeight: 800, margin: 0 }}>
+              Appearance & Theme
+            </h3>
+          </div>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '18px' }}>
+            Choose your preferred display theme.
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+            {themeCards.map((t) => {
+              const isSelected = theme === t.mode;
+              return (
+                <div
+                  key={t.mode}
+                  onClick={() => {
+                    setTheme(t.mode);
+                    showToast(`Switched theme to ${t.label} Mode!`, 'success');
+                  }}
+                  style={{
+                    padding: '16px',
+                    borderRadius: 'var(--radius-lg)',
+                    border: isSelected ? '2px solid var(--accent-primary)' : '1px solid var(--border-medium)',
+                    backgroundColor: isSelected ? 'rgba(108, 75, 255, 0.08)' : 'var(--bg-card)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: isSelected ? '0 0 16px rgba(108, 75, 255, 0.2)' : 'none'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, color: isSelected ? 'var(--accent-primary)' : 'var(--text-primary)' }}>
+                      <i className={`fa-solid ${t.icon}`} style={{ fontSize: '1rem' }}></i>
+                      <span>{t.label}</span>
+                    </div>
+                    <div style={{
+                      width: '18px',
+                      height: '18px',
+                      borderRadius: '50%',
+                      border: isSelected ? '5px solid var(--accent-primary)' : '2px solid var(--border-medium)',
+                      backgroundColor: 'transparent'
+                    }} />
+                  </div>
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
+                    {t.desc}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Profile Card & Form */}
         <div className="hostel-overview-grid" style={{ gridTemplateColumns: '1.4fr 1fr' }}>
           <div className="c1-card" style={{ padding: '24px' }}>
-            <h3 style={{ color: '#ffffff', fontSize: '1.15rem', fontWeight: 800, marginBottom: '16px' }}>
+            <h3 style={{ color: 'var(--text-primary)', fontSize: '1.15rem', fontWeight: 800, marginBottom: '16px' }}>
               Guardian Contact Information
             </h3>
 

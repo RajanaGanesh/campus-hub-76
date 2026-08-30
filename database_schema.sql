@@ -15,20 +15,38 @@ create table public.profiles (
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+-- Helper security functions to avoid infinite RLS recursion
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles where id = auth.uid() and role = 'admin'
+  );
+$$;
+
+create or replace function public.is_faculty_or_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles where id = auth.uid() and role in ('faculty', 'admin')
+  );
+$$;
+
 -- Enable RLS on Profiles
 alter table public.profiles enable row level security;
 
 -- Policies for Profiles
 create policy "Users can view their own profile" on public.profiles
-  for select using (auth.uid() = id);
+  for select using (auth.uid() = id or public.is_admin());
 
 create policy "Admins can manage all profiles" on public.profiles
-  for all using (
-    exists (
-      select 1 from public.profiles
-      where public.profiles.id = auth.uid() and public.profiles.role = 'admin'
-    )
-  );
+  for all using (public.is_admin());
 
 -- 2. FACULTY TABLE
 create table public.faculty (
@@ -61,12 +79,7 @@ create policy "Students can view their own details" on public.students
   for select using (auth.uid() = id);
 
 create policy "Faculty can view student details" on public.students
-  for select using (
-    exists (
-      select 1 from public.profiles
-      where public.profiles.id = auth.uid() and public.profiles.role in ('faculty', 'admin')
-    )
-  );
+  for select using (public.is_faculty_or_admin());
 
 -- 4. COURSES TABLE
 create table public.courses (
@@ -84,12 +97,7 @@ create policy "Anyone authenticated can view courses" on public.courses
   for select using (auth.role() = 'authenticated');
 
 create policy "Admins can manage courses" on public.courses
-  for all using (
-    exists (
-      select 1 from public.profiles
-      where public.profiles.id = auth.uid() and public.profiles.role = 'admin'
-    )
-  );
+  for all using (public.is_admin());
 
 -- 5. ATTENDANCE TABLE
 create table public.attendance (
@@ -107,12 +115,7 @@ create policy "Students can view their own attendance" on public.attendance
   for select using (auth.uid() = student_id);
 
 create policy "Faculty can manage attendance" on public.attendance
-  for all using (
-    exists (
-      select 1 from public.profiles
-      where public.profiles.id = auth.uid() and public.profiles.role in ('faculty', 'admin')
-    )
-  );
+  for all using (public.is_faculty_or_admin());
 
 -- 6. TIMETABLE TABLE
 create table public.timetable (
@@ -159,23 +162,13 @@ create policy "Authenticated users can view assignments" on public.assignments
   for select using (auth.role() = 'authenticated');
 
 create policy "Faculty can manage assignments" on public.assignments
-  for all using (
-    exists (
-      select 1 from public.profiles
-      where public.profiles.id = auth.uid() and public.profiles.role in ('faculty', 'admin')
-    )
-  );
+  for all using (public.is_faculty_or_admin());
 
 create policy "Students can manage their own submissions" on public.assignment_submissions
   for all using (auth.uid() = student_id);
 
 create policy "Faculty can manage all submissions" on public.assignment_submissions
-  for all using (
-    exists (
-      select 1 from public.profiles
-      where public.profiles.id = auth.uid() and public.profiles.role in ('faculty', 'admin')
-    )
-  );
+  for all using (public.is_faculty_or_admin());
 
 -- 8. EXAMS TABLE
 create table public.exams (
@@ -209,12 +202,7 @@ create policy "Students can view their own results" on public.results
   for select using (auth.uid() = student_id);
 
 create policy "Faculty can manage results" on public.results
-  for all using (
-    exists (
-      select 1 from public.profiles
-      where public.profiles.id = auth.uid() and public.profiles.role in ('faculty', 'admin')
-    )
-  );
+  for all using (public.is_faculty_or_admin());
 
 -- 10. LIBRARY TABLE
 create table public.library_books (
@@ -261,12 +249,7 @@ create policy "Students can view their own fees" on public.fees
   for select using (auth.uid() = student_id);
 
 create policy "Admins can manage fees" on public.fees
-  for all using (
-    exists (
-      select 1 from public.profiles
-      where public.profiles.id = auth.uid() and public.profiles.role = 'admin'
-    )
-  );
+  for all using (public.is_admin());
 
 -- 12. PLACEMENTS TABLE
 create table public.placement_jobs (

@@ -46,7 +46,7 @@ create table if not exists public.departments (
 -- 1.3 Students Table
 create table if not exists public.students (
   id uuid primary key references public.profiles(id) on delete cascade,
-  student_id text not null unique, -- e.g. '2023CSE01042'
+  student_id text not null unique default ('STU' || upper(substring(gen_random_uuid()::text from 1 for 6))), -- e.g. 'STU2026A1'
   department text not null,
   department_id uuid references public.departments(id) on delete set null,
   batch text not null default '2022-2026',
@@ -63,7 +63,7 @@ create table if not exists public.students (
 -- 1.4 Faculty Table
 create table if not exists public.faculty (
   id uuid primary key references public.profiles(id) on delete cascade,
-  faculty_id text not null unique, -- e.g. 'FAC-CSE-104'
+  faculty_id text not null unique default ('FAC' || upper(substring(gen_random_uuid()::text from 1 for 6))), -- e.g. 'FAC-CSE-104'
   department text not null,
   department_id uuid references public.departments(id) on delete set null,
   designation text not null default 'Assistant Professor',
@@ -79,7 +79,7 @@ create table if not exists public.faculty (
 -- 1.5 Institutional Administrators Table
 create table if not exists public.admins (
   id uuid primary key references public.profiles(id) on delete cascade,
-  admin_id text not null unique,
+  admin_id text not null unique default ('ADM' || upper(substring(gen_random_uuid()::text from 1 for 6))),
   designation text not null default 'Administrator',
   office_location text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null

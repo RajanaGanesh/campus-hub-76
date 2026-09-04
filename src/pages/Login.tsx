@@ -8,14 +8,14 @@ export const Login: React.FC = () => {
   const location = useLocation();
   const { login, isAuthenticated, user, loading } = useAuth();
 
-  // Form State
-  const [loginType, setLoginType] = useState<string>('');
+  // Form state fields (defaults to 'student' to avoid blocking email login)
+  const [loginType, setLoginType] = useState<string>('student');
   const [userCode, setUserCode] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [rememberMe, setRememberMe] = useState<boolean>(true);
+  const [rememberMe, setRememberMe] = useState<boolean>(false);
 
-  // Field-level error messages
+  // Field validation error states
   const [loginTypeError, setLoginTypeError] = useState<string>('');
   const [userCodeError, setUserCodeError] = useState<string>('');
   const [passwordError, setPasswordError] = useState<string>('');
@@ -51,14 +51,14 @@ export const Login: React.FC = () => {
     setPasswordError('');
     setAuthError(null);
 
-    if (!loginType) {
-      setLoginTypeError('Please select your log-in type.');
-      isValid = false;
-    }
-
     const trimmedCode = userCode.trim();
     if (!trimmedCode) {
       setUserCodeError('Please enter your user code, mobile number, or email.');
+      isValid = false;
+    }
+
+    if (!loginType && !trimmedCode.includes('@')) {
+      setLoginTypeError('Please select your log-in type.');
       isValid = false;
     }
 
@@ -221,11 +221,9 @@ export const Login: React.FC = () => {
                   }}
                   disabled={isSubmitting}
                 >
-                  <option value="">Select Log-in Type</option>
                   <option value="student">Student</option>
                   <option value="faculty">Faculty / Teacher</option>
                   <option value="admin">Administrator</option>
-                  <option value="staff">Staff / Management</option>
                 </select>
                 <i className="fa-solid fa-chevron-down cms-select-arrow"></i>
               </div>

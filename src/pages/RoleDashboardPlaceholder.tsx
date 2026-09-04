@@ -5,7 +5,7 @@ import { Logo } from '../components/Logo';
 import { Badge } from '../components/Badge';
 
 export interface RoleDashboardPlaceholderProps {
-  roleName: 'student' | 'faculty' | 'admin' | 'parent';
+  roleName: 'student' | 'faculty' | 'admin';
 }
 
 export const RoleDashboardPlaceholder: React.FC<RoleDashboardPlaceholderProps> = ({ roleName }) => {
@@ -30,12 +30,6 @@ export const RoleDashboardPlaceholder: React.FC<RoleDashboardPlaceholderProps> =
       stepInfo: 'Campus-wide Administration modules (Students, Faculty, Fees, Placements, Hostel) will be implemented in subsequent stages.',
       icon: 'fa-user-shield',
       badgeVariant: 'cyan' as const
-    },
-    parent: {
-      title: 'Parent & Guardian Portal',
-      stepInfo: 'Parent monitoring modules (Student Progress, Attendance, Fee Statements) will be implemented in subsequent stages.',
-      icon: 'fa-people-roof',
-      badgeVariant: 'warning' as const
     }
   };
 
@@ -68,14 +62,13 @@ export const RoleDashboardPlaceholder: React.FC<RoleDashboardPlaceholderProps> =
           padding: '16px 24px',
           background: 'var(--bg-secondary)',
           border: '1px solid var(--border-subtle)',
-          borderRadius: '16px',
-          marginBottom: '32px'
+          borderRadius: '16px'
         }}
       >
         <Logo size="sm" />
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
-            <span style={{ color: '#ffffff', fontSize: '0.875rem', fontWeight: 600 }}>{user?.name || 'User'}</span>
+            <span style={{ color: 'var(--text-primary)', fontSize: '0.875rem', fontWeight: 600 }}>{user?.name || 'User'}</span>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{user?.email}</span>
           </div>
           <Badge variant={meta.badgeVariant}>
@@ -87,27 +80,19 @@ export const RoleDashboardPlaceholder: React.FC<RoleDashboardPlaceholderProps> =
             onClick={handleLogout}
             style={{ padding: '8px 14px', fontSize: '0.8125rem' }}
           >
-            <i className="fa-solid fa-arrow-right-from-bracket"></i>
-            <span>Sign Out</span>
+            <i className="fa-solid fa-right-from-bracket"></i>
+            <span>Log Out</span>
           </button>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main
-        style={{
-          width: '100%',
-          maxWidth: '960px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '24px'
-        }}
-      >
-        {/* Banner Card */}
+      <main style={{ maxWidth: '960px', margin: '0 auto', width: '100%' }}>
+        {/* Role Welcome Hero */}
         <div
           className="c1-card"
           style={{
             padding: '36px',
+            marginBottom: '28px',
             display: 'flex',
             alignItems: 'flex-start',
             gap: '24px',
@@ -120,12 +105,12 @@ export const RoleDashboardPlaceholder: React.FC<RoleDashboardPlaceholderProps> =
               width: '64px',
               height: '64px',
               borderRadius: '16px',
-              background: 'rgba(99, 102, 241, 0.12)',
-              border: '1px solid rgba(99, 102, 241, 0.25)',
+              background: 'rgba(56, 189, 248, 0.1)',
+              border: '1px solid rgba(56, 189, 248, 0.2)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '28px',
+              fontSize: '1.75rem',
               color: 'var(--accent-blue)',
               flexShrink: 0
             }}
@@ -135,7 +120,7 @@ export const RoleDashboardPlaceholder: React.FC<RoleDashboardPlaceholderProps> =
 
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ffffff' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                 {meta.title}
               </h2>
               <span className="c1-badge c1-badge-success">
@@ -149,7 +134,7 @@ export const RoleDashboardPlaceholder: React.FC<RoleDashboardPlaceholderProps> =
 
             <div
               style={{
-                background: 'rgba(255, 255, 255, 0.02)',
+                background: 'var(--bg-primary)',
                 border: '1px solid var(--border-subtle)',
                 borderRadius: '10px',
                 padding: '12px 16px',
@@ -170,29 +155,29 @@ export const RoleDashboardPlaceholder: React.FC<RoleDashboardPlaceholderProps> =
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
           {/* User Profile Card */}
           <div className="c1-card" style={{ padding: '24px' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#ffffff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <i className="fa-solid fa-id-badge" style={{ color: 'var(--accent-blue)' }}></i>
               Session Identity
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.875rem' }}>
               <div>
                 <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem' }}>Full Name</span>
-                <span style={{ color: '#ffffff', fontWeight: 500 }}>{user?.name}</span>
+                <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{user?.name}</span>
               </div>
               <div>
                 <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem' }}>Institutional Email</span>
-                <span style={{ color: '#ffffff', fontWeight: 500 }}>{user?.email}</span>
+                <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{user?.email}</span>
               </div>
               <div>
                 <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem' }}>Assigned Security Role</span>
-                <span style={{ color: '#ffffff', fontWeight: 500, textTransform: 'capitalize' }}>{user?.role}</span>
+                <span style={{ color: 'var(--text-primary)', fontWeight: 500, textTransform: 'capitalize' }}>{user?.role}</span>
               </div>
             </div>
           </div>
 
           {/* Test Security Access Card */}
           <div className="c1-card" style={{ padding: '24px' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#ffffff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <i className="fa-solid fa-shield-halved" style={{ color: 'var(--color-warning)' }}></i>
               Role Boundary Verification
             </h3>

@@ -229,7 +229,7 @@ export const FacultyAssignments: React.FC = () => {
                       <td><span className="course-code-tag">{asg.courseCode}</span></td>
                       <td>
                         <div>
-                          <strong style={{ color: '#ffffff' }}>{asg.title}</strong>
+                          <strong style={{ color: 'var(--text-primary)' }}>{asg.title}</strong>
                           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>{asg.description}</p>
                         </div>
                       </td>
@@ -300,7 +300,7 @@ export const FacultyAssignments: React.FC = () => {
                     <tr key={sub.id}>
                       <td><span className="course-code-cell">{sub.studentId}</span></td>
                       <td>
-                        <strong style={{ color: '#ffffff' }}>{sub.studentName}</strong>
+                        <strong style={{ color: 'var(--text-primary)' }}>{sub.studentName}</strong>
                       </td>
                       <td>{sub.submittedDate}</td>
                       <td>

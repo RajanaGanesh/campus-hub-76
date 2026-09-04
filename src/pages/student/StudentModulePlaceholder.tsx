@@ -56,7 +56,7 @@ export const StudentModulePlaceholder: React.FC<StudentModulePlaceholderProps> =
 
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#ffffff' }}>
+              <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 {moduleName}
               </h1>
               <span className="c1-badge c1-badge-primary">
@@ -87,17 +87,17 @@ export const StudentModulePlaceholder: React.FC<StudentModulePlaceholderProps> =
         {/* Informational Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
           <div className="c1-card" style={{ padding: '24px' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#ffffff', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <i className="fa-solid fa-user-graduate" style={{ color: 'var(--accent-blue)' }}></i>
               Active Student Session
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.5 }}>
-              Logged in as <strong style={{ color: '#ffffff' }}>{user?.name}</strong> ({user?.email}) with verified student role.
+              Logged in as <strong style={{ color: 'var(--text-primary)' }}>{user?.name}</strong> ({user?.email}) with verified student role.
             </p>
           </div>
 
           <div className="c1-card" style={{ padding: '24px' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#ffffff', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <i className="fa-solid fa-diagram-project" style={{ color: 'var(--color-success)' }}></i>
               Development Roadmap
             </h3>

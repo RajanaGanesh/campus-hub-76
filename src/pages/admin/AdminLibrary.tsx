@@ -126,7 +126,7 @@ export const AdminLibrary: React.FC = () => {
                 {books.map((b) => (
                   <tr key={b.isbn}>
                     <td><span className="course-code-cell">{b.isbn}</span></td>
-                    <td><strong style={{ color: '#ffffff' }}>{b.title}</strong></td>
+                    <td><strong style={{ color: 'var(--text-primary)' }}>{b.title}</strong></td>
                     <td>{b.author}</td>
                     <td>{b.department}</td>
                     <td><strong style={{ color: '#38bdf8' }}>Shelf {b.shelf}</strong></td>

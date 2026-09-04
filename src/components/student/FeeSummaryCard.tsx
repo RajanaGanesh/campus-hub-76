@@ -57,7 +57,7 @@ export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({
       <div className="fee-progress-wrapper">
         <div className="fee-progress-meta">
           <span>Payment Completion</span>
-          <span style={{ fontWeight: 700, color: '#ffffff' }}>{paidPercentage}%</span>
+          <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{paidPercentage}%</span>
         </div>
         <div className="fee-progress-track">
           <div

@@ -274,7 +274,7 @@ export const AdminFaculty: React.FC = () => {
                     <td><span className="course-code-cell">{fac.id}</span></td>
                     <td>
                       <div>
-                        <strong style={{ color: '#ffffff' }}>{fac.name}</strong>
+                        <strong style={{ color: 'var(--text-primary)' }}>{fac.name}</strong>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{fac.email}</div>
                       </div>
                     </td>

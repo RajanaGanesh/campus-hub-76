@@ -9,7 +9,7 @@ export interface GlobalSearchEntry {
   description: string;
   icon: string;
   path: string;
-  roles: Array<'student' | 'faculty' | 'admin' | 'parent'>;
+  roles: Array<'student' | 'faculty' | 'admin'>;
 }
 
 export const GLOBAL_SEARCH_ENTRIES: GlobalSearchEntry[] = [
@@ -54,20 +54,7 @@ export const GLOBAL_SEARCH_ENTRIES: GlobalSearchEntry[] = [
   { id: 'adm-not', title: 'Publish Institutional Notices', category: 'Communication', description: 'Publish university circulars and emergency bulletins', icon: 'fa-bullhorn', path: '/admin/notices', roles: ['admin'] },
   { id: 'adm-users', title: 'User Accounts & Role Access Control', category: 'Security', description: 'Authentication directory, RBAC roles, and status controls', icon: 'fa-users-gear', path: '/admin/users', roles: ['admin'] },
   { id: 'adm-rep', title: 'Institutional Reports & Data Export', category: 'Reporting', description: '9 datasets with CSV, PDF, and print view exports', icon: 'fa-file-chart-column', path: '/admin/reports', roles: ['admin'] },
-  { id: 'adm-set', title: 'System Configuration & Settings', category: 'System', description: 'Institutional profile, term calendar, and security policies', icon: 'fa-sliders', path: '/admin/settings', roles: ['admin'] },
-
-  // Parent Portal
-  { id: 'par-dash', title: 'Parent Dashboard', category: 'Monitoring', description: 'Student summary, multi-student switch, and metrics', icon: 'fa-chart-simple', path: '/parent/dashboard', roles: ['parent'] },
-  { id: 'par-att', title: "Student's Attendance Logs", category: 'Monitoring', description: 'Subject-wise attendance breakdown and low-rate alerts', icon: 'fa-user-check', path: '/parent/attendance', roles: ['parent'] },
-  { id: 'par-acad', title: 'Academic Performance & Results', category: 'Monitoring', description: 'Cumulative GPA, semester grades, and marks transcript', icon: 'fa-award', path: '/parent/academics', roles: ['parent'] },
-  { id: 'par-asg', title: 'Homework & Coursework Tasks', category: 'Monitoring', description: 'Track assignments, submission status, and scores', icon: 'fa-file-invoice', path: '/parent/assignments', roles: ['parent'] },
-  { id: 'par-exam', title: 'Examination Timetable & Venues', category: 'Monitoring', description: 'Scheduled midterm dates, session timings, and hall slots', icon: 'fa-receipt', path: '/parent/exams', roles: ['parent'] },
-  { id: 'par-fees', title: 'Tuition Invoices & Payment Receipts', category: 'Finance', description: 'Verified payment receipts and outstanding balance', icon: 'fa-wallet', path: '/parent/fees', roles: ['parent'] },
-  { id: 'par-lib', title: 'Central Library Book Loans', category: 'Services', description: 'Borrowed book titles, due dates, and return status', icon: 'fa-book-bookmark', path: '/parent/library', roles: ['parent'] },
-  { id: 'par-host', title: 'Hostel Residency & Warden Contact', category: 'Services', description: 'Residential block, room allotment, and mess meal plan', icon: 'fa-hotel', path: '/parent/hostel', roles: ['parent'] },
-  { id: 'par-place', title: 'Placement Progress & Job Offers', category: 'Career', description: 'Recruitment applications, interview status, and offers', icon: 'fa-briefcase', path: '/parent/placements', roles: ['parent'] },
-  { id: 'par-not', title: 'Parent & Campus Circulars', category: 'Notices', description: 'Parent-Teacher conference advisories and holiday notices', icon: 'fa-bullhorn', path: '/parent/notices', roles: ['parent'] },
-  { id: 'par-set', title: 'Parent Profile & Alert Settings', category: 'Account', description: 'Guardian contact info and instant notification channels', icon: 'fa-user-gear', path: '/parent/settings', roles: ['parent'] }
+  { id: 'adm-set', title: 'System Configuration & Settings', category: 'System', description: 'Institutional profile, term calendar, and security policies', icon: 'fa-sliders', path: '/admin/settings', roles: ['admin'] }
 ];
 
 interface GlobalSearchProps {

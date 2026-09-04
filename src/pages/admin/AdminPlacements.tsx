@@ -203,7 +203,7 @@ export const AdminPlacements: React.FC = () => {
                 {jobs.map((j) => (
                   <tr key={j.id}>
                     <td>
-                      <strong style={{ color: '#ffffff' }}>{j.company}</strong>
+                      <strong style={{ color: 'var(--text-primary)' }}>{j.company}</strong>
                     </td>
                     <td>{j.title}</td>
                     <td><strong style={{ color: '#38bdf8' }}>{j.packageStr}</strong></td>

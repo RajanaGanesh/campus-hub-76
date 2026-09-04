@@ -20,8 +20,8 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ isOpen, onClos
   };
 
   const userRole = user?.role || 'student';
-  const profilePath = userRole === 'parent' ? '/parent/settings' : userRole === 'admin' ? '/admin/settings' : '/student/profile';
-  const settingsPath = userRole === 'parent' ? '/parent/settings' : userRole === 'admin' ? '/admin/settings' : '/student/settings';
+  const profilePath = userRole === 'admin' ? '/admin/settings' : userRole === 'faculty' ? '/faculty/dashboard' : '/student/profile';
+  const settingsPath = userRole === 'admin' ? '/admin/settings' : '/student/settings';
 
   return (
     <div className="dropdown-menu user-dropdown-panel" style={{ display: 'block' }}>

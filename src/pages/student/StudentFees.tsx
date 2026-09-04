@@ -247,7 +247,7 @@ export const StudentFees: React.FC = () => {
                 {feeBreakdown.map((item) => (
                   <tr key={item.id}>
                     <td>
-                      <strong style={{ color: '#ffffff' }}>{item.category}</strong>
+                      <strong style={{ color: 'var(--text-primary)' }}>{item.category}</strong>
                     </td>
                     <td>₹{item.total.toLocaleString('en-IN')}</td>
                     <td><span style={{ color: 'var(--color-success)', fontWeight: 600 }}>₹{item.paid.toLocaleString('en-IN')}</span></td>
@@ -307,7 +307,7 @@ export const StudentFees: React.FC = () => {
                     <td>{txn.date}</td>
                     <td>{txn.description}</td>
                     <td>
-                      <strong style={{ color: '#ffffff' }}>₹{txn.amount.toLocaleString('en-IN')}</strong>
+                      <strong style={{ color: 'var(--text-primary)' }}>₹{txn.amount.toLocaleString('en-IN')}</strong>
                     </td>
                     <td>
                       <span className="payment-method-chip">

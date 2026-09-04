@@ -716,44 +716,6 @@ export const Dashboard: React.FC = () => {
     </>
   );
 
-  // Render Parent Dashboard (Fallback Preview)
-  const renderParentDashboard = () => (
-    <>
-      <div className="dashboard-header">
-        <h1>{greeting}, {userName} 👋</h1>
-        <p>Here's what's happening across your campus today.</p>
-      </div>
-
-      <div className="stats-grid">
-        <StatCard icon="fa-user-check" title="Student Attendance" value="86%" description="Child overall attendance" colorVariant="primary" />
-        <StatCard icon="fa-award" title="Child CGPA" value="8.6" description="Current cumulative grades" colorVariant="cyan" />
-        <StatCard icon="fa-receipt" title="Upcoming Exams" value="3" description="Seating dates confirmed" colorVariant="red" />
-        <StatCard icon="fa-wallet" title="Tuition Fees Due" value="₹12,500" description="Pay by August 22" colorVariant="red" />
-      </div>
-
-      <div className="quick-access-section">
-        <h3>Parent Dashboard Links</h3>
-        <div className="quick-access-grid">
-          <QuickAccessCard icon="fa-user-check" title="Student Attendance" description="Check logs" path="/attendance" />
-          <QuickAccessCard icon="fa-chart-bar" title="Performance" description="Semester marks cards" path="/performance" />
-          <QuickAccessCard icon="fa-award" title="Exam Results" description="Report sheets" path="/results" />
-          <QuickAccessCard icon="fa-file-invoice" title="Assignments" description="Homework submissions" path="/assignments" />
-          <QuickAccessCard icon="fa-wallet" title="Pay Fees" description="Make tuition transfers" path="/fees" />
-          <QuickAccessCard icon="fa-bullhorn" title="Announcements" description="Parent-teacher updates" path="/announcements" />
-        </div>
-      </div>
-
-      <div className="dashboard-main-grid">
-        <div className="dashboard-row">
-          <AttendanceCard overallPercentage={86} />
-        </div>
-        <div className="dashboard-row">
-          <AnnouncementCard announcements={campusAnnouncements} onViewAllClick={() => navigate('/announcements')} />
-        </div>
-      </div>
-    </>
-  );
-
   // loading state skeletons check
   if (isLoading) {
     return (
@@ -772,7 +734,6 @@ export const Dashboard: React.FC = () => {
       {userRole === 'student' && renderStudentDashboard()}
       {userRole === 'faculty' && renderFacultyDashboard()}
       {userRole === 'admin' && renderAdminDashboard()}
-      {userRole === 'parent' && renderParentDashboard()}
     </>
   );
 };

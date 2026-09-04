@@ -1,11 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
+export type { Database } from '../types/database.types';
 
 const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY || '';
 
 const isSupabaseConfigured =
-  supabaseUrl &&
-  supabaseAnonKey &&
+  Boolean(supabaseUrl) &&
+  Boolean(supabaseAnonKey) &&
   supabaseUrl !== 'https://your-supabase-project.supabase.co' &&
   !supabaseAnonKey.includes('placeholder');
 

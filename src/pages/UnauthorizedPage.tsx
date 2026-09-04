@@ -74,14 +74,14 @@ export const UnauthorizedPage: React.FC<UnauthorizedPageProps> = ({ requiredRole
         </div>
 
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#ffffff', marginBottom: '8px' }}>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>
             Access Denied
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', lineHeight: 1.6 }}>
             You do not have administrative or role permissions to access this section.
             {requiredRole && (
               <span style={{ display: 'block', marginTop: '6px', color: 'var(--text-muted)' }}>
-                Required clearance: <strong style={{ color: '#ffffff', textTransform: 'capitalize' }}>{requiredRole}</strong>
+                Required clearance: <strong style={{ color: 'var(--text-primary)', textTransform: 'capitalize' }}>{requiredRole}</strong>
               </span>
             )}
           </p>
@@ -91,7 +91,7 @@ export const UnauthorizedPage: React.FC<UnauthorizedPageProps> = ({ requiredRole
           <div
             style={{
               width: '100%',
-              background: 'rgba(255, 255, 255, 0.02)',
+              background: 'var(--bg-primary)',
               border: '1px solid var(--border-subtle)',
               borderRadius: '12px',
               padding: '14px 18px',
@@ -102,7 +102,7 @@ export const UnauthorizedPage: React.FC<UnauthorizedPageProps> = ({ requiredRole
             }}
           >
             <div>
-              <div style={{ color: '#ffffff', fontWeight: 600, fontSize: '0.875rem' }}>{user.name}</div>
+              <div style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.875rem' }}>{user.name}</div>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{user.email}</div>
             </div>
             <Badge variant="primary">

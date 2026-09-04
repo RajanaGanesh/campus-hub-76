@@ -312,7 +312,7 @@ export const StudentHostel: React.FC = () => {
                         <td><strong>{req.type}</strong></td>
                         <td>
                           <div>
-                            <span style={{ color: '#ffffff', fontWeight: 600 }}>{req.subject}</span>
+                            <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{req.subject}</span>
                             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>{req.description}</p>
                           </div>
                         </td>

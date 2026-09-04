@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { Toast } from '../../components/Toast';
-import { useTheme, ThemeMode } from '../../context/ThemeContext';
 
 export const AdminSettings: React.FC = () => {
-  const { theme, setTheme } = useTheme();
   const [instName, setInstName] = useState('CampusOne Institute of Technology');
   const [instCode, setInstCode] = useState('CIT-BLR-001');
   const [currentTerm, setCurrentTerm] = useState('Academic Year 2025–2026 (Even Semester)');
@@ -21,12 +19,6 @@ export const AdminSettings: React.FC = () => {
     e.preventDefault();
     showToast('Campus configuration settings saved successfully!', 'success');
   };
-
-  const themeCards: { mode: ThemeMode; label: string; icon: string; desc: string }[] = [
-    { mode: 'light', label: 'Light', icon: 'fa-sun', desc: 'Bright and clean interface with high contrast.' },
-    { mode: 'dark', label: 'Dark', icon: 'fa-moon', desc: 'Comfortable for low-light environments.' },
-    { mode: 'system', label: 'System', icon: 'fa-desktop', desc: 'Automatically match your device settings.' }
-  ];
 
   return (
     <AppLayout>
@@ -57,7 +49,7 @@ export const AdminSettings: React.FC = () => {
           </div>
         </div>
 
-        {/* 1. Theme & Appearance Preference Card */}
+        {/* 1. Theme & Appearance Information Card */}
         <div className="c1-card" style={{ padding: '28px', maxWidth: '800px', marginBottom: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
             <i className="fa-solid fa-palette" style={{ color: 'var(--accent-primary)', fontSize: '1.15rem' }}></i>
@@ -65,49 +57,50 @@ export const AdminSettings: React.FC = () => {
               Appearance & Theme
             </h3>
           </div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '20px' }}>
-            Choose your preferred Campus Hub theme appearance. This setting applies across all modules and is saved to your account.
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '16px' }}>
+            Campus Hub is styled in High-Contrast Light Theme with Midnight Navy Navigation, optimized for classroom clarity and administrative workflows.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
-            {themeCards.map((t) => {
-              const isSelected = theme === t.mode;
-              return (
-                <div
-                  key={t.mode}
-                  onClick={() => {
-                    setTheme(t.mode);
-                    showToast(`Switched theme to ${t.label} Mode!`, 'success');
-                  }}
-                  style={{
-                    padding: '16px',
-                    borderRadius: 'var(--radius-lg)',
-                    border: isSelected ? '2px solid var(--accent-primary)' : '1px solid var(--border-medium)',
-                    backgroundColor: isSelected ? 'rgba(108, 75, 255, 0.08)' : 'var(--bg-card)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    boxShadow: isSelected ? '0 0 16px rgba(108, 75, 255, 0.2)' : 'none'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, color: isSelected ? 'var(--accent-primary)' : 'var(--text-primary)' }}>
-                      <i className={`fa-solid ${t.icon}`} style={{ fontSize: '1rem' }}></i>
-                      <span>{t.label}</span>
-                    </div>
-                    <div style={{
-                      width: '18px',
-                      height: '18px',
-                      borderRadius: '50%',
-                      border: isSelected ? '5px solid var(--accent-primary)' : '2px solid var(--border-medium)',
-                      backgroundColor: 'transparent'
-                    }} />
-                  </div>
-                  <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
-                    {t.desc}
-                  </p>
-                </div>
-              );
-            })}
+          <div
+            style={{
+              padding: '16px 20px',
+              borderRadius: 'var(--radius-lg)',
+              border: '2px solid var(--accent-primary)',
+              backgroundColor: 'rgba(108, 75, 255, 0.06)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              maxWidth: '380px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  background: 'var(--gradient-primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-primary)',
+                  fontSize: '1rem'
+                }}
+              >
+                <i className="fa-solid fa-sun"></i>
+              </div>
+              <div>
+                <strong style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', display: 'block' }}>
+                  Light Theme (CampusOne)
+                </strong>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+                  Standard Institutional Layout
+                </span>
+              </div>
+            </div>
+            <span className="c1-badge c1-badge-success">
+              <i className="fa-solid fa-check"></i> Active
+            </span>
           </div>
         </div>
 
@@ -168,16 +161,16 @@ export const AdminSettings: React.FC = () => {
 
             <div className="form-field-wrap">
               <label className="form-label">Security & Session Policy</label>
-              <div style={{ padding: '16px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.8125rem', color: '#ffffff', cursor: 'pointer' }}>
+              <div style={{ padding: '16px', background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.8125rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
                   <input type="checkbox" defaultChecked />
                   <span>Enforce Two-Factor Authentication (2FA) for Faculty & Administrators</span>
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.8125rem', color: '#ffffff', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.8125rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
                   <input type="checkbox" defaultChecked />
                   <span>Enable Audit Logging for Grade & Mark Sheet Modifications</span>
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.8125rem', color: '#ffffff', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.8125rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
                   <input type="checkbox" defaultChecked />
                   <span>Automated Nightly Backup of Institutional Database to Secure Storage</span>
                 </label>

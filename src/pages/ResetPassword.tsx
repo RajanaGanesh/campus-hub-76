@@ -92,7 +92,7 @@ export const ResetPassword: React.FC = () => {
         </div>
 
         <div style={{ textAlign: 'center' }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
             Set New Password
           </h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.5 }}>

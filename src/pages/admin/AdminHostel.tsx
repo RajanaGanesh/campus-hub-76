@@ -154,7 +154,7 @@ export const AdminHostel: React.FC = () => {
               <tbody>
                 {allocations.map((a) => (
                   <tr key={a.student}>
-                    <td><strong style={{ color: '#ffffff' }}>{a.student}</strong></td>
+                    <td><strong style={{ color: 'var(--text-primary)' }}>{a.student}</strong></td>
                     <td><span className="course-code-tag">{a.block}</span></td>
                     <td><strong style={{ color: '#38bdf8' }}>{a.room}</strong></td>
                     <td>{a.joined}</td>

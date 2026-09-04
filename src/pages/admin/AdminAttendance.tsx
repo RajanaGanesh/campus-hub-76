@@ -113,7 +113,7 @@ export const AdminAttendance: React.FC = () => {
             {departmentRates.map((d) => (
               <div key={d.dept} style={{ padding: '14px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <strong style={{ fontSize: '0.875rem', color: '#ffffff' }}>{d.dept}</strong>
+                  <strong style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>{d.dept}</strong>
                   <strong style={{ color: d.rate >= 85 ? '#34d399' : d.rate >= 75 ? '#38bdf8' : '#fb7185' }}>{d.rate}%</strong>
                 </div>
                 <div className="progress-bar-large-track">
@@ -156,7 +156,7 @@ export const AdminAttendance: React.FC = () => {
                   <tr key={stu.id}>
                     <td><span className="course-code-cell">{stu.id}</span></td>
                     <td>
-                      <strong style={{ color: '#ffffff' }}>{stu.name}</strong>
+                      <strong style={{ color: 'var(--text-primary)' }}>{stu.name}</strong>
                     </td>
                     <td>{stu.department}</td>
                     <td>Section {stu.section}</td>

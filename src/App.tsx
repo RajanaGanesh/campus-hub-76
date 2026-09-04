@@ -50,7 +50,6 @@ import { AdminFaculty } from './pages/admin/AdminFaculty';
 import { AdminCourses } from './pages/admin/AdminCourses';
 import { AdminDepartments } from './pages/admin/AdminDepartments';
 import { AdminAttendance } from './pages/admin/AdminAttendance';
-import { AdminAssignments } from './pages/admin/AdminAssignments';
 import { AdminExams } from './pages/admin/AdminExams';
 import { AdminResults } from './pages/admin/AdminResults';
 import { AdminFees } from './pages/admin/AdminFees';
@@ -64,19 +63,6 @@ import { AdminUsers } from './pages/admin/AdminUsers';
 import { AdminReports } from './pages/admin/AdminReports';
 import { AdminSettings } from './pages/admin/AdminSettings';
 
-// STEP 9: Parent Portal Modules
-import { ParentDashboard } from './pages/parent/ParentDashboard';
-import { ParentAttendance } from './pages/parent/ParentAttendance';
-import { ParentAcademics } from './pages/parent/ParentAcademics';
-import { ParentAssignments } from './pages/parent/ParentAssignments';
-import { ParentExams } from './pages/parent/ParentExams';
-import { ParentFees } from './pages/parent/ParentFees';
-import { ParentLibrary } from './pages/parent/ParentLibrary';
-import { ParentHostel } from './pages/parent/ParentHostel';
-import { ParentPlacements } from './pages/parent/ParentPlacements';
-import { ParentNotices } from './pages/parent/ParentNotices';
-import { ParentNotifications } from './pages/parent/ParentNotifications';
-import { ParentSettings } from './pages/parent/ParentSettings';
 
 import './styles/theme.css';
 import './styles/login.css';
@@ -621,14 +607,6 @@ export const App: React.FC = () => {
             }
           />
           <Route
-            path="/admin/assignments"
-            element={
-              <ProtectedRoute allowedRole="admin">
-                <AdminAssignments />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/admin/exams"
             element={
               <ProtectedRoute allowedRole="admin">
@@ -756,136 +734,11 @@ export const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
-          {/* ==========================================================
-              STEP 9: COMPLETE PARENT PORTAL ROUTES
-              ========================================================== */}
-          <Route
-            path="/parent/dashboard"
-            element={
-              <ProtectedRoute allowedRole="parent">
-                <ParentDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/parent/attendance"
-            element={
-              <ProtectedRoute allowedRole="parent">
-                <ParentAttendance />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/parent/academics"
-            element={
-              <ProtectedRoute allowedRole="parent">
-                <ParentAcademics />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/parent/results"
-            element={
-              <ProtectedRoute allowedRole="parent">
-                <ParentAcademics />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/parent/assignments"
-            element={
-              <ProtectedRoute allowedRole="parent">
-                <ParentAssignments />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/parent/exams"
-            element={
-              <ProtectedRoute allowedRole="parent">
-                <ParentExams />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/parent/fees"
-            element={
-              <ProtectedRoute allowedRole="parent">
-                <ParentFees />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/parent/library"
-            element={
-              <ProtectedRoute allowedRole="parent">
-                <ParentLibrary />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/parent/hostel"
-            element={
-              <ProtectedRoute allowedRole="parent">
-                <ParentHostel />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/parent/placements"
-            element={
-              <ProtectedRoute allowedRole="parent">
-                <ParentPlacements />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/parent/notices"
-            element={
-              <ProtectedRoute allowedRole="parent">
-                <ParentNotices />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/parent/announcements"
-            element={
-              <ProtectedRoute allowedRole="parent">
-                <ParentNotices />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/parent/notifications"
-            element={
-              <ProtectedRoute allowedRole="parent">
-                <ParentNotifications />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/parent/profile"
-            element={
-              <ProtectedRoute allowedRole="parent">
-                <ParentSettings />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/parent/settings"
-            element={
-              <ProtectedRoute allowedRole="parent">
-                <ParentSettings />
-              </ProtectedRoute>
-            }
-          />
-
           {/* Convenience Direct Aliases */}
           <Route path="/dashboard" element={<Navigate to="/student/dashboard" replace />} />
           <Route path="/student" element={<Navigate to="/student/dashboard" replace />} />
           <Route path="/faculty" element={<Navigate to="/faculty/dashboard" replace />} />
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-          <Route path="/parent" element={<Navigate to="/parent/dashboard" replace />} />
 
           {/* Global Fallback Entry Routes */}
           <Route path="/" element={<HomeRedirect />} />

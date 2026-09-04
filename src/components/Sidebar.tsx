@@ -61,7 +61,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, isMobileOpen, onM
             label: 'Academics',
             links: [
               { id: 'admin-attendance', label: 'Attendance', icon: 'fa-clipboard-user', path: '/admin/attendance' },
-              { id: 'admin-assignments', label: 'Assignments', icon: 'fa-file-invoice', path: '/admin/assignments' },
               { id: 'admin-exams', label: 'Examinations', icon: 'fa-receipt', path: '/admin/exams' },
               { id: 'admin-results', label: 'Results & GPA', icon: 'fa-award', path: '/admin/results' }
             ]
@@ -88,36 +87,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, isMobileOpen, onM
           }
         ];
 
-      case 'parent':
-        return [
-          {
-            label: 'Monitoring',
-            links: [
-              { id: 'parent-dashboard', label: 'Dashboard', icon: 'fa-chart-simple', path: '/parent/dashboard' },
-              { id: 'parent-attendance', label: 'Attendance', icon: 'fa-user-check', path: '/parent/attendance' },
-              { id: 'parent-academics', label: 'Academics & Grades', icon: 'fa-award', path: '/parent/academics' },
-              { id: 'parent-assignments', label: 'Assignments', icon: 'fa-file-invoice', path: '/parent/assignments' },
-              { id: 'parent-exams', label: 'Examinations', icon: 'fa-receipt', path: '/parent/exams' }
-            ]
-          },
-          {
-            label: 'Campus Services',
-            links: [
-              { id: 'parent-fees', label: 'Fee Receipts', icon: 'fa-wallet', path: '/parent/fees' },
-              { id: 'parent-library', label: 'Library Status', icon: 'fa-book-bookmark', path: '/parent/library' },
-              { id: 'parent-hostel', label: 'Hostel Residency', icon: 'fa-hotel', path: '/parent/hostel' },
-              { id: 'parent-placements', label: 'Placements', icon: 'fa-briefcase', path: '/parent/placements' }
-            ]
-          },
-          {
-            label: 'Communication',
-            links: [
-              { id: 'parent-notices', label: 'Notices & Circulars', icon: 'fa-bullhorn', path: '/parent/notices' },
-              { id: 'parent-notifications', label: 'Notifications', icon: 'fa-bell', path: '/parent/notifications' },
-              { id: 'parent-settings', label: 'Profile & Settings', icon: 'fa-user-gear', path: '/parent/settings' }
-            ]
-          }
-        ];
 
       case 'student':
       default:

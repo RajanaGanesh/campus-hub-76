@@ -805,7 +805,7 @@ export const StudentPlacements: React.FC = () => {
                         <td><span className="course-code-cell">{app.id}</span></td>
                         <td>
                           <div>
-                            <strong style={{ color: '#ffffff' }}>{app.role}</strong>
+                            <strong style={{ color: 'var(--text-primary)' }}>{app.role}</strong>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{app.company}</div>
                           </div>
                         </td>

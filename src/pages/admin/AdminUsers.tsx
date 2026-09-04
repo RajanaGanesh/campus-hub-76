@@ -6,7 +6,7 @@ export interface UserAccountItem {
   id: string;
   name: string;
   email: string;
-  role: 'student' | 'faculty' | 'admin' | 'parent';
+  role: 'student' | 'faculty' | 'admin';
   status: 'Active' | 'Suspended';
   lastActive: string;
 }
@@ -18,7 +18,7 @@ export const AdminUsers: React.FC = () => {
     { id: 'USR-03', name: 'System Administrator', email: 'admin@campushub.edu', role: 'admin', status: 'Active', lastActive: 'Active now' },
     { id: 'USR-04', name: 'Sneha Patel', email: 'sneha.patel@campushub.edu', role: 'student', status: 'Active', lastActive: '2 hours ago' },
     { id: 'USR-05', name: 'Dr. Priya Menon', email: 'priya.menon@campushub.edu', role: 'faculty', status: 'Active', lastActive: '1 day ago' },
-    { id: 'USR-06', name: 'Rajesh Sharma (Parent)', email: 'rajesh.parent@gmail.com', role: 'parent', status: 'Active', lastActive: '3 days ago' }
+    { id: 'USR-06', name: 'Rahul Verma', email: 'rahul.verma@campushub.edu', role: 'student', status: 'Active', lastActive: '3 hours ago' }
   ]);
 
   const [toastMsg, setToastMsg] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
@@ -47,8 +47,6 @@ export const AdminUsers: React.FC = () => {
         return <span className="c1-badge c1-badge-error">Administrator</span>;
       case 'faculty':
         return <span className="c1-badge c1-badge-cyan">Faculty</span>;
-      case 'parent':
-        return <span className="c1-badge c1-badge-purple">Parent</span>;
       default:
         return <span className="c1-badge c1-badge-success">Student</span>;
     }
@@ -142,7 +140,7 @@ export const AdminUsers: React.FC = () => {
                 {users.map((u) => (
                   <tr key={u.id}>
                     <td><span className="course-code-cell">{u.id}</span></td>
-                    <td><strong style={{ color: '#ffffff' }}>{u.name}</strong></td>
+                    <td><strong style={{ color: 'var(--text-primary)' }}>{u.name}</strong></td>
                     <td>{u.email}</td>
                     <td>{getRoleBadge(u.role)}</td>
                     <td>

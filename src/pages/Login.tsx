@@ -1,39 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Logo } from '../components/Logo';
-import { ThemeToggle } from '../components/ThemeToggle';
-import { InputField } from '../components/InputField';
-import { PasswordField } from '../components/PasswordField';
-import { AuthAlert } from '../components/AuthAlert';
-import { SocialLoginButton } from '../components/SocialLoginButton';
-import { Illustration } from '../components/Illustration';
 import { Toast } from '../components/Toast';
-import { Modal } from '../components/Modal';
-import { LoadingSpinner } from '../components/LoadingSpinner';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, isAuthenticated, user, loading } = useAuth();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
+  // Form State
+  const [loginType, setLoginType] = useState<string>('');
+  const [userCode, setUserCode] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [rememberMe, setRememberMe] = useState<boolean>(true);
 
-  // Field-level inline errors
-  const [emailError, setEmailError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-
-  // Top banner auth error (only displayed on failed login attempt)
+  // Field-level error messages
+  const [loginTypeError, setLoginTypeError] = useState<string>('');
+  const [userCodeError, setUserCodeError] = useState<string>('');
+  const [passwordError, setPasswordError] = useState<string>('');
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // Submission & interactive feedback states
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Submission & feedback states
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [toastMsg, setToastMsg] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
-  const [isCollegeIdModalOpen, setIsCollegeIdModalOpen] = useState(false);
 
-  // Redirect if already logged in
+  // Redirect if already authenticated
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
       const fromPath = (location.state as any)?.from?.pathname;
@@ -54,27 +46,27 @@ export const Login: React.FC = () => {
 
   const validateForm = (): boolean => {
     let isValid = true;
-    setEmailError('');
+    setLoginTypeError('');
+    setUserCodeError('');
     setPasswordError('');
     setAuthError(null);
 
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail) {
-      setEmailError('Please enter your email address.');
+    if (!loginType) {
+      setLoginTypeError('Please select your log-in type.');
       isValid = false;
-    } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(trimmedEmail)) {
-        setEmailError('Please enter a valid email address.');
-        isValid = false;
-      }
+    }
+
+    const trimmedCode = userCode.trim();
+    if (!trimmedCode) {
+      setUserCodeError('Please enter your user code, mobile number, or email.');
+      isValid = false;
     }
 
     if (!password) {
       setPasswordError('Please enter your password.');
       isValid = false;
-    } else if (password.length < 6) {
-      setPasswordError('Password must be at least 6 characters.');
+    } else if (password.length < 4) {
+      setPasswordError('Password must be at least 4 characters.');
       isValid = false;
     }
 
@@ -88,8 +80,24 @@ export const Login: React.FC = () => {
     setIsSubmitting(true);
     setAuthError(null);
 
+    // Map user code / mobile / role to email
+    let authEmail = userCode.trim().toLowerCase();
+    
+    // Auto-map demo credentials if user entered role-based identifiers
+    if (!authEmail.includes('@')) {
+      if (loginType === 'student' || authEmail.toLowerCase().includes('student') || authEmail === '1001') {
+        authEmail = 'student@campushub.com';
+      } else if (loginType === 'faculty' || authEmail.toLowerCase().includes('faculty') || authEmail === '2001') {
+        authEmail = 'faculty@campushub.com';
+      } else if (loginType === 'admin' || authEmail.toLowerCase().includes('admin') || authEmail === '3001') {
+        authEmail = 'admin@campushub.com';
+      } else {
+        authEmail = `${authEmail}@campushub.com`;
+      }
+    }
+
     try {
-      const res = await login(email, password, rememberMe);
+      const res = await login(authEmail, password, rememberMe);
 
       if (res.success && res.profile) {
         showToast(`Welcome back, ${res.profile.name}!`, 'success');
@@ -100,120 +108,197 @@ export const Login: React.FC = () => {
           navigate(`/${res.profile.role}/dashboard`, { replace: true });
         }
       } else {
-        setAuthError(res.error || 'Invalid email or password.');
+        setAuthError(res.error || 'Invalid User Code or Password for selected role.');
       }
     } catch (err: any) {
-      setAuthError(err?.message || 'Authentication failed. Please try again.');
+      setAuthError(err?.message || 'Authentication service error. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const fillDemoAccount = (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
+  // Quick 1-click test role login
+  const handleQuickRoleLogin = async (role: string, demoEmail: string, demoPass: string) => {
+    setLoginType(role);
+    setUserCode(demoEmail);
     setPassword(demoPass);
-    setEmailError('');
+    setLoginTypeError('');
+    setUserCodeError('');
     setPasswordError('');
     setAuthError(null);
+
+    setIsSubmitting(true);
+    try {
+      const res = await login(demoEmail, demoPass, true);
+      if (res.success && res.profile) {
+        showToast(`Logged in as ${res.profile.name} (${res.profile.role.toUpperCase()})`, 'success');
+        navigate(`/${res.profile.role}/dashboard`, { replace: true });
+      } else {
+        setAuthError(res.error || 'Authentication failed. Please check credentials.');
+      }
+    } catch (err: any) {
+      setAuthError(err?.message || 'Authentication error.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="login-page">
-      {/* ================================================================
-          LEFT PANEL - BRANDING & HERO INTRODUCTION
-          ================================================================ */}
-      <div className="login-left">
-        <div className="login-left-header">
-          <Logo size="md" />
-        </div>
+    <div className="cms-login-page">
+      {/* ====================================================================
+          LEFT HERO PANEL: CAMPUS ARCHITECTURE & PURPLE GRADIENT
+          ==================================================================== */}
+      <div className="cms-hero-section">
+        {/* Campus Architecture Photography Backdrop */}
+        <img
+          src="https://images.unsplash.com/photo-1562774053-701939374585?q=80&w=1800&auto=format&fit=crop"
+          alt="College Campus Architecture"
+          className="cms-hero-backdrop"
+        />
 
-        <div className="login-hero-text">
-          <h1>
-            Everything Your Campus<br />
-            Needs,<br />
-            In One Place.
-          </h1>
-          <p>
-            Connect with academics, placements, campus services, events and student resources through one intelligent platform.
-          </p>
-        </div>
+        {/* Purple / Violet Atmospheric Gradient Overlay */}
+        <div className="cms-hero-overlay"></div>
+        <div className="cms-hero-lighting"></div>
 
-        <div className="login-illustration-container">
-          <Illustration />
-        </div>
+        {/* Hero Branding Lockup */}
+        <div className="cms-hero-content">
+          <span className="cms-inst-name">YOUR COLLEGE OR INSTITUTE NAME</span>
 
-        <div className="login-left-footer">
-          <div className="feature-pill">
-            <i className="fa-solid fa-circle-check"></i>
-            <span>Intelligent ERP & LMS</span>
+          {/* Background Watermark Repetition */}
+          <div className="cms-watermark-bg" aria-hidden="true">
+            College Management System
           </div>
-          <div className="feature-pill">
-            <i className="fa-solid fa-circle-check"></i>
-            <span>Placements & Careers</span>
-          </div>
-          <div className="feature-pill">
-            <i className="fa-solid fa-circle-check"></i>
-            <span>Campus Mobility & Services</span>
+
+          <div className="cms-welcome-lockup">
+            <div className="cms-vertical-bar"></div>
+            <div className="cms-welcome-text-group">
+              <h1 className="cms-welcome-title">WELCOME</h1>
+              <span className="cms-to-subtitle">To</span>
+              <div className="cms-system-title-row">
+                <span className="cms-logo-badge">CMS</span>
+                <span className="cms-system-name">College Management System</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ================================================================
-          RIGHT PANEL - AUTHENTICATION FORM CARD
-          ================================================================ */}
-      <div className="login-right" style={{ position: 'relative' }}>
-        <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 10 }}>
-          <ThemeToggle variant="dropdown" />
-        </div>
+      {/* ====================================================================
+          RIGHT AUTHENTICATION PANEL: "Get Into CMS"
+          ==================================================================== */}
+      <div className="cms-form-section">
+        <div className="cms-form-container">
 
-        <div className="login-card">
-          {/* Mobile-only logo */}
-          <div className="login-mobile-header">
-            <Logo size="md" />
-          </div>
+          {/* Error Banner */}
+          {authError && (
+            <div className="cms-alert-banner">
+              <span>{authError}</span>
+              <button
+                type="button"
+                onClick={() => setAuthError(null)}
+                aria-label="Dismiss error"
+              >
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+          )}
 
-          {/* Conditional Error Notification Area (Only displayed when login fails) */}
-          <AuthAlert
-            message={authError}
-            onDismiss={() => setAuthError(null)}
-          />
+          {/* Authentication Form */}
+          <form className="cms-auth-form" onSubmit={handleSubmit} noValidate>
+            {/* 1. Select Log-In Type */}
+            <div className={`cms-field-group ${loginTypeError ? 'has-error' : ''}`}>
+              <label htmlFor="cms-login-type" className="cms-field-label">
+                Select Log-In Type
+              </label>
+              <div className="cms-select-wrapper">
+                <select
+                  id="cms-login-type"
+                  className="cms-select-input"
+                  value={loginType}
+                  onChange={(e) => {
+                    setLoginType(e.target.value);
+                    if (loginTypeError) setLoginTypeError('');
+                  }}
+                  disabled={isSubmitting}
+                >
+                  <option value="">Select Log-in Type</option>
+                  <option value="student">Student</option>
+                  <option value="faculty">Faculty / Teacher</option>
+                  <option value="admin">Administrator</option>
+                  <option value="staff">Staff / Management</option>
+                </select>
+                <i className="fa-solid fa-chevron-down cms-select-arrow"></i>
+              </div>
+              {loginTypeError && (
+                <span className="cms-field-error-text">{loginTypeError}</span>
+              )}
+            </div>
 
-          {/* Main Credentials Form */}
-          <form className="login-form" onSubmit={handleSubmit} noValidate>
-            <InputField
-              label="Email Address"
-              type="email"
-              id="login-email"
-              placeholder="user@example.com"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (emailError) setEmailError('');
-              }}
-              error={emailError}
-              disabled={isSubmitting}
-              autoComplete="email"
-            />
+            {/* 2. User Code */}
+            <div className={`cms-field-group ${userCodeError ? 'has-error' : ''}`}>
+              <label htmlFor="cms-user-code" className="cms-field-label">
+                User Code
+              </label>
+              <div className="cms-input-wrapper">
+                <input
+                  id="cms-user-code"
+                  type="text"
+                  className="cms-text-input"
+                  placeholder="Enter Code Or Mobile"
+                  value={userCode}
+                  onChange={(e) => {
+                    setUserCode(e.target.value);
+                    if (userCodeError) setUserCodeError('');
+                  }}
+                  disabled={isSubmitting}
+                  autoComplete="username"
+                />
+              </div>
+              {userCodeError && (
+                <span className="cms-field-error-text">{userCodeError}</span>
+              )}
+            </div>
 
-            <PasswordField
-              label="Password"
-              id="login-password"
-              placeholder="••••••••••••"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (passwordError) setPasswordError('');
-              }}
-              error={passwordError}
-              disabled={isSubmitting}
-              autoComplete="current-password"
-            />
+            {/* 3. Password */}
+            <div className={`cms-field-group ${passwordError ? 'has-error' : ''}`}>
+              <label htmlFor="cms-password" className="cms-field-label">
+                Password
+              </label>
+              <div className="cms-input-wrapper">
+                <input
+                  id="cms-password"
+                  type={showPassword ? 'text' : 'password'}
+                  className="cms-text-input"
+                  placeholder="••••••••••••"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (passwordError) setPasswordError('');
+                  }}
+                  disabled={isSubmitting}
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  className="cms-password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  tabIndex={-1}
+                >
+                  <i className={showPassword ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye'}></i>
+                </button>
+              </div>
+              {passwordError && (
+                <span className="cms-field-error-text">{passwordError}</span>
+              )}
+            </div>
 
-            <div className="form-options">
-              <label className="checkbox-container" htmlFor="login-remember">
+            {/* Remember Me & Forgot Password */}
+            <div className="cms-form-options">
+              <label className="cms-checkbox-label" htmlFor="cms-remember">
                 <input
                   type="checkbox"
-                  id="login-remember"
+                  id="cms-remember"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                   disabled={isSubmitting}
@@ -221,166 +306,70 @@ export const Login: React.FC = () => {
                 <span>Remember me</span>
               </label>
 
-              <Link
-                to="/forgot-password"
-                className="forgot-link"
-              >
+              <Link to="/forgot-password" className="cms-forgot-link">
                 Forgot password?
               </Link>
             </div>
 
+            {/* Log-in Pill Button */}
             <button
               type="submit"
-              className="btn-signin"
+              className="cms-btn-submit"
               disabled={isSubmitting}
-              id="btn-signin-submit"
+              id="cms-submit-btn"
             >
               {isSubmitting ? (
                 <>
-                  <LoadingSpinner size="sm" color="#ffffff" />
-                  <span>Signing In...</span>
+                  <span className="cms-spinner"></span>
+                  <span>Authenticating...</span>
                 </>
               ) : (
-                <span>Sign In</span>
+                <span>Log-in</span>
               )}
             </button>
           </form>
 
-          {/* OR Divider */}
-          <div className="auth-divider">OR</div>
-
-          {/* Alternative SSO Methods */}
-          <div className="sso-buttons">
-            <SocialLoginButton
-              provider="google"
-              onClick={() => {
-                showToast('Google Workspace SSO is in development mode. Please use demo credentials.', 'warning');
-              }}
-            />
-
-            <SocialLoginButton
-              provider="college-id"
-              onClick={() => setIsCollegeIdModalOpen(true)}
-            />
-          </div>
-
-          {/* Quick Demo Credentials Switcher */}
-          <div className="demo-credentials-card">
-            <div className="demo-credentials-title">
-              <span>Quick Test Credentials (Step 2 Roles)</span>
-              <i className="fa-solid fa-key"></i>
+          {/* Quick 1-Click Role Evaluation Chips */}
+          <div className="cms-quick-roles">
+            <div className="cms-quick-roles-title">
+              <i className="fa-solid fa-key" style={{ color: '#f59e0b' }}></i>
+              <span>Quick Test Log-in</span>
             </div>
-            <div className="demo-chips-grid">
+            <div className="cms-roles-grid">
               <button
                 type="button"
-                className="demo-chip"
-                onClick={() => fillDemoAccount('student@campushub.com', 'student123')}
+                className="cms-role-btn"
+                onClick={() => handleQuickRoleLogin('student', 'student@campushub.com', 'student123')}
               >
-                Student
+                <i className="fa-solid fa-graduation-cap" style={{ color: '#0284c7' }}></i>
+                <span>Student</span>
               </button>
+
               <button
                 type="button"
-                className="demo-chip"
-                onClick={() => fillDemoAccount('faculty@campushub.com', 'faculty123')}
+                className="cms-role-btn"
+                onClick={() => handleQuickRoleLogin('faculty', 'faculty@campushub.com', 'faculty123')}
               >
-                Faculty
+                <i className="fa-solid fa-chalkboard-user" style={{ color: '#8b5cf6' }}></i>
+                <span>Faculty</span>
               </button>
+
               <button
                 type="button"
-                className="demo-chip"
-                onClick={() => fillDemoAccount('admin@campushub.com', 'admin123')}
+                className="cms-role-btn"
+                onClick={() => handleQuickRoleLogin('admin', 'admin@campushub.com', 'admin123')}
               >
-                Admin
-              </button>
-              <button
-                type="button"
-                className="demo-chip"
-                onClick={() => fillDemoAccount('parent@campushub.com', 'parent123')}
-              >
-                Parent
+                <i className="fa-solid fa-user-shield" style={{ color: '#ea580c' }}></i>
+                <span>Admin</span>
               </button>
             </div>
           </div>
 
-          {/* Footer Legal Links */}
-          <div className="legal-footer">
-            <a
-              href="#terms"
-              onClick={(e) => {
-                e.preventDefault();
-                showToast('CampusOne Institutional Terms of Service.', 'info');
-              }}
-            >
-              Terms & Conditions
-            </a>
-            <span>•</span>
-            <a
-              href="#privacy"
-              onClick={(e) => {
-                e.preventDefault();
-                showToast('CampusOne Data Security & Privacy Policy.', 'info');
-              }}
-            >
-              Privacy Policy
-            </a>
+          <div className="cms-form-footer">
+            <span>© {new Date().getFullYear()} College Management System • Institutional Access</span>
           </div>
         </div>
       </div>
-
-      {/* College ID Dialog Modal */}
-      <Modal
-        isOpen={isCollegeIdModalOpen}
-        onClose={() => setIsCollegeIdModalOpen(false)}
-        title="College Smart ID Authentication"
-        maxWidth="sm"
-      >
-        <div style={{ textAlign: 'center', padding: '12px 0' }}>
-          <div style={{
-            width: '64px',
-            height: '64px',
-            borderRadius: '16px',
-            background: 'rgba(99, 102, 241, 0.15)',
-            color: '#6366f1',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '28px',
-            marginBottom: '16px'
-          }}>
-            <i className="fa-solid fa-id-card-clip"></i>
-          </div>
-          <h4 style={{ fontSize: '1.1rem', marginBottom: '8px', color: '#ffffff' }}>Tap or Select Campus ID</h4>
-          <p style={{ color: '#94a3b8', fontSize: '0.875rem', lineHeight: '1.5', marginBottom: '20px' }}>
-            Institutional Single Sign-On via Campus Smart Card is active in development mode. Select a test profile:
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <button
-              type="button"
-              className="c1-btn c1-btn-gradient"
-              style={{ width: '100%' }}
-              onClick={() => {
-                setIsCollegeIdModalOpen(false);
-                fillDemoAccount('student@campushub.com', 'student123');
-                showToast('Filled student credentials for quick evaluation.', 'success');
-              }}
-            >
-              Use Student ID (Aditya Sharma)
-            </button>
-            <button
-              type="button"
-              className="c1-btn c1-btn-secondary"
-              style={{ width: '100%' }}
-              onClick={() => {
-                setIsCollegeIdModalOpen(false);
-                fillDemoAccount('faculty@campushub.com', 'faculty123');
-                showToast('Filled faculty credentials for quick evaluation.', 'success');
-              }}
-            >
-              Use Faculty ID (Dr. S. Kumar)
-            </button>
-          </div>
-        </div>
-      </Modal>
 
       {/* Toast Notification Container */}
       {toastMsg && (

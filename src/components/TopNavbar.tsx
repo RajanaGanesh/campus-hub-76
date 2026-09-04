@@ -70,7 +70,6 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
     '/admin/courses': ['Admin Portal', 'Course Management'],
     '/admin/departments': ['Admin Portal', 'Academic Departments'],
     '/admin/attendance': ['Admin Portal', 'Attendance Audit'],
-    '/admin/assignments': ['Admin Portal', 'Assignments Overview'],
     '/admin/exams': ['Admin Portal', 'Examinations & Conflicts'],
     '/admin/results': ['Admin Portal', 'Results Ledger'],
     '/admin/fees': ['Admin Portal', 'Fee Realization'],
@@ -82,23 +81,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
     '/admin/notifications': ['Admin Portal', 'System Notifications'],
     '/admin/users': ['Admin Portal', 'User RBAC Accounts'],
     '/admin/reports': ['Admin Portal', 'Reports & Data Export'],
-    '/admin/settings': ['Admin Portal', 'System Settings'],
-
-    // Parent Portal
-    '/parent': ['Parent Portal', 'Parent Dashboard'],
-    '/parent/dashboard': ['Parent Portal', 'Parent Dashboard'],
-    '/parent/attendance': ['Parent Portal', "Student's Attendance"],
-    '/parent/academics': ['Parent Portal', 'Academic Results & GPA'],
-    '/parent/results': ['Parent Portal', 'Academic Results & GPA'],
-    '/parent/assignments': ['Parent Portal', 'Coursework & Homework'],
-    '/parent/exams': ['Parent Portal', 'Examination Schedules'],
-    '/parent/fees': ['Parent Portal', 'Tuition Fees & Receipts'],
-    '/parent/library': ['Parent Portal', 'Library Book Loans'],
-    '/parent/hostel': ['Parent Portal', 'Hostel Accommodation'],
-    '/parent/placements': ['Parent Portal', 'Placements & Job Offers'],
-    '/parent/notices': ['Parent Portal', 'Parent Circulars'],
-    '/parent/notifications': ['Parent Portal', 'Notification Center'],
-    '/parent/settings': ['Parent Portal', 'Guardian Profile & Alerts'],
+    '/admin/settings': ['Admin Portal', 'System Settings']
   };
 
   const currentPath = location.pathname;
@@ -178,24 +161,6 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
         >
           <i className="fa-regular fa-calendar-check"></i>
         </button>
-
-        {/* NxtWave Style Gamification Stats Pills */}
-        <div className="nav-gamification-group">
-          <div className="nav-stat-pill xp-pill" title="Campus XP Points: 76,398 XP">
-            <span className="pill-badge-circle xp-circle">XP</span>
-            <span className="pill-val">76398</span>
-          </div>
-
-          <div className="nav-stat-pill streak-pill" title="Continuous Learning Streak: 147 Days">
-            <span className="pill-emoji">🔥</span>
-            <span className="pill-val">147</span>
-          </div>
-
-          <div className="nav-stat-pill rank-pill" title="Institutional Leaderboard Rank: #9">
-            <span className="pill-emoji">🏆</span>
-            <span className="pill-val">9</span>
-          </div>
-        </div>
 
         {/* Mobile Search Button */}
         <button

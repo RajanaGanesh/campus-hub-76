@@ -246,14 +246,14 @@ export const AdminCourses: React.FC = () => {
                   <tr key={c.code}>
                     <td><span className="course-code-tag">{c.code}</span></td>
                     <td>
-                      <strong style={{ color: '#ffffff' }}>{c.name}</strong>
+                      <strong style={{ color: 'var(--text-primary)' }}>{c.name}</strong>
                     </td>
                     <td>{c.department}</td>
                     <td>{c.semester}</td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <i className="fa-solid fa-user-tie" style={{ color: 'var(--accent-blue)' }}></i>
-                        <span style={{ color: '#ffffff' }}>{c.facultyName}</span>
+                        <span style={{ color: 'var(--text-primary)' }}>{c.facultyName}</span>
                       </div>
                     </td>
                     <td><strong>{c.studentsCount}</strong> Students</td>

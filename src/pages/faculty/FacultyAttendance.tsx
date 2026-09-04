@@ -341,7 +341,7 @@ export const FacultyAttendance: React.FC = () => {
                       <tr key={stu.id}>
                         <td><span className="course-code-cell">{stu.id}</span></td>
                         <td>
-                          <strong style={{ color: '#ffffff' }}>{stu.name}</strong>
+                          <strong style={{ color: 'var(--text-primary)' }}>{stu.name}</strong>
                         </td>
                         <td>{selectedCourseCode}</td>
                         <td>Section {selectedSection}</td>

@@ -218,7 +218,7 @@ export const FacultyResults: React.FC = () => {
                     <tr key={rec.studentId}>
                       <td><span className="course-code-cell">{rec.studentId}</span></td>
                       <td>
-                        <strong style={{ color: '#ffffff' }}>{rec.studentName}</strong>
+                        <strong style={{ color: 'var(--text-primary)' }}>{rec.studentName}</strong>
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -249,7 +249,7 @@ export const FacultyResults: React.FC = () => {
                         </div>
                       </td>
                       <td>
-                        <strong style={{ fontSize: '1rem', color: '#ffffff' }}>{total} / 100</strong>
+                        <strong style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{total} / 100</strong>
                       </td>
                       <td>
                         <span

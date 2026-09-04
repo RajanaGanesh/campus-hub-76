@@ -14,7 +14,7 @@ export interface QuickPrompt {
   query: string;
 }
 
-export const getQuickPromptsForRole = (role: 'student' | 'faculty' | 'admin' | 'parent'): QuickPrompt[] => {
+export const getQuickPromptsForRole = (role: 'student' | 'faculty' | 'admin'): QuickPrompt[] => {
   switch (role) {
     case 'student':
       return [
@@ -38,13 +38,6 @@ export const getQuickPromptsForRole = (role: 'student' | 'faculty' | 'admin' | '
         { label: 'Fee Realization', query: 'Show university fee collection summary' },
         { label: 'Room Conflicts', query: 'Check examination hall conflict status' }
       ];
-    case 'parent':
-      return [
-        { label: "Student's Attendance", query: 'What is my student attendance?' },
-        { label: 'Academic GPA', query: 'Show my student GPA and semester results' },
-        { label: 'Pending Homework', query: 'Are there any pending assignments?' },
-        { label: 'Fee Invoices', query: 'What is our tuition fee payment balance?' }
-      ];
     default:
       return [
         { label: 'Campus Overview', query: 'Give me an overview of CampusOne' }
@@ -54,7 +47,7 @@ export const getQuickPromptsForRole = (role: 'student' | 'faculty' | 'admin' | '
 
 export const detectIntentAndRespond = (
   query: string,
-  role: 'student' | 'faculty' | 'admin' | 'parent',
+  role: 'student' | 'faculty' | 'admin',
   lastIntent: string | null
 ): { response: string; intent: string; actionButton?: { label: string; path: string } } => {
   const clean = query.toLowerCase().trim();
@@ -241,50 +234,6 @@ export const detectIntentAndRespond = (
     }
   }
 
-  // ----------------------------------------------------
-  // ROLE 4: PARENT
-  // ----------------------------------------------------
-  if (role === 'parent') {
-    if (clean.includes('attendance') || clean.includes('present') || clean.includes('absent')) {
-      return {
-        response: 'Your student Aditya Sharma maintains an overall attendance of 87% (104 of 120 lectures attended). All subjects are above the 75% threshold.',
-        intent: 'attendance',
-        actionButton: { label: 'View Attendance Logs', path: '/parent/attendance' }
-      };
-    }
-
-    if (clean.includes('gpa') || clean.includes('result') || clean.includes('grade') || clean.includes('mark') || clean.includes('academic')) {
-      return {
-        response: 'Aditya Sharma stands at Cumulative CGPA 8.60 / 10.0 and Semester 8 SGPA 8.75 with 0 backlogs and Excellent academic standing.',
-        intent: 'academics',
-        actionButton: { label: 'View Academic Results', path: '/parent/academics' }
-      };
-    }
-
-    if (clean.includes('assignment') || clean.includes('homework') || clean.includes('task')) {
-      return {
-        response: 'Aditya has 1 pending assignment due on 25 Aug ("Microservices Deployment on Kubernetes"). 2 previously submitted assignments were graded with an average of 91.5/100.',
-        intent: 'assignments',
-        actionButton: { label: 'View Assignments', path: '/parent/assignments' }
-      };
-    }
-
-    if (clean.includes('fee') || clean.includes('bill') || clean.includes('receipt') || clean.includes('balance')) {
-      return {
-        response: 'Annual tuition fee of ₹85,000 for Aditya Sharma is Paid in Full. Verified receipt #REC-2026-8901 is available for PDF download.',
-        intent: 'fees',
-        actionButton: { label: 'View Fee Receipts', path: '/parent/fees' }
-      };
-    }
-
-    if (clean.includes('exam') || clean.includes('timetable') || clean.includes('date')) {
-      return {
-        response: 'Upcoming Exam Papers:\n1. Mid-Semester Theory Paper 1 on 25 Aug 2026 (Room CSE-204)\n2. DBMS Practical & Viva on 28 Aug 2026 (Computer Lab 3).',
-        intent: 'exams',
-        actionButton: { label: 'View Exam Timetable', path: '/parent/exams' }
-      };
-    }
-  }
 
   // Fallback response
   return {

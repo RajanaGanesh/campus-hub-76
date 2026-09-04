@@ -50,7 +50,7 @@ export const StudentWelcomeCard: React.FC<StudentWelcomeCardProps> = ({
         </h1>
 
         <p className="welcome-subtitle">
-          Here's what's happening with your campus life today. You have <strong style={{ color: '#ffffff' }}>4 assignments pending</strong> and your next exam starts in <strong style={{ color: 'var(--accent-blue)' }}>9 days</strong>.
+          Here's what's happening with your campus life today. You have <strong style={{ color: 'var(--text-primary)' }}>4 assignments pending</strong> and your next exam starts in <strong style={{ color: 'var(--accent-blue)' }}>9 days</strong>.
         </p>
 
         <div className="welcome-meta-chips">

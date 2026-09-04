@@ -122,7 +122,7 @@ export const AdminFees: React.FC = () => {
               <tbody>
                 {deptFeeLedger.map((d) => (
                   <tr key={d.dept}>
-                    <td><strong style={{ color: '#ffffff' }}>{d.dept}</strong></td>
+                    <td><strong style={{ color: 'var(--text-primary)' }}>{d.dept}</strong></td>
                     <td>{d.billed}</td>
                     <td><strong style={{ color: 'var(--color-success)' }}>{d.collected}</strong></td>
                     <td><strong style={{ color: '#fbbf24' }}>{d.pending}</strong></td>
@@ -164,7 +164,7 @@ export const AdminFees: React.FC = () => {
                 {recentTransactions.map((tx) => (
                   <tr key={tx.id}>
                     <td><span className="course-code-cell">{tx.id}</span></td>
-                    <td><strong style={{ color: '#ffffff' }}>{tx.student}</strong></td>
+                    <td><strong style={{ color: 'var(--text-primary)' }}>{tx.student}</strong></td>
                     <td><strong style={{ color: '#38bdf8' }}>{tx.amount}</strong></td>
                     <td>{tx.method}</td>
                     <td>{tx.date}</td>

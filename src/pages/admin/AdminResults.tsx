@@ -98,7 +98,7 @@ export const AdminResults: React.FC = () => {
               <tbody>
                 {deptResults.map((d) => (
                   <tr key={d.dept}>
-                    <td><strong style={{ color: '#ffffff' }}>{d.dept}</strong></td>
+                    <td><strong style={{ color: 'var(--text-primary)' }}>{d.dept}</strong></td>
                     <td><strong style={{ color: '#38bdf8' }}>{d.avgGpa} / 10.0</strong></td>
                     <td><span style={{ color: 'var(--color-success)', fontWeight: 700 }}>{d.passPct}</span></td>
                     <td>
@@ -138,7 +138,7 @@ export const AdminResults: React.FC = () => {
                 {mgmt.examMarks.map((m) => (
                   <tr key={m.studentId}>
                     <td><span className="course-code-cell">{m.studentId}</span></td>
-                    <td><strong style={{ color: '#ffffff' }}>{m.studentName}</strong></td>
+                    <td><strong style={{ color: 'var(--text-primary)' }}>{m.studentName}</strong></td>
                     <td><span className="course-code-tag">{m.courseCode}</span></td>
                     <td>{m.internalMarks} / 30</td>
                     <td>{m.externalMarks} / 70</td>

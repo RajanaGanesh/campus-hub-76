@@ -422,7 +422,7 @@ export const StudentLibrary: React.FC = () => {
                           <td>
                             <div className="book-table-title-cell">
                               <i className="fa-solid fa-book"></i>
-                              <strong style={{ color: '#ffffff' }}>{item.bookTitle}</strong>
+                              <strong style={{ color: 'var(--text-primary)' }}>{item.bookTitle}</strong>
                             </div>
                           </td>
                           <td>{item.borrowedDate}</td>
@@ -585,7 +585,7 @@ export const StudentLibrary: React.FC = () => {
               <div className="borrow-prompt-box">
                 <i className="fa-solid fa-book-circle-check borrow-icon"></i>
                 <div>
-                  <h3 style={{ color: '#ffffff', fontSize: '1.1rem' }}>{requestBookModalItem.title}</h3>
+                  <h3 style={{ color: 'var(--text-primary)', fontSize: '1.1rem' }}>{requestBookModalItem.title}</h3>
                   <span className="text-muted" style={{ fontSize: '0.8125rem' }}>By {requestBookModalItem.author}</span>
                 </div>
               </div>

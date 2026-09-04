@@ -307,11 +307,11 @@ export const StudentResults: React.FC = () => {
                   return (
                     <tr key={idx}>
                       <td><span className="course-code-cell">{sub.code || `CS${semIndex + 1}0${idx + 1}`}</span></td>
-                      <td><strong style={{ color: '#ffffff' }}>{sub.subject}</strong></td>
+                      <td><strong style={{ color: 'var(--text-primary)' }}>{sub.subject}</strong></td>
                       <td>{sub.credits || 4}</td>
                       <td>{sub.internal}</td>
                       <td>{sub.external}</td>
-                      <td><strong style={{ color: isHigh ? 'var(--color-success)' : '#ffffff' }}>{sub.total}</strong></td>
+                      <td><strong style={{ color: isHigh ? 'var(--color-success)' : 'var(--text-primary)' }}>{sub.total}</strong></td>
                       <td><span className="c1-badge c1-badge-success">{sub.grade}</span></td>
                       <td>{sub.gradePoint || (sub.grade === 'A+' ? 10 : sub.grade === 'A' ? 9 : 8)}</td>
                       <td><span className="status-pass"><i className="fa-solid fa-circle-check"></i> {sub.status || 'Pass'}</span></td>

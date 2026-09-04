@@ -151,7 +151,7 @@ export const AdminDashboard: React.FC = () => {
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span className="course-code-tag">{dept.code}</span>
-                      <strong style={{ fontSize: '0.875rem', color: '#ffffff' }}>{dept.name}</strong>
+                      <strong style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>{dept.name}</strong>
                     </div>
                     <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
                       <strong>{dept.students}</strong> Students • <strong>{dept.faculty}</strong> Faculty
@@ -244,7 +244,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="academic-stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
           <div className="c1-card" style={{ padding: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <h4 style={{ color: '#ffffff', fontSize: '0.9375rem', fontWeight: 700 }}>Hostel Occupancy</h4>
+              <h4 style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', fontWeight: 700 }}>Hostel Occupancy</h4>
               <span className="c1-badge c1-badge-cyan">90% Full</span>
             </div>
             <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
@@ -262,7 +262,7 @@ export const AdminDashboard: React.FC = () => {
 
           <div className="c1-card" style={{ padding: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <h4 style={{ color: '#ffffff', fontSize: '0.9375rem', fontWeight: 700 }}>Campus Transport</h4>
+              <h4 style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', fontWeight: 700 }}>Campus Transport</h4>
               <span className="c1-badge c1-badge-success">16 Buses</span>
             </div>
             <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
@@ -280,7 +280,7 @@ export const AdminDashboard: React.FC = () => {
 
           <div className="c1-card" style={{ padding: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <h4 style={{ color: '#ffffff', fontSize: '0.9375rem', fontWeight: 700 }}>Central Library</h4>
+              <h4 style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', fontWeight: 700 }}>Central Library</h4>
               <span className="c1-badge c1-badge-purple">14,200 Titles</span>
             </div>
             <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>

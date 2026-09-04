@@ -219,7 +219,7 @@ export const AdminExams: React.FC = () => {
                   <tr key={ex.id}>
                     <td><span className="course-code-tag">{ex.courseCode}</span></td>
                     <td>
-                      <strong style={{ color: '#ffffff' }}>{ex.name}</strong>
+                      <strong style={{ color: 'var(--text-primary)' }}>{ex.name}</strong>
                     </td>
                     <td>{ex.department}</td>
                     <td>

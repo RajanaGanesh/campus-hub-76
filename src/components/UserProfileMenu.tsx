@@ -1,7 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ThemeToggle } from './ThemeToggle';
 
 interface UserProfileMenuProps {
   isOpen: boolean;
@@ -20,19 +19,19 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ isOpen, onClos
     navigate('/login');
   };
 
+  const userRole = user?.role || 'student';
+  const profilePath = userRole === 'parent' ? '/parent/settings' : userRole === 'admin' ? '/admin/settings' : '/student/profile';
+  const settingsPath = userRole === 'parent' ? '/parent/settings' : userRole === 'admin' ? '/admin/settings' : '/student/settings';
+
   return (
-    <div className="dropdown-menu" style={{ display: 'block' }}>
+    <div className="dropdown-menu user-dropdown-panel" style={{ display: 'block' }}>
       <div className="dropdown-header">
         <div className="profile-name">{user?.name || 'Ganesh'}</div>
         <div className="profile-email">{user?.email || 'ganesh@campushub.com'}</div>
-        <div className="profile-role">{user?.role || 'student'}</div>
-      </div>
-
-      <div style={{ padding: '10px 14px 8px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-          Theme Mode
-        </span>
-        <ThemeToggle variant="segmented" />
+        <div className="profile-role-badge">
+          <span className="role-tag">{userRole.toUpperCase()}</span>
+          <span className="account-status-dot"></span> Active
+        </div>
       </div>
 
       <div className="dropdown-list">
@@ -41,32 +40,34 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ isOpen, onClos
           className="dropdown-item"
           onClick={() => {
             onClose();
-            navigate('/profile');
+            navigate(profilePath);
           }}
         >
-          <i className="fa-solid fa-circle-user"></i>
-          My Profile
+          <i className="fa-regular fa-user"></i>
+          <span>My Profile</span>
         </button>
         <button
           type="button"
           className="dropdown-item"
           onClick={() => {
             onClose();
-            navigate('/settings');
+            navigate(settingsPath);
           }}
         >
           <i className="fa-solid fa-sliders"></i>
-          Settings
+          <span>Settings</span>
         </button>
         <button
           type="button"
           className="dropdown-item danger"
           onClick={handleLogout}
         >
-          <i className="fa-solid fa-right-from-bracket"></i>
-          Sign Out
+          <i className="fa-solid fa-arrow-right-from-bracket"></i>
+          <span>Sign Out</span>
         </button>
       </div>
     </div>
   );
 };
+
+export default UserProfileMenu;

@@ -97,49 +97,36 @@ export const CampusAIAssistant: React.FC = () => {
 
   return (
     <>
-      {/* Floating Trigger Button */}
+      {/* Floating Trigger Button (NxtWave Purple Floating Chat FAB) */}
       {!isOpen && (
         <button
           type="button"
-          className="campus-ai-btn"
+          className="campus-ai-fab-btn"
           onClick={() => setIsOpen(true)}
           style={{
             position: 'fixed',
             bottom: '24px',
             right: '24px',
             zIndex: 998,
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            border: 'none',
+            background: 'linear-gradient(135deg, #7C3AED 0%, #6366F1 100%)',
+            color: '#ffffff',
+            cursor: 'pointer',
+            boxShadow: '0 8px 24px rgba(124, 58, 237, 0.45), 0 2px 6px rgba(0, 0, 0, 0.1)',
             display: 'flex',
             alignItems: 'center',
-            gap: '10px',
-            padding: '12px 20px',
-            borderRadius: '9999px',
-            border: '1px solid rgba(99, 102, 241, 0.4)',
-            background: 'linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%)',
-            color: '#ffffff',
-            fontWeight: 700,
-            fontSize: '0.9375rem',
-            cursor: 'pointer',
-            boxShadow: '0 8px 30px rgba(79, 70, 229, 0.5)',
-            transition: 'all 0.2s ease',
-            fontFamily: 'Inter, system-ui, sans-serif'
+            justifyContent: 'center',
+            fontSize: '1.4rem',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+            outline: 'none'
           }}
-          aria-label="Open CampusOne AI Assistant"
+          aria-label="Open Campus AI Chat"
+          title="CampusOne AI Chatbot"
         >
-          <div
-            style={{
-              width: '26px',
-              height: '26px',
-              borderRadius: '50%',
-              background: 'rgba(255, 255, 255, 0.2)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '0.875rem'
-            }}
-          >
-            <i className="fa-solid fa-wand-magic-sparkles"></i>
-          </div>
-          <span>Campus AI</span>
+          <i className="fa-solid fa-comment-dots"></i>
         </button>
       )}
 

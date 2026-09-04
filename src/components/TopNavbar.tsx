@@ -2,7 +2,6 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { UserProfileMenu } from './UserProfileMenu';
-import { ThemeToggle } from './ThemeToggle';
 
 interface TopNavbarProps {
   onSidebarToggle: () => void;
@@ -118,6 +117,12 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
     setIsNotificationsOpen(false);
   };
 
+  const handleCalendarClick = () => {
+    if (user?.role === 'admin') navigate('/admin/exams');
+    else if (user?.role === 'faculty') navigate('/faculty/attendance');
+    else navigate('/student/timetable');
+  };
+
   // Get user initials
   const getInitials = (nameStr: string) => {
     if (!nameStr) return 'CH';
@@ -154,15 +159,45 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
         </div>
       </div>
 
-      <div className="navbar-search" onClick={onSearchOpen}>
+      <div className="navbar-center-search" onClick={onSearchOpen}>
         <div className="search-trigger-input">
           <i className="fa-solid fa-magnifying-glass search-icon-nav"></i>
-          <span>Search Campus Hub...</span>
-          <kbd className="search-kbd-shortcut">Ctrl+K</kbd>
+          <span>Search courses, notices, services...</span>
+          <kbd className="search-kbd-shortcut">CTRL+K</kbd>
         </div>
       </div>
 
       <div className="navbar-right">
+        {/* Calendar Quick Access Button */}
+        <button
+          type="button"
+          className="btn-nav-action btn-calendar-action"
+          onClick={handleCalendarClick}
+          title="Schedule & Timetable"
+          aria-label="Schedule & Timetable"
+        >
+          <i className="fa-regular fa-calendar-check"></i>
+        </button>
+
+        {/* NxtWave Style Gamification Stats Pills */}
+        <div className="nav-gamification-group">
+          <div className="nav-stat-pill xp-pill" title="Campus XP Points: 76,398 XP">
+            <span className="pill-badge-circle xp-circle">XP</span>
+            <span className="pill-val">76398</span>
+          </div>
+
+          <div className="nav-stat-pill streak-pill" title="Continuous Learning Streak: 147 Days">
+            <span className="pill-emoji">🔥</span>
+            <span className="pill-val">147</span>
+          </div>
+
+          <div className="nav-stat-pill rank-pill" title="Institutional Leaderboard Rank: #9">
+            <span className="pill-emoji">🏆</span>
+            <span className="pill-val">9</span>
+          </div>
+        </div>
+
+        {/* Mobile Search Button */}
         <button
           type="button"
           className="btn-nav-action btn-mobile-search"
@@ -172,37 +207,33 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           <i className="fa-solid fa-magnifying-glass"></i>
         </button>
 
-        <button
-          type="button"
-          className="btn-nav-action btn-ai-shortcut"
-          onClick={() => navigate('/ai')}
-          aria-label="Open AI Assistant"
-        >
-          <i className="fa-solid fa-robot"></i>
-        </button>
-
-        <ThemeToggle variant="dropdown" />
-
+        {/* Notifications Button */}
         <button
           type="button"
           className="btn-nav-action"
           onClick={handleNotificationsClick}
           aria-label="Notifications"
+          title="Notifications Inbox"
         >
-          <i className="fa-solid fa-bell"></i>
+          <i className="fa-regular fa-bell"></i>
           {unreadNotifCount > 0 && <span className="badge-dot" />}
         </button>
 
+        {/* User Profile Avatar Pill */}
         <div
           className={`user-menu-trigger ${isProfileOpen ? 'active' : ''}`}
           onClick={handleProfileClick}
+          title="Account Menu"
         >
-          <div className="user-avatar">{getInitials(user?.name || 'Ganesh')}</div>
+          <div className="user-avatar-wrapper">
+            <div className="user-avatar">{getInitials(user?.name || 'Ganesh')}</div>
+            <span className="avatar-smart-tag">SMART</span>
+          </div>
           <div className="user-info-text">
             <span className="user-name">{user?.name || 'Ganesh'}</span>
             <span className="user-role">{user?.role || 'student'}</span>
           </div>
-          <i className="fa-solid fa-chevron-down"></i>
+          <i className="fa-solid fa-chevron-down user-chevron"></i>
           
           <UserProfileMenu
             isOpen={isProfileOpen}
@@ -213,3 +244,5 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
     </header>
   );
 };
+
+export default TopNavbar;

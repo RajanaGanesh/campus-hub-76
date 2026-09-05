@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
-import { academicData, AssignmentItem } from '../../data/academicData';
+import { getAcademicAssignments, saveAcademicAssignments, AssignmentItem } from '../../data/academicData';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
@@ -9,8 +9,8 @@ import { LoadingSpinner } from '../../components/LoadingSpinner';
 export const StudentAssignments: React.FC = () => {
   const navigate = useNavigate();
 
-  // Assignments state (seeded with academicData assignments)
-  const [assignments, setAssignments] = useState<AssignmentItem[]>(academicData.assignments);
+  // Assignments state loaded from persistent storage
+  const [assignments, setAssignments] = useState<AssignmentItem[]>(() => getAcademicAssignments());
 
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -159,18 +159,18 @@ export const StudentAssignments: React.FC = () => {
         setIsUploading(false);
 
         // Update Assignment State
-        setAssignments((prev) =>
-          prev.map((a) =>
-            a.id === submitModalItem.id
-              ? {
-                  ...a,
-                  status: 'Submitted',
-                  submittedFile: selectedFile ? selectedFile.name : a.submittedFile || 'Submission_Document.pdf',
-                  comments: studentComments
-                }
-              : a
-          )
+        const updated = assignments.map((a) =>
+          a.id === submitModalItem.id
+            ? {
+                ...a,
+                status: 'Submitted' as const,
+                submittedFile: selectedFile ? selectedFile.name : a.submittedFile || 'Submission_Document.pdf',
+                comments: studentComments
+              }
+            : a
         );
+        setAssignments(updated);
+        saveAcademicAssignments(updated);
 
         setSubmitModalItem(null);
         showToast(`Assignment "${submitModalItem.title}" submitted successfully!`, 'success');

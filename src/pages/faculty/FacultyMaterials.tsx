@@ -2,57 +2,11 @@ import React, { useState, useMemo } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
-
-export interface FacultyMaterialItem {
-  id: string;
-  title: string;
-  courseCode: string;
-  courseName: string;
-  type: 'PDF' | 'Notes' | 'Presentation' | 'Video' | 'Document';
-  date: string;
-  fileSize: string;
-}
+import { getFacultyMaterials, saveFacultyMaterials, FacultyMaterialItem } from '../../services/storageService';
 
 export const FacultyMaterials: React.FC = () => {
-  // Materials state
-  const [materials, setMaterials] = useState<FacultyMaterialItem[]>([
-    {
-      id: 'mat-1',
-      title: 'Lecture 1: Binary Search Trees & AVL Balancing',
-      courseCode: 'CSE-301',
-      courseName: 'Advanced Data Structures',
-      type: 'PDF',
-      date: '12 Aug 2026',
-      fileSize: '2.4 MB'
-    },
-    {
-      id: 'mat-2',
-      title: 'Chapter 3: ER-Model to Relational Schema Mapping',
-      courseCode: 'CSE-302',
-      courseName: 'Database Management Systems',
-      type: 'Presentation',
-      date: '14 Aug 2026',
-      fileSize: '4.8 MB'
-    },
-    {
-      id: 'mat-3',
-      title: 'Red-Black Tree Insertion & Rotation Handout',
-      courseCode: 'CSE-301',
-      courseName: 'Advanced Data Structures',
-      type: 'Notes',
-      date: '15 Aug 2026',
-      fileSize: '1.1 MB'
-    },
-    {
-      id: 'mat-4',
-      title: 'Microservices & Distributed Containers Overview',
-      courseCode: 'CSE-401',
-      courseName: 'Cloud Computing Architecture',
-      type: 'PDF',
-      date: '16 Aug 2026',
-      fileSize: '3.6 MB'
-    }
-  ]);
+  // Materials state loaded from persistent storage
+  const [materials, setMaterials] = useState<FacultyMaterialItem[]>(() => getFacultyMaterials());
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -93,7 +47,10 @@ export const FacultyMaterials: React.FC = () => {
       fileSize: '2.1 MB'
     };
 
-    setMaterials([newMat, ...materials]);
+    const updated = [newMat, ...materials];
+    setMaterials(updated);
+    saveFacultyMaterials(updated);
+
     setIsUploadModalOpen(false);
     setMatTitle('');
     showToast(`Material "${matTitle}" published and synced with Student LMS!`, 'success');
@@ -101,7 +58,10 @@ export const FacultyMaterials: React.FC = () => {
 
   const handleDeleteConfirm = () => {
     if (!deletingMaterial) return;
-    setMaterials((prev) => prev.filter((m) => m.id !== deletingMaterial.id));
+    const updated = materials.filter((m) => m.id !== deletingMaterial.id);
+    setMaterials(updated);
+    saveFacultyMaterials(updated);
+
     setDeletingMaterial(null);
     showToast('Study material deleted.', 'info');
   };

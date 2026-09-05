@@ -1,14 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { AppLayout } from '../../components/AppLayout';
-import { getManagementData, CourseRecord } from '../../data/managementData';
+import { getManagementData, saveManagementData, CourseRecord } from '../../data/managementData';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 
 export const AdminCourses: React.FC = () => {
   const mgmt = getManagementData();
 
-  // Courses state
-  const [courses, setCourses] = useState<CourseRecord[]>(mgmt.courses);
+  // Courses state loaded from persistent storage
+  const [courses, setCourses] = useState<CourseRecord[]>(() => mgmt.courses);
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -43,6 +43,7 @@ export const AdminCourses: React.FC = () => {
       return;
     }
 
+    const mgmt = getManagementData();
     const fac = mgmt.faculty.find((f) => f.id === facultyId);
 
     const newCourse: CourseRecord = {
@@ -58,7 +59,10 @@ export const AdminCourses: React.FC = () => {
       nextClass: 'Mon, Wed 09:00 AM'
     };
 
-    setCourses([newCourse, ...courses]);
+    const updated = [newCourse, ...courses];
+    setCourses(updated);
+    saveManagementData({ ...mgmt, courses: updated });
+
     setIsAddModalOpen(false);
     setName('');
     setCode('');
@@ -69,15 +73,17 @@ export const AdminCourses: React.FC = () => {
     e.preventDefault();
     if (!assigningCourse) return;
 
+    const mgmt = getManagementData();
     const fac = mgmt.faculty.find((f) => f.id === selectedFacId);
 
-    setCourses((prev) =>
-      prev.map((c) =>
-        c.code === assigningCourse.code
-          ? { ...c, facultyId: selectedFacId, facultyName: fac ? fac.name : c.facultyName }
-          : c
-      )
+    const updated = courses.map((c) =>
+      c.code === assigningCourse.code
+        ? { ...c, facultyId: selectedFacId, facultyName: fac ? fac.name : c.facultyName }
+        : c
     );
+
+    setCourses(updated);
+    saveManagementData({ ...mgmt, courses: updated });
 
     setAssigningCourse(null);
     showToast(`Faculty ${fac?.name} assigned to ${assigningCourse.code}!`, 'success');

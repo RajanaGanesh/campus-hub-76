@@ -2,59 +2,10 @@ import React, { useState } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
-
-export interface AdminJobItem {
-  id: string;
-  company: string;
-  title: string;
-  packageStr: string;
-  type: string;
-  location: string;
-  cgpaRequired: number;
-  deadline: string;
-  applicationsCount: number;
-  status: 'Active' | 'Closed';
-}
+import { getAdminJobs, saveAdminJobs, AdminJobItem } from '../../services/storageService';
 
 export const AdminPlacements: React.FC = () => {
-  const [jobs, setJobs] = useState<AdminJobItem[]>([
-    {
-      id: 'job-1',
-      company: 'TechNova Solutions',
-      title: 'Associate Software Engineer',
-      packageStr: '₹8.5 LPA',
-      type: 'Full Time',
-      location: 'Bangalore / Hybrid',
-      cgpaRequired: 7.5,
-      deadline: '30 Aug 2026',
-      applicationsCount: 42,
-      status: 'Active'
-    },
-    {
-      id: 'job-2',
-      company: 'CloudCore Technologies',
-      title: 'Cloud DevOps Associate',
-      packageStr: '₹10.0 LPA',
-      type: 'Full Time',
-      location: 'Hyderabad',
-      cgpaRequired: 8.0,
-      deadline: '05 Sep 2026',
-      applicationsCount: 38,
-      status: 'Active'
-    },
-    {
-      id: 'job-3',
-      company: 'Quantum Dynamics',
-      title: 'Full Stack Developer',
-      packageStr: '₹14.0 LPA',
-      type: 'Full Time',
-      location: 'Bangalore',
-      cgpaRequired: 8.5,
-      deadline: '10 Sep 2026',
-      applicationsCount: 56,
-      status: 'Active'
-    }
-  ]);
+  const [jobs, setJobs] = useState<AdminJobItem[]>(() => getAdminJobs());
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [company, setCompany] = useState('');
@@ -90,7 +41,10 @@ export const AdminPlacements: React.FC = () => {
       status: 'Active'
     };
 
-    setJobs([newJob, ...jobs]);
+    const updated = [newJob, ...jobs];
+    setJobs(updated);
+    saveAdminJobs(updated);
+
     setIsAddModalOpen(false);
     setCompany('');
     setTitle('');

@@ -331,7 +331,7 @@ export const Login: React.FC = () => {
           <div className="cms-quick-roles">
             <div className="cms-quick-roles-title">
               <i className="fa-solid fa-key" style={{ color: '#f59e0b' }}></i>
-              <span>Quick Test Log-in</span>
+              <span>QUICK TEST LOG–IN</span>
             </div>
             <div className="cms-roles-grid">
               <button

@@ -1,14 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { AppLayout } from '../../components/AppLayout';
-import { getManagementData, StudentRecord } from '../../data/managementData';
+import { getManagementData, saveManagementData, StudentRecord } from '../../data/managementData';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 
 export const AdminStudents: React.FC = () => {
-  const mgmt = getManagementData();
-
-  // Students state
-  const [students, setStudents] = useState<StudentRecord[]>(mgmt.students);
+  // Students state loaded from persistent storage
+  const [students, setStudents] = useState<StudentRecord[]>(() => getManagementData().students);
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -67,7 +65,11 @@ export const AdminStudents: React.FC = () => {
       status: 'Active'
     };
 
-    setStudents([newStu, ...students]);
+    const updated = [newStu, ...students];
+    setStudents(updated);
+    const mgmt = getManagementData();
+    saveManagementData({ ...mgmt, students: updated });
+
     setIsAddModalOpen(false);
     setName('');
     setRollNo('');
@@ -81,9 +83,10 @@ export const AdminStudents: React.FC = () => {
     e.preventDefault();
     if (!editingStudent) return;
 
-    setStudents((prev) =>
-      prev.map((s) => (s.id === editingStudent.id ? editingStudent : s))
-    );
+    const updated = students.map((s) => (s.id === editingStudent.id ? editingStudent : s));
+    setStudents(updated);
+    const mgmt = getManagementData();
+    saveManagementData({ ...mgmt, students: updated });
 
     setEditingStudent(null);
     showToast(`Student ${editingStudent.name} updated successfully!`, 'success');
@@ -92,11 +95,12 @@ export const AdminStudents: React.FC = () => {
   // Toggle Status Handler
   const handleConfirmToggleStatus = () => {
     if (!deactivatingStudent) return;
-    const newStatus = deactivatingStudent.status === 'Active' ? 'Deactivated' : 'Active';
+    const newStatus: 'Active' | 'Deactivated' = deactivatingStudent.status === 'Active' ? 'Deactivated' : 'Active';
 
-    setStudents((prev) =>
-      prev.map((s) => (s.id === deactivatingStudent.id ? { ...s, status: newStatus } : s))
-    );
+    const updated = students.map((s) => (s.id === deactivatingStudent.id ? { ...s, status: newStatus } : s));
+    setStudents(updated);
+    const mgmt = getManagementData();
+    saveManagementData({ ...mgmt, students: updated });
 
     setDeactivatingStudent(null);
     showToast(`Student status updated to ${newStatus}.`, 'info');

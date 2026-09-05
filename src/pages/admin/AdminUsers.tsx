@@ -1,25 +1,10 @@
 import React, { useState } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { Toast } from '../../components/Toast';
-
-export interface UserAccountItem {
-  id: string;
-  name: string;
-  email: string;
-  role: 'student' | 'faculty' | 'admin';
-  status: 'Active' | 'Suspended';
-  lastActive: string;
-}
+import { getUserAccounts, saveUserAccounts, UserAccountItem } from '../../services/storageService';
 
 export const AdminUsers: React.FC = () => {
-  const [users, setUsers] = useState<UserAccountItem[]>([
-    { id: 'USR-01', name: 'Aditya Sharma', email: 'aditya.sharma@campushub.edu', role: 'student', status: 'Active', lastActive: 'Just now' },
-    { id: 'USR-02', name: 'Dr. Suresh Kumar', email: 'suresh.kumar@campushub.edu', role: 'faculty', status: 'Active', lastActive: '10 mins ago' },
-    { id: 'USR-03', name: 'System Administrator', email: 'admin@campushub.edu', role: 'admin', status: 'Active', lastActive: 'Active now' },
-    { id: 'USR-04', name: 'Sneha Patel', email: 'sneha.patel@campushub.edu', role: 'student', status: 'Active', lastActive: '2 hours ago' },
-    { id: 'USR-05', name: 'Dr. Priya Menon', email: 'priya.menon@campushub.edu', role: 'faculty', status: 'Active', lastActive: '1 day ago' },
-    { id: 'USR-06', name: 'Rahul Verma', email: 'rahul.verma@campushub.edu', role: 'student', status: 'Active', lastActive: '3 hours ago' }
-  ]);
+  const [users, setUsers] = useState<UserAccountItem[]>(() => getUserAccounts());
 
   const [toastMsg, setToastMsg] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
 
@@ -29,16 +14,16 @@ export const AdminUsers: React.FC = () => {
   };
 
   const handleToggleStatus = (id: string) => {
-    setUsers((prev) =>
-      prev.map((u) => {
-        if (u.id === id) {
-          const nextStatus = u.status === 'Active' ? 'Suspended' : 'Active';
-          showToast(`User ${u.name} account ${nextStatus.toLowerCase()}!`, 'info');
-          return { ...u, status: nextStatus };
-        }
-        return u;
-      })
-    );
+    const updated = users.map((u) => {
+      if (u.id === id) {
+        const nextStatus: 'Active' | 'Suspended' = u.status === 'Active' ? 'Suspended' : 'Active';
+        showToast(`User ${u.name} account ${nextStatus.toLowerCase()}!`, 'info');
+        return { ...u, status: nextStatus };
+      }
+      return u;
+    });
+    setUsers(updated);
+    saveUserAccounts(updated);
   };
 
   const getRoleBadge = (role: UserAccountItem['role']) => {

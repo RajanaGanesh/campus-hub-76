@@ -2,81 +2,10 @@ import React, { useState } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
-
-export interface DepartmentItem {
-  code: string;
-  name: string;
-  hod: string;
-  students: number;
-  faculty: number;
-  labs: number;
-  established: string;
-  status: 'Active' | 'Under Review';
-}
+import { getDepartments, saveDepartments, DepartmentItem } from '../../services/storageService';
 
 export const AdminDepartments: React.FC = () => {
-  const [departments, setDepartments] = useState<DepartmentItem[]>([
-    {
-      code: 'CSE',
-      name: 'Computer Science & Engineering',
-      hod: 'Dr. Suresh Kumar',
-      students: 360,
-      faculty: 24,
-      labs: 12,
-      established: '2008',
-      status: 'Active'
-    },
-    {
-      code: 'ECE',
-      name: 'Electronics & Communication Engineering',
-      hod: 'Dr. Priya Menon',
-      students: 280,
-      faculty: 18,
-      labs: 8,
-      established: '2008',
-      status: 'Active'
-    },
-    {
-      code: 'IT',
-      name: 'Information Technology',
-      hod: 'Dr. Anil Gupta',
-      students: 220,
-      faculty: 14,
-      labs: 6,
-      established: '2012',
-      status: 'Active'
-    },
-    {
-      code: 'AI&DS',
-      name: 'Artificial Intelligence & Data Science',
-      hod: 'Dr. Vikram Singh',
-      students: 160,
-      faculty: 12,
-      labs: 6,
-      established: '2021',
-      status: 'Active'
-    },
-    {
-      code: 'MECH',
-      name: 'Mechanical Engineering',
-      hod: 'Dr. K. Ramesh',
-      students: 120,
-      faculty: 10,
-      labs: 5,
-      established: '2010',
-      status: 'Active'
-    },
-    {
-      code: 'CIVIL',
-      name: 'Civil Engineering',
-      hod: 'Dr. S. N. Roy',
-      students: 100,
-      faculty: 6,
-      labs: 5,
-      established: '2011',
-      status: 'Active'
-    }
-  ]);
+  const [departments, setDepartments] = useState<DepartmentItem[]>(() => getDepartments());
 
   // Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -110,7 +39,10 @@ export const AdminDepartments: React.FC = () => {
       status: 'Active'
     };
 
-    setDepartments([...departments, newDept]);
+    const updated = [...departments, newDept];
+    setDepartments(updated);
+    saveDepartments(updated);
+
     setIsAddModalOpen(false);
     setDeptName('');
     setDeptCode('');

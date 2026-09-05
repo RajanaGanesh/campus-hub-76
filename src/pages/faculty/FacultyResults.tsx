@@ -1,17 +1,16 @@
 import React, { useState } from 'react';
 import { AppLayout } from '../../components/AppLayout';
-import { getManagementData, ExamMarkRecord } from '../../data/managementData';
+import { getManagementData, saveManagementData, ExamMarkRecord } from '../../data/managementData';
 import { Toast } from '../../components/Toast';
 
 export const FacultyResults: React.FC = () => {
-  const mgmt = getManagementData();
-
   // Selected Course and Assessment
   const [selectedCourse, setSelectedCourse] = useState('CSE-301');
   const [selectedExamType, setSelectedExamType] = useState('Midterm Assessment 1 (Internal)');
 
-  // Marks records state
+  // Marks records state loaded from persistent storage
   const [marksList, setMarksList] = useState<ExamMarkRecord[]>(() => {
+    const mgmt = getManagementData();
     return mgmt.examMarks.filter((m) => m.courseCode === 'CSE-301');
   });
 
@@ -50,10 +49,17 @@ export const FacultyResults: React.FC = () => {
 
   // Save all results
   const handleSaveAllResults = () => {
+    const mgmt = getManagementData();
+    // Merge current course marks with other courses
+    const otherMarks = mgmt.examMarks.filter((m) => m.courseCode !== selectedCourse);
+    const updatedExamMarks = [...otherMarks, ...marksList];
+    saveManagementData({ ...mgmt, examMarks: updatedExamMarks });
+
     showToast(`Results for ${marksList.length} students in ${selectedCourse} saved and published to student grade sheets!`, 'success');
   };
 
   const handleResetResults = () => {
+    const mgmt = getManagementData();
     setMarksList(mgmt.examMarks.filter((m) => m.courseCode === selectedCourse));
     showToast('Marks reset to stored values.', 'info');
   };
@@ -141,8 +147,10 @@ export const FacultyResults: React.FC = () => {
                   className="c1-select"
                   value={selectedCourse}
                   onChange={(e) => {
-                    setSelectedCourse(e.target.value);
-                    setMarksList(mgmt.examMarks.filter((m) => m.courseCode === e.target.value));
+                    const nextCourse = e.target.value;
+                    setSelectedCourse(nextCourse);
+                    const currentMgmt = getManagementData();
+                    setMarksList(currentMgmt.examMarks.filter((m: ExamMarkRecord) => m.courseCode === nextCourse));
                   }}
                 >
                   <option value="CSE-301">CSE-301: Advanced Data Structures</option>

@@ -1,14 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { AppLayout } from '../../components/AppLayout';
-import { getManagementData, FacultyRecord } from '../../data/managementData';
+import { getManagementData, saveManagementData, FacultyRecord } from '../../data/managementData';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 
 export const AdminFaculty: React.FC = () => {
-  const mgmt = getManagementData();
-
-  // Faculty state
-  const [facultyList, setFacultyList] = useState<FacultyRecord[]>(mgmt.faculty);
+  // Faculty state loaded from persistent storage
+  const [facultyList, setFacultyList] = useState<FacultyRecord[]>(() => getManagementData().faculty);
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,7 +57,11 @@ export const AdminFaculty: React.FC = () => {
       status: 'Active'
     };
 
-    setFacultyList([newFac, ...facultyList]);
+    const updated = [newFac, ...facultyList];
+    setFacultyList(updated);
+    const mgmt = getManagementData();
+    saveManagementData({ ...mgmt, faculty: updated });
+
     setIsAddModalOpen(false);
     setName('');
     setEmpId('');
@@ -72,9 +74,10 @@ export const AdminFaculty: React.FC = () => {
     e.preventDefault();
     if (!editingFaculty) return;
 
-    setFacultyList((prev) =>
-      prev.map((f) => (f.id === editingFaculty.id ? editingFaculty : f))
-    );
+    const updated = facultyList.map((f) => (f.id === editingFaculty.id ? editingFaculty : f));
+    setFacultyList(updated);
+    const mgmt = getManagementData();
+    saveManagementData({ ...mgmt, faculty: updated });
 
     setEditingFaculty(null);
     showToast(`Faculty member ${editingFaculty.name} updated successfully!`, 'success');
@@ -83,11 +86,12 @@ export const AdminFaculty: React.FC = () => {
   // Toggle Status Handler
   const handleConfirmToggleStatus = () => {
     if (!deactivatingFaculty) return;
-    const newStatus = deactivatingFaculty.status === 'Active' ? 'Deactivated' : 'Active';
+    const newStatus: 'Active' | 'Deactivated' = deactivatingFaculty.status === 'Active' ? 'Deactivated' : 'Active';
 
-    setFacultyList((prev) =>
-      prev.map((f) => (f.id === deactivatingFaculty.id ? { ...f, status: newStatus } : f))
-    );
+    const updated = facultyList.map((f) => (f.id === deactivatingFaculty.id ? { ...f, status: newStatus } : f));
+    setFacultyList(updated);
+    const mgmt = getManagementData();
+    saveManagementData({ ...mgmt, faculty: updated });
 
     setDeactivatingFaculty(null);
     showToast(`Faculty status updated to ${newStatus}.`, 'info');

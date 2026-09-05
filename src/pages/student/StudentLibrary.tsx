@@ -8,9 +8,28 @@ import { Toast } from '../../components/Toast';
 export const StudentLibrary: React.FC = () => {
   const navigate = useNavigate();
 
-  // Books catalog state
-  const [books, setBooks] = useState<LibraryBook[]>(servicesData.books);
-  const [borrowHistory, setBorrowHistory] = useState<BorrowLog[]>(servicesData.borrowHistory);
+  // Books catalog state loaded from persistent storage
+  const [books, setBooks] = useState<LibraryBook[]>(() => {
+    try {
+      const stored = localStorage.getItem('campushub_library_books');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return servicesData.books;
+  });
+
+  const [borrowHistory, setBorrowHistory] = useState<BorrowLog[]>(() => {
+    try {
+      const stored = localStorage.getItem('campushub_library_history');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return servicesData.borrowHistory;
+  });
 
   // Active section tab
   const [activeTab, setActiveTab] = useState<'catalog' | 'my-books'>('catalog');
@@ -87,23 +106,29 @@ export const StudentLibrary: React.FC = () => {
   // Handle Book Borrow / Request
   const handleConfirmRequestBook = (bk: LibraryBook) => {
     // Update book status to Reserved / Issued
-    setBooks((prev) =>
-      prev.map((b) =>
-        b.id === bk.id
-          ? { ...b, availability: 'Issued', dueDate: '02 Sep 2026' }
-          : b
-      )
+    const updatedBooks = books.map((b) =>
+      b.id === bk.id
+        ? { ...b, availability: 'Issued' as const, dueDate: '02 Sep 2026' }
+        : b
     );
+    setBooks(updatedBooks);
+    try {
+      localStorage.setItem('campushub_library_books', JSON.stringify(updatedBooks));
+    } catch {}
 
     // Add to borrow history
-    setBorrowHistory((prev) => [
-      ...prev,
+    const updatedHistory: BorrowLog[] = [
+      ...borrowHistory,
       {
         bookTitle: bk.title,
         borrowedDate: '18 Aug 2026',
         status: 'Active'
       }
-    ]);
+    ];
+    setBorrowHistory(updatedHistory);
+    try {
+      localStorage.setItem('campushub_library_history', JSON.stringify(updatedHistory));
+    } catch {}
 
     setRequestBookModalItem(null);
     showToast(`Book "${bk.title}" issued successfully. Pickup from Central Library counter.`, 'success');

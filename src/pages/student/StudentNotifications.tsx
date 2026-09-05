@@ -2,86 +2,13 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
 import { Toast } from '../../components/Toast';
-
-export interface StudentNotificationItem {
-  id: string;
-  category: 'Assignment' | 'Exam' | 'Fee' | 'Library' | 'Hostel' | 'Transport' | 'Placement' | 'Academic' | 'General';
-  title: string;
-  message: string;
-  time: string;
-  isUnread: boolean;
-  targetRoute?: string;
-  actionLabel?: string;
-}
-
-const INITIAL_STUDENT_NOTIFICATIONS: StudentNotificationItem[] = [
-  {
-    id: 'NOTIF-101',
-    category: 'Assignment',
-    title: 'Assignment Deadline Approaching',
-    message: 'Database Management "ER Diagram & Normalization" coursework is due on 25th August.',
-    time: '15 mins ago',
-    isUnread: true,
-    targetRoute: '/student/assignments',
-    actionLabel: 'Submit Work'
-  },
-  {
-    id: 'NOTIF-102',
-    category: 'Exam',
-    title: 'Mid-Semester Hall Ticket Released',
-    message: 'Your official examination hall ticket for August 2026 is now available for download.',
-    time: '2 hours ago',
-    isUnread: true,
-    targetRoute: '/student/exams',
-    actionLabel: 'View Hall Ticket'
-  },
-  {
-    id: 'NOTIF-103',
-    category: 'Fee',
-    title: 'Semester 8 Tuition Installment Reminder',
-    message: 'Your pending installment of ₹20,000 is due by 15th September 2026 to avoid late charges.',
-    time: '1 day ago',
-    isUnread: true,
-    targetRoute: '/student/fees',
-    actionLabel: 'Pay Fees'
-  },
-  {
-    id: 'NOTIF-104',
-    category: 'Library',
-    title: 'Library Book Due Soon',
-    message: '"Database System Concepts" by Abraham Silberschatz is due for return in 27 days.',
-    time: '2 days ago',
-    isUnread: false,
-    targetRoute: '/student/library',
-    actionLabel: 'Renew Loan'
-  },
-  {
-    id: 'NOTIF-105',
-    category: 'Hostel',
-    title: 'Hostel Maintenance Update',
-    message: 'Your plumbing maintenance request #HOSTEL-REQ-1001 is now under active review by Block Supervisor.',
-    time: '3 days ago',
-    isUnread: false,
-    targetRoute: '/student/hostel',
-    actionLabel: 'View Request'
-  },
-  {
-    id: 'NOTIF-106',
-    category: 'Transport',
-    title: 'Route 4 Morning Schedule Note',
-    message: 'Morning bus Route 4 will depart 5 minutes earlier next Monday due to exam transit routing.',
-    time: '4 days ago',
-    isUnread: false,
-    targetRoute: '/student/transport',
-    actionLabel: 'View Schedule'
-  }
-];
+import { getStudentNotifications, saveStudentNotifications, StudentNotificationItem } from '../../services/storageService';
 
 export const StudentNotifications: React.FC = () => {
   const navigate = useNavigate();
 
-  // Notifications State
-  const [notifications, setNotifications] = useState<StudentNotificationItem[]>(INITIAL_STUDENT_NOTIFICATIONS);
+  // Notifications State loaded from persistent storage
+  const [notifications, setNotifications] = useState<StudentNotificationItem[]>(() => getStudentNotifications());
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -117,21 +44,25 @@ export const StudentNotifications: React.FC = () => {
 
   // Mark single as read
   const handleToggleRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isUnread: !n.isUnread } : n))
-    );
+    const updated = notifications.map((n) => (n.id === id ? { ...n, isUnread: !n.isUnread } : n));
+    setNotifications(updated);
+    saveStudentNotifications(updated);
   };
 
   // Mark all read
   const handleMarkAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isUnread: false })));
+    const updated = notifications.map((n) => ({ ...n, isUnread: false }));
+    setNotifications(updated);
+    saveStudentNotifications(updated);
     showToast('All notifications marked as read.', 'info');
   };
 
   // Delete notification
   const handleDeleteNotification = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    const updated = notifications.filter((n) => n.id !== id);
+    setNotifications(updated);
+    saveStudentNotifications(updated);
     showToast('Notification removed.', 'info');
   };
 
@@ -139,6 +70,7 @@ export const StudentNotifications: React.FC = () => {
   const handleClearRead = () => {
     const remaining = notifications.filter((n) => n.isUnread);
     setNotifications(remaining);
+    saveStudentNotifications(remaining);
     showToast('Cleared read notifications.', 'info');
   };
 

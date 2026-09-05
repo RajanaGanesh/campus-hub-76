@@ -29,19 +29,37 @@ export const StudentFees: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Fee state
-  const [feeBreakdown, setFeeBreakdown] = useState<FeeCategoryBreakdown[]>([
-    { id: 'f-tuition', category: 'Tuition Fee (Semester 8)', total: 60000, paid: 47500, pending: 12500, dueDate: '15 Sep 2026', status: 'Partial' },
-    { id: 'f-lab', category: 'Laboratory & Computing Facilities', total: 8000, paid: 8000, pending: 0, dueDate: '15 Sep 2026', status: 'Settled' },
-    { id: 'f-lib', category: 'Digital Library & Periodicals', total: 5000, paid: 4500, pending: 500, dueDate: '15 Sep 2026', status: 'Partial' },
-    { id: 'f-hostel', category: 'Hostel & Amenities Fee', total: 7000, paid: 0, pending: 7000, dueDate: '15 Sep 2026', status: 'Pending' }
-  ]);
+  // Fee state loaded from persistent storage
+  const [feeBreakdown, setFeeBreakdown] = useState<FeeCategoryBreakdown[]>(() => {
+    try {
+      const stored = localStorage.getItem('campushub_fees_breakdown_student');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [
+      { id: 'f-tuition', category: 'Tuition Fee (Semester 8)', total: 60000, paid: 47500, pending: 12500, dueDate: '15 Sep 2026', status: 'Partial' },
+      { id: 'f-lab', category: 'Laboratory & Computing Facilities', total: 8000, paid: 8000, pending: 0, dueDate: '15 Sep 2026', status: 'Settled' },
+      { id: 'f-lib', category: 'Digital Library & Periodicals', total: 5000, paid: 4500, pending: 500, dueDate: '15 Sep 2026', status: 'Partial' },
+      { id: 'f-hostel', category: 'Hostel & Amenities Fee', total: 7000, paid: 0, pending: 7000, dueDate: '15 Sep 2026', status: 'Pending' }
+    ];
+  });
 
-  // Payment history records
-  const [paymentHistory, setPaymentHistory] = useState<PaymentRecord[]>([
-    { id: 'CH2026PAY001120', date: '05 Jun 2026', description: 'Academic Enrollment Deposit', amount: 25000, method: 'Net Banking', status: 'Paid' },
-    { id: 'CH2026PAY001210', date: '15 Jul 2026', description: 'Tuition Fee (Installment 1)', amount: 35000, method: 'UPI', status: 'Paid' }
-  ]);
+  // Payment history records loaded from persistent storage
+  const [paymentHistory, setPaymentHistory] = useState<PaymentRecord[]>(() => {
+    try {
+      const stored = localStorage.getItem('campushub_fees_payments_student');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [
+      { id: 'CH2026PAY001120', date: '05 Jun 2026', description: 'Academic Enrollment Deposit', amount: 25000, method: 'Net Banking', status: 'Paid' },
+      { id: 'CH2026PAY001210', date: '15 Jul 2026', description: 'Tuition Fee (Installment 1)', amount: 35000, method: 'UPI', status: 'Paid' }
+    ];
+  });
 
   // Derived Totals
   const totalFees = feeBreakdown.reduce((sum, item) => sum + item.total, 0);
@@ -87,22 +105,28 @@ export const StudentFees: React.FC = () => {
         status: 'Paid'
       };
 
-      // Add to payment history
-      setPaymentHistory((prev) => [newPayment, ...prev]);
+      // Add to payment history and persist
+      const nextHistory = [newPayment, ...paymentHistory];
+      setPaymentHistory(nextHistory);
+      try {
+        localStorage.setItem('campushub_fees_payments_student', JSON.stringify(nextHistory));
+      } catch {}
 
-      // Update fee breakdown
-      setFeeBreakdown((prev) => {
-        let remainingPaid = payAmount;
-        return prev.map((item) => {
-          if (remainingPaid <= 0) return item;
-          const deductible = Math.min(item.pending, remainingPaid);
-          remainingPaid -= deductible;
-          const newPaid = item.paid + deductible;
-          const newPending = item.total - newPaid;
-          const newStatus: FeeCategoryBreakdown['status'] = newPending === 0 ? 'Settled' : 'Partial';
-          return { ...item, paid: newPaid, pending: newPending, status: newStatus };
-        });
+      // Update fee breakdown and persist
+      let remainingPaid = payAmount;
+      const nextBreakdown = feeBreakdown.map((item) => {
+        if (remainingPaid <= 0) return item;
+        const deductible = Math.min(item.pending, remainingPaid);
+        remainingPaid -= deductible;
+        const newPaid = item.paid + deductible;
+        const newPending = item.total - newPaid;
+        const newStatus: FeeCategoryBreakdown['status'] = newPending === 0 ? 'Settled' : 'Partial';
+        return { ...item, paid: newPaid, pending: newPending, status: newStatus };
       });
+      setFeeBreakdown(nextBreakdown);
+      try {
+        localStorage.setItem('campushub_fees_breakdown_student', JSON.stringify(nextBreakdown));
+      } catch {}
 
       setIsPayModalOpen(false);
       setActiveReceiptPayment(newPayment);

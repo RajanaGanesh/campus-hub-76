@@ -1,20 +1,16 @@
 import React, { useState } from 'react';
 import { AppLayout } from '../../components/AppLayout';
-import { getManagementData, ManagementAssignment, AssignmentSubmission } from '../../data/managementData';
+import { getManagementData, saveManagementData, ManagementAssignment, AssignmentSubmission } from '../../data/managementData';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 
 export const FacultyAssignments: React.FC = () => {
-  const mgmt = getManagementData();
+  // Assignments & submissions state loaded from persistent storage
+  const [assignments, setAssignments] = useState<ManagementAssignment[]>(() => getManagementData().assignments);
+  const [submissions, setSubmissions] = useState<AssignmentSubmission[]>(() => getManagementData().submissions);
 
   // Active section tab
   const [activeTab, setActiveTab] = useState<'list' | 'submissions'>('list');
-
-  // Assignments state
-  const [assignments, setAssignments] = useState<ManagementAssignment[]>(mgmt.assignments);
-
-  // Submissions state
-  const [submissions, setSubmissions] = useState<AssignmentSubmission[]>(mgmt.submissions);
 
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -48,6 +44,7 @@ export const FacultyAssignments: React.FC = () => {
       return;
     }
 
+    const mgmt = getManagementData();
     const courseObj = mgmt.courses.find((c) => c.code === newCourseCode);
     const newAss: ManagementAssignment = {
       id: `asg-${Date.now()}`,
@@ -60,7 +57,10 @@ export const FacultyAssignments: React.FC = () => {
       submissionsCount: 0
     };
 
-    setAssignments([newAss, ...assignments]);
+    const updated = [newAss, ...assignments];
+    setAssignments(updated);
+    saveManagementData({ ...mgmt, assignments: updated });
+
     setIsCreateModalOpen(false);
     setNewTitle('');
     setNewDesc('');
@@ -70,7 +70,11 @@ export const FacultyAssignments: React.FC = () => {
   // Delete assignment handler
   const handleConfirmDelete = () => {
     if (!deletingAssignment) return;
-    setAssignments((prev) => prev.filter((a) => a.id !== deletingAssignment.id));
+    const updated = assignments.filter((a) => a.id !== deletingAssignment.id);
+    setAssignments(updated);
+    const mgmt = getManagementData();
+    saveManagementData({ ...mgmt, assignments: updated });
+
     setDeletingAssignment(null);
     showToast('Assignment deleted successfully.', 'info');
   };
@@ -85,13 +89,14 @@ export const FacultyAssignments: React.FC = () => {
       return;
     }
 
-    setSubmissions((prev) =>
-      prev.map((sub) =>
-        sub.id === gradingSubmission.id
-          ? { ...sub, marks: gradeMarks, status: 'Graded' }
-          : sub
-      )
+    const updated = submissions.map((sub) =>
+      sub.id === gradingSubmission.id
+        ? { ...sub, marks: gradeMarks, status: 'Graded' as const }
+        : sub
     );
+    setSubmissions(updated);
+    const mgmt = getManagementData();
+    saveManagementData({ ...mgmt, submissions: updated });
 
     setGradingSubmission(null);
     showToast(`Grade of ${gradeMarks}/100 saved for ${gradingSubmission.studentName}!`, 'success');

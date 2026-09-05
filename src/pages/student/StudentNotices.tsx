@@ -92,8 +92,17 @@ const INITIAL_NOTICES: NoticeItem[] = [
 export const StudentNotices: React.FC = () => {
   const navigate = useNavigate();
 
-  // Notices state
-  const [notices, setNotices] = useState<NoticeItem[]>(INITIAL_NOTICES);
+  // Notices state loaded from persistent storage
+  const [notices, setNotices] = useState<NoticeItem[]>(() => {
+    try {
+      const stored = localStorage.getItem('campushub_student_notices');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return INITIAL_NOTICES;
+  });
 
   // Filters state
   const [searchQuery, setSearchQuery] = useState('');
@@ -148,10 +157,12 @@ export const StudentNotices: React.FC = () => {
 
   const handleOpenNotice = (notice: NoticeItem) => {
     setSelectedNotice(notice);
-    // Mark as read in state
-    setNotices((prev) =>
-      prev.map((n) => (n.id === notice.id ? { ...n, isUnread: false } : n))
-    );
+    // Mark as read in state and persist
+    const updated = notices.map((n) => (n.id === notice.id ? { ...n, isUnread: false } : n));
+    setNotices(updated);
+    try {
+      localStorage.setItem('campushub_student_notices', JSON.stringify(updated));
+    } catch {}
   };
 
   const handleDownloadAttachment = (filename: string) => {

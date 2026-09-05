@@ -2,59 +2,10 @@ import React, { useState } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
-
-export interface AdminExamItem {
-  id: string;
-  name: string;
-  courseCode: string;
-  department: string;
-  date: string;
-  time: string;
-  room: string;
-  invigilator: string;
-  studentCount: number;
-  status: 'Scheduled' | 'Completed';
-}
+import { getAdminExams, saveAdminExams, AdminExamItem } from '../../services/storageService';
 
 export const AdminExams: React.FC = () => {
-  const [exams, setExams] = useState<AdminExamItem[]>([
-    {
-      id: 'ex-1',
-      name: 'Mid-Semester Theory Examination 1',
-      courseCode: 'CSE-301',
-      department: 'Computer Science',
-      date: '2026-08-25',
-      time: '10:00 AM – 12:00 PM',
-      room: 'Room CSE-204',
-      invigilator: 'Dr. Suresh Kumar',
-      studentCount: 60,
-      status: 'Scheduled'
-    },
-    {
-      id: 'ex-2',
-      name: 'DBMS End-Semester Practical Assessment',
-      courseCode: 'CSE-302',
-      department: 'Computer Science',
-      date: '2026-08-28',
-      time: '02:00 PM – 05:00 PM',
-      room: 'Computer Lab 3',
-      invigilator: 'Dr. Priya Menon',
-      studentCount: 60,
-      status: 'Scheduled'
-    },
-    {
-      id: 'ex-3',
-      name: 'VLSI Digital Signal Processing Midterm',
-      courseCode: 'ECE-301',
-      department: 'Electronics',
-      date: '2026-08-26',
-      time: '10:00 AM – 12:00 PM',
-      room: 'Seminar Hall 1',
-      invigilator: 'Dr. Rajesh Verma',
-      studentCount: 60,
-      status: 'Scheduled'
-    }
-  ]);
+  const [exams, setExams] = useState<AdminExamItem[]>(() => getAdminExams());
 
   // Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -106,7 +57,10 @@ export const AdminExams: React.FC = () => {
       status: 'Scheduled'
     };
 
-    setExams([...exams, newEx]);
+    const updated = [...exams, newEx];
+    setExams(updated);
+    saveAdminExams(updated);
+
     setIsAddModalOpen(false);
     setExamName('');
     showToast(`Examination "${newEx.name}" scheduled with 0 room conflicts!`, 'success');

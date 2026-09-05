@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
-import { mobilityData, HostelRequest, HostelAnnouncement } from '../../data/mobilityData';
+import { mobilityData, getHostelRequests, saveHostelRequests, HostelRequest, HostelAnnouncement } from '../../data/mobilityData';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 
@@ -11,8 +11,8 @@ export const StudentHostel: React.FC = () => {
   // Active section tab
   const [activeTab, setActiveTab] = useState<'overview' | 'requests' | 'notices' | 'mess'>('overview');
 
-  // Requests state seeded from mobilityData
-  const [requests, setRequests] = useState<HostelRequest[]>(mobilityData.requests);
+  // Requests state loaded from persistent storage
+  const [requests, setRequests] = useState<HostelRequest[]>(() => getHostelRequests());
   const [announcements] = useState<HostelAnnouncement[]>(mobilityData.announcements);
 
   // New Request Modal State
@@ -55,7 +55,10 @@ export const StudentHostel: React.FC = () => {
       ]
     };
 
-    setRequests([newReq, ...requests]);
+    const updated = [newReq, ...requests];
+    setRequests(updated);
+    saveHostelRequests(updated);
+
     setIsNewRequestModalOpen(false);
     setReqSubject('');
     setReqDesc('');

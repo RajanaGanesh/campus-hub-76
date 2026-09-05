@@ -147,12 +147,27 @@ export const initialManagementData: ManagementData = {
 export const getManagementData = (): ManagementData => {
   try {
     const stored = localStorage.getItem('campushub_management_data');
-    return stored ? JSON.parse(stored) : initialManagementData;
+    if (!stored) return initialManagementData;
+    const parsed = JSON.parse(stored);
+    return {
+      students: Array.isArray(parsed.students) ? parsed.students : initialManagementData.students,
+      faculty: Array.isArray(parsed.faculty) ? parsed.faculty : initialManagementData.faculty,
+      courses: Array.isArray(parsed.courses) ? parsed.courses : initialManagementData.courses,
+      assignments: Array.isArray(parsed.assignments) ? parsed.assignments : initialManagementData.assignments,
+      submissions: Array.isArray(parsed.submissions) ? parsed.submissions : initialManagementData.submissions,
+      examMarks: Array.isArray(parsed.examMarks) ? parsed.examMarks : initialManagementData.examMarks,
+      announcements: Array.isArray(parsed.announcements) ? parsed.announcements : initialManagementData.announcements
+    };
   } catch {
     return initialManagementData;
   }
 };
 
 export const saveManagementData = (data: ManagementData) => {
-  localStorage.setItem('campushub_management_data', JSON.stringify(data));
+  try {
+    localStorage.setItem('campushub_management_data', JSON.stringify(data));
+  } catch (err) {
+    console.warn('Error saving management data:', err);
+  }
 };
+

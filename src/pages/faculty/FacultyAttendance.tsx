@@ -3,22 +3,12 @@ import { AppLayout } from '../../components/AppLayout';
 import { getManagementData } from '../../data/managementData';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
+import { getFacultyAttendanceHistory, saveFacultyAttendanceHistory, AttendanceHistoryRecord } from '../../services/storageService';
 
 interface StudentAttendanceEntry {
   id: string;
   name: string;
   status: 'Present' | 'Absent';
-}
-
-interface AttendanceHistoryRecord {
-  id: string;
-  date: string;
-  courseCode: string;
-  section: string;
-  presentCount: number;
-  absentCount: number;
-  totalStudents: number;
-  percentage: number;
 }
 
 export const FacultyAttendance: React.FC = () => {
@@ -38,39 +28,8 @@ export const FacultyAttendance: React.FC = () => {
     }));
   });
 
-  // Attendance History records
-  const [history, setHistory] = useState<AttendanceHistoryRecord[]>([
-    {
-      id: 'att-hist-1',
-      date: '17 Aug 2026',
-      courseCode: 'CSE-301',
-      section: 'Section A',
-      presentCount: 54,
-      absentCount: 6,
-      totalStudents: 60,
-      percentage: 90
-    },
-    {
-      id: 'att-hist-2',
-      date: '15 Aug 2026',
-      courseCode: 'CSE-302',
-      section: 'Section B',
-      presentCount: 52,
-      absentCount: 8,
-      totalStudents: 60,
-      percentage: 86
-    },
-    {
-      id: 'att-hist-3',
-      date: '14 Aug 2026',
-      courseCode: 'CSE-401',
-      section: 'Section A',
-      presentCount: 58,
-      absentCount: 2,
-      totalStudents: 60,
-      percentage: 96
-    }
-  ]);
+  // Attendance History records loaded from persistent storage
+  const [history, setHistory] = useState<AttendanceHistoryRecord[]>(() => getFacultyAttendanceHistory());
 
   // Modals & Dialogs
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -131,7 +90,10 @@ export const FacultyAttendance: React.FC = () => {
       percentage: currentPercentage
     };
 
-    setHistory([newRecord, ...history]);
+    const updated = [newRecord, ...history];
+    setHistory(updated);
+    saveFacultyAttendanceHistory(updated);
+
     setIsConfirmModalOpen(false);
     showToast(`Attendance recorded successfully for ${selectedCourseCode} (Section ${selectedSection})!`, 'success');
   };

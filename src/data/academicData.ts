@@ -163,3 +163,25 @@ export const academicData: AcademicData = {
     }
   ]
 };
+
+export const getAcademicAssignments = (): AssignmentItem[] => {
+  try {
+    const stored = localStorage.getItem('campushub_academic_assignments');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return parsed;
+    }
+    return academicData.assignments;
+  } catch {
+    return academicData.assignments;
+  }
+};
+
+export const saveAcademicAssignments = (assignments: AssignmentItem[]) => {
+  try {
+    localStorage.setItem('campushub_academic_assignments', JSON.stringify(assignments));
+  } catch (err) {
+    console.warn('Error saving academic assignments:', err);
+  }
+};
+

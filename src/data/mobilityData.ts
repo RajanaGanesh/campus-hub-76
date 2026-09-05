@@ -212,4 +212,48 @@ export const mobilityData: MobilityData = {
     status: 'Active'
   }
 };
+
+export const getHostelRequests = (): HostelRequest[] => {
+  try {
+    const stored = localStorage.getItem('campushub_hostel_requests');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return parsed;
+    }
+    return mobilityData.requests;
+  } catch {
+    return mobilityData.requests;
+  }
+};
+
+export const saveHostelRequests = (requests: HostelRequest[]) => {
+  try {
+    localStorage.setItem('campushub_hostel_requests', JSON.stringify(requests));
+  } catch (err) {
+    console.warn('Error saving hostel requests:', err);
+  }
+};
+
+export const getMessFeedbacks = (): MessFeedback[] => {
+  try {
+    const stored = localStorage.getItem('campushub_mess_feedbacks');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return parsed;
+    }
+    return mobilityData.feedbacks;
+  } catch {
+    return mobilityData.feedbacks;
+  }
+};
+
+export const saveMessFeedbacks = (feedbacks: MessFeedback[]) => {
+  try {
+    localStorage.setItem('campushub_mess_feedbacks', JSON.stringify(feedbacks));
+  } catch (err) {
+    console.warn('Error saving mess feedbacks:', err);
+  }
+};
+
 export default mobilityData;
+

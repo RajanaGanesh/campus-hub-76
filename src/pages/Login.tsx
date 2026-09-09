@@ -83,14 +83,16 @@ export const Login: React.FC = () => {
     // Map user code / mobile / role to email
     let authEmail = userCode.trim().toLowerCase();
     
-    // Auto-map demo credentials if user entered role-based identifiers
+    // Auto-map demo credentials if user entered role-based identifiers or roll number
     if (!authEmail.includes('@')) {
-      if (loginType === 'student' || authEmail.toLowerCase().includes('student') || authEmail === '1001') {
-        authEmail = 'student@campushub.com';
+      if (authEmail === '236f1a0551' || authEmail === 'ganesh' || authEmail === '1001') {
+        authEmail = 'rajanaganesh143143@gmail.com';
+      } else if (loginType === 'student' || authEmail.toLowerCase().includes('student')) {
+        authEmail = 'rajanaganesh143143@gmail.com';
       } else if (loginType === 'faculty' || authEmail.toLowerCase().includes('faculty') || authEmail === '2001') {
         authEmail = 'faculty@campushub.com';
       } else if (loginType === 'admin' || authEmail.toLowerCase().includes('admin') || authEmail === '3001') {
-        authEmail = 'admin@campushub.com';
+        authEmail = 'grajana608@gmail.com';
       } else {
         authEmail = `${authEmail}@campushub.com`;
       }
@@ -337,7 +339,7 @@ export const Login: React.FC = () => {
               <button
                 type="button"
                 className="cms-role-btn"
-                onClick={() => handleQuickRoleLogin('student', 'student@campushub.com', 'student123')}
+                onClick={() => handleQuickRoleLogin('student', 'rajanaganesh143143@gmail.com', '123456789')}
               >
                 <i className="fa-solid fa-graduation-cap" style={{ color: '#0284c7' }}></i>
                 <span>Student</span>
@@ -355,7 +357,7 @@ export const Login: React.FC = () => {
               <button
                 type="button"
                 className="cms-role-btn"
-                onClick={() => handleQuickRoleLogin('admin', 'admin@campushub.com', 'admin123')}
+                onClick={() => handleQuickRoleLogin('admin', 'grajana608@gmail.com', '123456789')}
               >
                 <i className="fa-solid fa-user-shield" style={{ color: '#ea580c' }}></i>
                 <span>Admin</span>

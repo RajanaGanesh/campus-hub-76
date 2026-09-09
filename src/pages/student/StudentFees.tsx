@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
+import { resolveEffectiveProfile } from '../../utils/userProfile';
 
 export interface FeeCategoryBreakdown {
   id: string;
@@ -510,7 +511,7 @@ export const StudentFees: React.FC = () => {
                 </div>
                 <div className="r-cell">
                   <span className="r-lbl">Candidate Name:</span>
-                  <span className="r-val">{user?.name || 'Aditya Sharma'}</span>
+                  <span className="r-val">{resolveEffectiveProfile(user).name}</span>
                 </div>
                 <div className="r-cell">
                   <span className="r-lbl">Student Roll No:</span>

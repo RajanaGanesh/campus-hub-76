@@ -5,6 +5,7 @@ import { lmsData, SemesterResult, SemesterResultDetail } from '../../data/lmsDat
 import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
+import { resolveEffectiveProfile } from '../../utils/userProfile';
 
 export const StudentResults: React.FC = () => {
   const navigate = useNavigate();
@@ -345,7 +346,7 @@ export const StudentResults: React.FC = () => {
               <div className="transcript-bio-grid">
                 <div className="t-bio-cell">
                   <span className="t-bio-lbl">Student Name:</span>
-                  <span className="t-bio-val">{user?.name || 'Aditya Sharma'}</span>
+                  <span className="t-bio-val">{resolveEffectiveProfile(user).name}</span>
                 </div>
                 <div className="t-bio-cell">
                   <span className="t-bio-lbl">Roll Number:</span>

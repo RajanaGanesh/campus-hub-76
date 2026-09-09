@@ -4,6 +4,7 @@ import { AppLayout } from '../../components/AppLayout';
 import { lmsData, LMSCourse, StudyMaterial, VideoLesson, QuizItem } from '../../data/lmsData';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
+import { downloadLearningMaterial } from '../../utils/fileDownloader';
 
 export const StudentLMS: React.FC = () => {
   const navigate = useNavigate();
@@ -123,8 +124,15 @@ export const StudentLMS: React.FC = () => {
     showToast(`Quiz completed! You scored ${correct}/${total} (${pct}%).`, 'success');
   };
 
-  const handleDownload = (title: string) => {
-    showToast(`Downloading "${title}"...`, 'success');
+  const handleDownload = (mat: StudyMaterial | { title: string; subject?: string; type?: string; size?: string; uploadedDate?: string }) => {
+    downloadLearningMaterial({
+      title: mat.title,
+      subject: mat.subject || 'Computer Science & Engineering',
+      type: mat.type || 'Lecture Notes',
+      size: mat.size || '2.4 MB',
+      uploadedDate: mat.uploadedDate
+    });
+    showToast(`Downloaded "${mat.title}" to your device!`, 'success');
   };
 
   return (
@@ -338,7 +346,7 @@ export const StudentLMS: React.FC = () => {
                       <button
                         type="button"
                         className="c1-btn c1-btn-secondary"
-                        onClick={() => handleDownload(mat.title)}
+                        onClick={() => handleDownload(mat)}
                         title="Download file"
                       >
                         <i className="fa-solid fa-download"></i>
@@ -510,7 +518,7 @@ export const StudentLMS: React.FC = () => {
                 <button
                   type="button"
                   className="c1-btn c1-btn-gradient"
-                  onClick={() => handleDownload(activeMaterial.title)}
+                  onClick={() => handleDownload(activeMaterial)}
                 >
                   <i className="fa-solid fa-download"></i>
                   <span>Download File</span>

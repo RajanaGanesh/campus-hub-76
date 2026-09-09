@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { mobilityData, TransportRoute } from '../data/mobilityData';
+import { downloadTransportPass } from '../utils/fileDownloader';
 
 export const Transport: React.FC = () => {
   const { user } = useAuth();
@@ -387,8 +388,18 @@ export const Transport: React.FC = () => {
                   className="btn-signin"
                   style={{ flex: 1, margin: 0, height: '34px', fontSize: '11.5px', padding: 0 }}
                   onClick={() => {
-                    setToastMsg('Transport pass download started.');
-                    setTimeout(() => setToastMsg(null), 2500);
+                    downloadTransportPass({
+                      studentName,
+                      rollNumber: 'CS2023001',
+                      course: 'B.Tech - Computer Science & Engineering',
+                      route: selectedRouteNum,
+                      stop: 'Central Station Junction',
+                      busNumber: 'Bus #12 (DL-01-AB-4920)',
+                      passId: 'TP-2026-8842',
+                      validUntil: '30 Jun 2027'
+                    });
+                    setToastMsg('Transport pass downloaded to your device!');
+                    setTimeout(() => setToastMsg(null), 3000);
                   }}
                 >
                   Download Pass

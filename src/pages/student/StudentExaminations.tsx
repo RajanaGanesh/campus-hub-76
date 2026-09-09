@@ -4,6 +4,7 @@ import { AppLayout } from '../../components/AppLayout';
 import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
+import { resolveEffectiveProfile } from '../../utils/userProfile';
 
 export interface ExamScheduleItem {
   id: string;
@@ -21,73 +22,94 @@ export interface ExamScheduleItem {
   targetDateTime: string; // ISO date for timer
 }
 
-const EXAM_SCHEDULE: ExamScheduleItem[] = [
-  {
-    id: 'ex-ds',
-    subject: 'Data Structures & Algorithms',
-    code: 'CS301',
-    type: 'Mid-Term',
-    semester: 'Semester 8',
-    date: '25 Aug 2026',
-    day: 'Tuesday',
-    time: '10:00 AM – 01:00 PM',
-    room: 'Hall: CSE-204',
-    deskNumber: 'Desk: B-14',
-    status: 'Upcoming',
-    syllabus: 'Units 1–3: Advanced Trees, B-Trees, Dynamic Programming, Graphs & Flow Networks',
-    targetDateTime: '2026-08-25T10:00:00'
-  },
-  {
-    id: 'ex-db',
-    subject: 'Database Management Systems',
-    code: 'CS302',
-    type: 'Mid-Term',
-    semester: 'Semester 8',
-    date: '28 Aug 2026',
-    day: 'Friday',
-    time: '10:00 AM – 01:00 PM',
-    room: 'Hall: CSE-202',
-    deskNumber: 'Desk: A-08',
-    status: 'Upcoming',
-    syllabus: 'Units 1–4: Relational Algebra, SQL Queries, Normalization to BCNF, Concurrency Control',
-    targetDateTime: '2026-08-28T10:00:00'
-  },
-  {
-    id: 'ex-cn',
-    subject: 'Computer Networks & Security',
-    code: 'CS304',
-    type: 'Mid-Term',
-    semester: 'Semester 8',
-    date: '30 Aug 2026',
-    day: 'Sunday',
-    time: '02:00 PM – 05:00 PM',
-    room: 'Hall: CSE-301',
-    deskNumber: 'Desk: C-22',
-    status: 'Upcoming',
-    syllabus: 'Units 1–3: OSI & TCP/IP Stack, Subnetting, Routing Algorithms, Cryptography Basics',
-    targetDateTime: '2026-08-30T14:00:00'
-  },
-  {
-    id: 'ex-os-lab',
-    subject: 'Operating Systems System Lab',
-    code: 'CS303-L',
-    type: 'Lab Practical',
-    semester: 'Semester 8',
-    date: '02 Sep 2026',
-    day: 'Wednesday',
-    time: '09:00 AM – 12:00 PM',
-    room: 'Systems Lab 2',
-    deskNumber: 'Terminal: L2-19',
-    status: 'Upcoming',
-    syllabus: 'POSIX Threads, IPC Shared Memory, Semaphores Implementation, Shell Scripting',
-    targetDateTime: '2026-09-02T09:00:00'
-  }
-];
+// Helper to generate dynamic upcoming exam dates so countdown is always live & accurate
+const getDynamicExamSchedule = (): ExamScheduleItem[] => {
+  const now = new Date();
+  
+  // Calculate relative future dates (e.g. +3 days 14 hrs, +6 days, +9 days, +13 days)
+  const d1 = new Date(now.getTime() + (3 * 24 + 14) * 3600 * 1000 + 45 * 60 * 1000 + 30 * 1000);
+  const d2 = new Date(now.getTime() + (6 * 24 + 10) * 3600 * 1000);
+  const d3 = new Date(now.getTime() + (9 * 24 + 14) * 3600 * 1000);
+  const d4 = new Date(now.getTime() + (13 * 24 + 9) * 3600 * 1000);
+
+  const formatExamDate = (d: Date) => {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = d.toLocaleString('en-US', { month: 'short' });
+    const year = d.getFullYear();
+    return `${day} ${month} ${year}`;
+  };
+
+  const getDayName = (d: Date) => d.toLocaleString('en-US', { weekday: 'long' });
+
+  return [
+    {
+      id: 'ex-ds',
+      subject: 'Data Structures & Algorithms',
+      code: 'CS301',
+      type: 'Mid-Term',
+      semester: 'Semester 8',
+      date: formatExamDate(d1),
+      day: getDayName(d1),
+      time: '10:00 AM – 01:00 PM',
+      room: 'Hall: CSE-204',
+      deskNumber: 'Desk: B-14',
+      status: 'Upcoming',
+      syllabus: 'Units 1–3: Advanced Trees, B-Trees, Dynamic Programming, Graphs & Flow Networks',
+      targetDateTime: d1.toISOString()
+    },
+    {
+      id: 'ex-db',
+      subject: 'Database Management Systems',
+      code: 'CS302',
+      type: 'Mid-Term',
+      semester: 'Semester 8',
+      date: formatExamDate(d2),
+      day: getDayName(d2),
+      time: '10:00 AM – 01:00 PM',
+      room: 'Hall: CSE-202',
+      deskNumber: 'Desk: A-08',
+      status: 'Upcoming',
+      syllabus: 'Units 1–4: Relational Algebra, SQL Queries, Normalization to BCNF, Concurrency Control',
+      targetDateTime: d2.toISOString()
+    },
+    {
+      id: 'ex-cn',
+      subject: 'Computer Networks & Security',
+      code: 'CS304',
+      type: 'Mid-Term',
+      semester: 'Semester 8',
+      date: formatExamDate(d3),
+      day: getDayName(d3),
+      time: '02:00 PM – 05:00 PM',
+      room: 'Hall: CSE-301',
+      deskNumber: 'Desk: C-22',
+      status: 'Upcoming',
+      syllabus: 'Units 1–3: OSI & TCP/IP Stack, Subnetting, Routing Algorithms, Cryptography Basics',
+      targetDateTime: d3.toISOString()
+    },
+    {
+      id: 'ex-os-lab',
+      subject: 'Operating Systems System Lab',
+      code: 'CS303-L',
+      type: 'Lab Practical',
+      semester: 'Semester 8',
+      date: formatExamDate(d4),
+      day: getDayName(d4),
+      time: '09:00 AM – 12:00 PM',
+      room: 'Systems Lab 2',
+      deskNumber: 'Terminal: L2-19',
+      status: 'Upcoming',
+      syllabus: 'POSIX Threads, IPC Shared Memory, Semaphores Implementation, Shell Scripting',
+      targetDateTime: d4.toISOString()
+    }
+  ];
+};
 
 export const StudentExaminations: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  const [examSchedule] = useState<ExamScheduleItem[]>(() => getDynamicExamSchedule());
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'guidelines'>('upcoming');
   const [examTypeFilter, setExamTypeFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -100,8 +122,8 @@ export const StudentExaminations: React.FC = () => {
     setTimeout(() => setToastMsg(null), 3500);
   };
 
-  // Real-time Countdown Timer for nearest upcoming exam (CS301 on 25 Aug 2026)
-  const nearestExam = EXAM_SCHEDULE[0];
+  // Real-time Countdown Timer for nearest upcoming exam
+  const nearestExam = examSchedule[0];
   const [countdown, setCountdown] = useState({
     days: 0,
     hours: 0,
@@ -134,7 +156,7 @@ export const StudentExaminations: React.FC = () => {
 
   // Filtered list
   const filteredExams = useMemo(() => {
-    return EXAM_SCHEDULE.filter((exam) => {
+    return examSchedule.filter((exam) => {
       const q = searchQuery.toLowerCase().trim();
       const matchSearch =
         !q ||
@@ -146,7 +168,7 @@ export const StudentExaminations: React.FC = () => {
 
       return matchSearch && matchType;
     });
-  }, [searchQuery, examTypeFilter]);
+  }, [examSchedule, searchQuery, examTypeFilter]);
 
   const handlePrintHallTicket = () => {
     showToast('Preparing Hall Ticket for printing...', 'info');
@@ -238,33 +260,74 @@ export const StudentExaminations: React.FC = () => {
               {nearestExam.subject} <span className="exam-code-tag">({nearestExam.code})</span>
             </h2>
             <div className="countdown-exam-meta">
-              <span><i className="fa-regular fa-calendar"></i> {nearestExam.date} ({nearestExam.day})</span>
-              <span><i className="fa-regular fa-clock"></i> {nearestExam.time}</span>
-              <span><i className="fa-solid fa-location-dot"></i> {nearestExam.room}</span>
-              <span><i className="fa-solid fa-chair"></i> {nearestExam.deskNumber}</span>
+              <span className="meta-pill"><i className="fa-regular fa-calendar"></i> {nearestExam.date} ({nearestExam.day})</span>
+              <span className="meta-pill"><i className="fa-regular fa-clock"></i> {nearestExam.time}</span>
+              <span className="meta-pill"><i className="fa-solid fa-location-dot"></i> {nearestExam.room}</span>
+              <span className="meta-pill desk-pill"><i className="fa-solid fa-chair"></i> {nearestExam.deskNumber}</span>
             </div>
           </div>
 
           <div className="countdown-hero-right">
-            <div className="digital-countdown-grid">
-              <div className="countdown-unit">
-                <span className="unit-number">{String(countdown.days).padStart(2, '0')}</span>
-                <span className="unit-label">DAYS</span>
+            <div className="pro-timer-widget">
+              <div className="pro-timer-header">
+                <span className="pro-timer-pulse-indicator"></span>
+                <span className="pro-timer-title">EXAM COUNTDOWN</span>
+                <span className="pro-timer-badge">LIVE SYNC</span>
               </div>
-              <span className="unit-colon">:</span>
-              <div className="countdown-unit">
-                <span className="unit-number">{String(countdown.hours).padStart(2, '0')}</span>
-                <span className="unit-label">HOURS</span>
-              </div>
-              <span className="unit-colon">:</span>
-              <div className="countdown-unit">
-                <span className="unit-number">{String(countdown.minutes).padStart(2, '0')}</span>
-                <span className="unit-label">MINS</span>
-              </div>
-              <span className="unit-colon">:</span>
-              <div className="countdown-unit">
-                <span className="unit-number">{String(countdown.seconds).padStart(2, '0')}</span>
-                <span className="unit-label">SECS</span>
+              <div className="pro-timer-digits-container">
+                {/* DAYS */}
+                <div className="pro-timer-unit-card">
+                  <div className="pro-timer-card-inner">
+                    <span className="pro-timer-number">{String(countdown.days).padStart(2, '0')}</span>
+                    <div className="pro-timer-card-divider"></div>
+                  </div>
+                  <span className="pro-timer-label">DAYS</span>
+                </div>
+
+                {/* COLON */}
+                <div className="pro-timer-separator">
+                  <span className="pro-timer-dot"></span>
+                  <span className="pro-timer-dot"></span>
+                </div>
+
+                {/* HOURS */}
+                <div className="pro-timer-unit-card">
+                  <div className="pro-timer-card-inner">
+                    <span className="pro-timer-number">{String(countdown.hours).padStart(2, '0')}</span>
+                    <div className="pro-timer-card-divider"></div>
+                  </div>
+                  <span className="pro-timer-label">HOURS</span>
+                </div>
+
+                {/* COLON */}
+                <div className="pro-timer-separator">
+                  <span className="pro-timer-dot"></span>
+                  <span className="pro-timer-dot"></span>
+                </div>
+
+                {/* MINS */}
+                <div className="pro-timer-unit-card">
+                  <div className="pro-timer-card-inner">
+                    <span className="pro-timer-number">{String(countdown.minutes).padStart(2, '0')}</span>
+                    <div className="pro-timer-card-divider"></div>
+                  </div>
+                  <span className="pro-timer-label">MINS</span>
+                </div>
+
+                {/* COLON */}
+                <div className="pro-timer-separator">
+                  <span className="pro-timer-dot"></span>
+                  <span className="pro-timer-dot"></span>
+                </div>
+
+                {/* SECS */}
+                <div className="pro-timer-unit-card pro-timer-seconds-card">
+                  <div className="pro-timer-card-inner">
+                    <span className="pro-timer-number pro-timer-accent-number">{String(countdown.seconds).padStart(2, '0')}</span>
+                    <div className="pro-timer-card-divider"></div>
+                  </div>
+                  <span className="pro-timer-label">SECS</span>
+                </div>
               </div>
             </div>
           </div>
@@ -579,7 +642,7 @@ export const StudentExaminations: React.FC = () => {
                 </div>
                 <div className="ticket-field">
                   <span className="t-label">Candidate Name:</span>
-                  <span className="t-val">{user?.name || 'Aditya Sharma'}</span>
+                  <span className="t-val">{resolveEffectiveProfile(user).name}</span>
                 </div>
                 <div className="ticket-field">
                   <span className="t-label">Department:</span>
@@ -604,7 +667,7 @@ export const StudentExaminations: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {EXAM_SCHEDULE.map((ex) => (
+                  {examSchedule.map((ex: ExamScheduleItem) => (
                     <tr key={ex.id}>
                       <td>{ex.date}</td>
                       <td>{ex.time}</td>

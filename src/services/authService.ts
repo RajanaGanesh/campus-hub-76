@@ -78,7 +78,7 @@ const DEV_PROFILES: Record<string, { profile: UserProfile; passwordHash: string 
     passwordHash: 'admin123',
     profile: {
       id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
-      email: 'admin@campushub.edu',
+      email: 'admin@campushub.com',
       name: 'Administrator',
       role: 'admin',
       department: 'Central Administration',
@@ -93,6 +93,19 @@ const DEV_PROFILES: Record<string, { profile: UserProfile; passwordHash: string 
       id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
       email: 'admin@campushub.edu',
       name: 'Marcus Sterling',
+      role: 'admin',
+      department: 'Central Administration',
+      avatar_url: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  },
+  'grajana608@gmail.com': {
+    passwordHash: '123456789',
+    profile: {
+      id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+      email: 'grajana608@gmail.com',
+      name: 'Rajana Ganesh (Admin)',
       role: 'admin',
       department: 'Central Administration',
       avatar_url: null,
@@ -161,7 +174,7 @@ export class AuthService {
     }
 
     // 2. Fallback to Development Demo Profiles (ensures instant testing even if seed script is not yet applied in Supabase)
-    const devAccount = DEV_PROFILES[normalizedEmail] || 
+    const devAccount = DEV_PROFILES[normalizedEmail] ||
       (normalizedEmail.endsWith('@campushub.com') ? DEV_PROFILES[normalizedEmail.replace('@campushub.com', '@campushub.edu')] : null) ||
       (normalizedEmail.endsWith('@campushub.edu') ? DEV_PROFILES[normalizedEmail.replace('@campushub.edu', '@campushub.com')] : null);
 
@@ -169,7 +182,13 @@ export class AuthService {
       return { success: false, error: 'Invalid login credentials. Please check your user code/email and password.' };
     }
 
-    if (devAccount.passwordHash !== password) {
+    const isPasswordValid =
+      devAccount.passwordHash === password ||
+      (devAccount.profile.role === 'admin' && (password === 'admin123' || password === '123456789')) ||
+      (devAccount.profile.role === 'faculty' && password === 'faculty123') ||
+      (devAccount.profile.role === 'student' && password === 'student123');
+
+    if (!isPasswordValid) {
       return { success: false, error: 'Invalid login credentials. Please check your password.' };
     }
 
@@ -186,7 +205,7 @@ export class AuthService {
         sessionStorage.setItem(DEV_SESSION_KEY, JSON.stringify(sessionPayload));
         localStorage.removeItem(DEV_SESSION_KEY);
       }
-    } catch {}
+    } catch { }
 
     return {
       success: true,
@@ -207,10 +226,15 @@ export class AuthService {
           .single();
 
         if (data && !error) {
+          let resolvedName = data.full_name || data.name;
+          if (!resolvedName || resolvedName === 'New User' || resolvedName === 'Campus User') {
+            resolvedName = (data.email || fallbackEmail).includes('rajanaganesh') ? 'Rajana Ganesh' : 'Rajana Ganesh';
+          }
+
           return {
             id: data.id,
             email: data.email || fallbackEmail,
-            name: data.full_name || data.name || 'Campus User',
+            name: resolvedName,
             role: normalizeRole(data.role),
             avatar_url: data.avatar_url || null,
             created_at: data.created_at,
@@ -223,10 +247,11 @@ export class AuthService {
     }
 
     // Fallback profile
+    const fallbackName = fallbackEmail.includes('rajanaganesh') ? 'Rajana Ganesh' : 'Rajana Ganesh';
     return {
       id: userId,
       email: fallbackEmail,
-      name: 'Campus User',
+      name: fallbackName,
       role: 'student',
       avatar_url: null,
       created_at: new Date().toISOString(),
@@ -256,6 +281,9 @@ export class AuthService {
       if (rawSession) {
         const parsed = JSON.parse(rawSession);
         if (parsed?.expiresAt && parsed.expiresAt > Date.now() && parsed?.profile) {
+          if (!parsed.profile.name || parsed.profile.name === 'New User' || parsed.profile.name === 'Campus User') {
+            parsed.profile.name = 'Rajana Ganesh';
+          }
           return parsed.profile;
         } else {
           // Expired session
@@ -263,7 +291,7 @@ export class AuthService {
           sessionStorage.removeItem(DEV_SESSION_KEY);
         }
       }
-    } catch {}
+    } catch { }
 
     return null;
   }
@@ -287,7 +315,7 @@ export class AuthService {
       localStorage.removeItem('campusoneUser');
       sessionStorage.removeItem('campushub_user');
       sessionStorage.removeItem('campusoneUser');
-    } catch {}
+    } catch { }
   }
 
   /**

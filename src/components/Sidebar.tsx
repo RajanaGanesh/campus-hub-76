@@ -111,8 +111,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, isMobileOpen, onM
             links: [
               { id: 'library', label: 'Library', icon: 'fa-book-open', path: '/student/library' },
               { id: 'fees', label: 'Fees & Payments', icon: 'fa-wallet', path: '/student/fees' },
-              { id: 'services', label: 'Campus Services', icon: 'fa-screwdriver-wrench', path: '/student/services' },
-              { id: 'requests', label: 'Service Requests', icon: 'fa-list-check', path: '/student/requests' }
+              { id: 'services', label: 'Campus Services', icon: 'fa-screwdriver-wrench', path: '/student/services' }
             ]
           },
           {

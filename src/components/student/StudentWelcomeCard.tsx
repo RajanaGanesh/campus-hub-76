@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useEffectiveUserProfile } from '../../utils/userProfile';
 
 export interface StudentWelcomeCardProps {
   department?: string;
@@ -14,7 +14,7 @@ export const StudentWelcomeCard: React.FC<StudentWelcomeCardProps> = ({
   onRefresh,
   isRefreshing = false
 }) => {
-  const { user } = useAuth();
+  const profile = useEffectiveUserProfile();
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -23,7 +23,7 @@ export const StudentWelcomeCard: React.FC<StudentWelcomeCardProps> = ({
     return 'Good Evening';
   };
 
-  const studentName = user?.name || 'Student';
+  const studentName = profile.name;
 
   const todayFormatted = new Intl.DateTimeFormat('en-US', {
     weekday: 'long',
@@ -72,7 +72,10 @@ export const StudentWelcomeCard: React.FC<StudentWelcomeCardProps> = ({
           </div>
           <div className="graphic-mini-stat">
             <span className="mini-stat-label">Academic Status</span>
-            <span className="mini-stat-val">Enrolled • Active</span>
+            <span className="mini-stat-val">
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span>
+              Enrolled • Active
+            </span>
           </div>
         </div>
 

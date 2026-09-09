@@ -2,6 +2,7 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { UserProfileMenu } from './UserProfileMenu';
+import { useEffectiveUserProfile } from '../utils/userProfile';
 
 interface TopNavbarProps {
   onSidebarToggle: () => void;
@@ -23,6 +24,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   setIsProfileOpen
 }) => {
   const { user } = useAuth();
+  const profile = useEffectiveUserProfile();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -106,16 +108,6 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
     else navigate('/student/timetable');
   };
 
-  // Get user initials
-  const getInitials = (nameStr: string) => {
-    if (!nameStr) return 'CH';
-    const parts = nameStr.split(' ');
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    }
-    return nameStr.slice(0, 2).toUpperCase();
-  };
-
   return (
     <header className="top-navbar">
       <div className="navbar-left">
@@ -191,18 +183,22 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           title="Account Menu"
         >
           <div className="user-avatar-wrapper">
-            <div className="user-avatar">{getInitials(user?.name || 'Ganesh')}</div>
-            <span className="avatar-smart-tag">SMART</span>
+            {profile.photoUrl ? (
+              <img src={profile.photoUrl} alt={profile.name} className="user-avatar-img" />
+            ) : (
+              <div className="user-avatar">{profile.initials}</div>
+            )}
           </div>
           <div className="user-info-text">
-            <span className="user-name">{user?.name || 'Ganesh'}</span>
-            <span className="user-role">{user?.role || 'student'}</span>
+            <span className="user-name">{profile.name}</span>
+            <span className="user-role">{profile.role}</span>
           </div>
           <i className="fa-solid fa-chevron-down user-chevron"></i>
           
           <UserProfileMenu
             isOpen={isProfileOpen}
             onClose={() => setIsProfileOpen(false)}
+            profile={profile}
           />
         </div>
       </div>

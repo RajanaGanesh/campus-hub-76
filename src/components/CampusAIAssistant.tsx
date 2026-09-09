@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { resolveEffectiveProfile } from '../utils/userProfile';
 import {
   detectIntentAndRespond,
   getQuickPromptsForRole,
@@ -12,6 +13,8 @@ export const CampusAIAssistant: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const userRole = user?.role || 'student';
+  const effectiveProfile = resolveEffectiveProfile(user);
+  const userName = effectiveProfile.name;
 
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
@@ -30,12 +33,12 @@ export const CampusAIAssistant: React.FC = () => {
         {
           id: 'welcome',
           sender: 'ai',
-          text: `Hello ${user?.name || ''}! I'm your CampusOne Assistant.\n\nI can help you find information about your campus, academics, attendance, assignments, examinations, fee receipts, library books, placements, and notices.`,
+          text: `Hello ${userName}! I'm your CampusOne Assistant.\n\nI can help you find information about your campus, academics, attendance, assignments, examinations, fee receipts, library books, placements, and notices.`,
           timestamp: 'Just now'
         }
       ]);
     }
-  }, [isOpen, messages.length, user?.name]);
+  }, [isOpen, messages.length, userName]);
 
   useEffect(() => {
     if (isOpen) {
@@ -83,7 +86,7 @@ export const CampusAIAssistant: React.FC = () => {
       {
         id: `welcome-${Date.now()}`,
         sender: 'ai',
-        text: `Conversation cleared. How can I help you today, ${user?.name || 'there'}?`,
+        text: `Conversation cleared. How can I help you today, ${userName}?`,
         timestamp: 'Just now'
       }
     ]);

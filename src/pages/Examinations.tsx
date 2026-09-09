@@ -21,27 +21,31 @@ export const Examinations: React.FC = () => {
 
   const [reminderToast, setReminderToast] = useState<string | null>(null);
 
-  // Countdown state for nearest exam (Data Structures, target 2026-08-25T10:00:00)
-  const [countdownStr, setCountdownStr] = useState('');
+  // Countdown state for nearest exam
+  const [countdown, setCountdown] = useState({
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0
+  });
 
   useEffect(() => {
+    // Dynamic upcoming target date (+3 days 14 hours ahead)
+    const targetTime = new Date(Date.now() + (3 * 24 + 14) * 3600 * 1000 + 45 * 60 * 1000).getTime();
+
     const updateCountdown = () => {
-      const targetTime = new Date('2026-08-25T10:00:00+05:30').getTime();
       const now = new Date().getTime();
       const difference = targetTime - now;
 
-      // Duration is 2 hours (7200000 ms)
-      if (difference <= -7200000) {
-        setCountdownStr('Completed');
-      } else if (difference <= 0) {
-        setCountdownStr('Exam in Progress');
+      if (difference <= 0) {
+        setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0 });
       } else {
         const days = Math.floor(difference / (1000 * 60 * 60 * 24));
         const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((difference % (1000 * 60)) / 1000);
 
-        setCountdownStr(`${days}d ${hours}h ${minutes}m ${seconds}s`);
+        setCountdown({ days, hours, minutes, seconds });
       }
     };
 
@@ -85,23 +89,73 @@ export const Examinations: React.FC = () => {
       )}
 
       {/* Dynamic Countdown Header */}
-      <div className="card-panel ai-insight-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', padding: '18px 24px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span className="subject-att-status critical" style={{ fontSize: '9px', textTransform: 'uppercase' }}>
-              Next Examination
-            </span>
-            <strong style={{ color: 'white', fontSize: '15px' }}>Data Structures</strong>
+      <div className="c1-card exam-countdown-hero-banner" style={{ margin: 0 }}>
+        <div className="countdown-hero-left">
+          <div className="countdown-badge">
+            <span className="pulse-circle"></span>
+            <span>NEAREST SCHEDULED EXAMINATION</span>
           </div>
-          <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            Date: <strong style={{ color: 'white' }}>25 August 2026</strong> • Room: <strong style={{ color: 'white' }}>CSE-204</strong>
-          </p>
+          <h2 className="countdown-exam-title">
+            Data Structures & Algorithms <span className="exam-code-tag">(CS301)</span>
+          </h2>
+          <div className="countdown-exam-meta">
+            <span className="meta-pill"><i className="fa-regular fa-calendar"></i> In 3 Days (Tuesday)</span>
+            <span className="meta-pill"><i className="fa-regular fa-clock"></i> 10:00 AM – 01:00 PM</span>
+            <span className="meta-pill"><i className="fa-solid fa-location-dot"></i> Hall: CSE-204</span>
+            <span className="meta-pill desk-pill"><i className="fa-solid fa-chair"></i> Desk: B-14</span>
+          </div>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block' }}>Countdown</span>
-          <strong style={{ fontSize: '18px', color: 'var(--accent-highlight)' }}>
-            {countdownStr || 'Calculating...'}
-          </strong>
+
+        <div className="countdown-hero-right">
+          <div className="pro-timer-widget">
+            <div className="pro-timer-header">
+              <span className="pro-timer-pulse-indicator"></span>
+              <span className="pro-timer-title">EXAM COUNTDOWN</span>
+              <span className="pro-timer-badge">LIVE SYNC</span>
+            </div>
+            <div className="pro-timer-digits-container">
+              <div className="pro-timer-unit-card">
+                <div className="pro-timer-card-inner">
+                  <span className="pro-timer-number">{String(countdown.days).padStart(2, '0')}</span>
+                  <div className="pro-timer-card-divider"></div>
+                </div>
+                <span className="pro-timer-label">DAYS</span>
+              </div>
+              <div className="pro-timer-separator">
+                <span className="pro-timer-dot"></span>
+                <span className="pro-timer-dot"></span>
+              </div>
+              <div className="pro-timer-unit-card">
+                <div className="pro-timer-card-inner">
+                  <span className="pro-timer-number">{String(countdown.hours).padStart(2, '0')}</span>
+                  <div className="pro-timer-card-divider"></div>
+                </div>
+                <span className="pro-timer-label">HOURS</span>
+              </div>
+              <div className="pro-timer-separator">
+                <span className="pro-timer-dot"></span>
+                <span className="pro-timer-dot"></span>
+              </div>
+              <div className="pro-timer-unit-card">
+                <div className="pro-timer-card-inner">
+                  <span className="pro-timer-number">{String(countdown.minutes).padStart(2, '0')}</span>
+                  <div className="pro-timer-card-divider"></div>
+                </div>
+                <span className="pro-timer-label">MINS</span>
+              </div>
+              <div className="pro-timer-separator">
+                <span className="pro-timer-dot"></span>
+                <span className="pro-timer-dot"></span>
+              </div>
+              <div className="pro-timer-unit-card pro-timer-seconds-card">
+                <div className="pro-timer-card-inner">
+                  <span className="pro-timer-number pro-timer-accent-number">{String(countdown.seconds).padStart(2, '0')}</span>
+                  <div className="pro-timer-card-divider"></div>
+                </div>
+                <span className="pro-timer-label">SECS</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

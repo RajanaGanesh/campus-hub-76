@@ -6,11 +6,13 @@ import { placementsData, JobOpportunity, CareerApplication, PlacementEvent } fro
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
+import { resolveEffectiveProfile } from '../../utils/userProfile';
 
 export const StudentPlacements: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const effectiveProfile = resolveEffectiveProfile(user);
 
   // Active section tab
   const [activeTab, setActiveTab] = useState<'jobs' | 'applications' | 'drives' | 'interviews' | 'saved' | 'resources' | 'analytics'>('jobs');
@@ -19,8 +21,8 @@ export const StudentPlacements: React.FC = () => {
   useEffect(() => {
     if (location.pathname.includes('/applications')) {
       setActiveTab('applications');
-    } else if (location.pathname.includes('/drives')) {
-      setActiveTab('drives');
+    } else if (location.pathname.includes('/interviews')) {
+      setActiveTab('interviews');
     } else if (location.pathname.includes('/saved')) {
       setActiveTab('saved');
     }
@@ -28,8 +30,8 @@ export const StudentPlacements: React.FC = () => {
 
   // Student Profile Data for Eligibility Matching
   const studentProfile = {
-    name: user?.name || 'Aditya Sharma',
-    email: user?.email || 'aditya.sharma@campusone.edu',
+    name: effectiveProfile.name,
+    email: effectiveProfile.email,
     phone: '+91 98765 43210',
     rollNumber: '236F1A0551',
     branch: 'CSE',

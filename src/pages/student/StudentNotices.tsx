@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
+import { downloadNoticeAttachment } from '../../utils/fileDownloader';
 
 export interface NoticeItem {
   id: string;
@@ -165,8 +166,16 @@ export const StudentNotices: React.FC = () => {
     } catch {}
   };
 
-  const handleDownloadAttachment = (filename: string) => {
-    showToast(`Downloading attachment: "${filename}"`, 'success');
+  const handleDownloadAttachment = (filename: string, notice?: NoticeItem | null) => {
+    downloadNoticeAttachment({
+      title: notice?.title || filename,
+      attachmentName: filename,
+      department: notice?.publisher,
+      date: notice?.publishedDate,
+      priority: notice?.priority,
+      content: notice?.fullText
+    });
+    showToast(`Downloaded attachment: "${filename}"`, 'success');
   };
 
   const getPriorityBadge = (priority: NoticeItem['priority']) => {
@@ -386,7 +395,7 @@ export const StudentNotices: React.FC = () => {
                   <button
                     type="button"
                     className="c1-btn c1-btn-secondary"
-                    onClick={() => handleDownloadAttachment(selectedNotice.attachmentName!)}
+                    onClick={() => handleDownloadAttachment(selectedNotice.attachmentName!, selectedNotice)}
                   >
                     <i className="fa-solid fa-download"></i>
                     <span>Download</span>

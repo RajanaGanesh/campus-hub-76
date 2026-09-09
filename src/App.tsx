@@ -14,6 +14,7 @@ import { StudentDashboard } from './pages/student/StudentDashboard';
 import { StudentModulePlaceholder } from './pages/student/StudentModulePlaceholder';
 
 // STEP 4: Student Academic Modules
+import { StudentAttendance } from './pages/student/StudentAttendance';
 import { StudentTimetable } from './pages/student/StudentTimetable';
 import { StudentAssignments } from './pages/student/StudentAssignments';
 import { StudentExaminations } from './pages/student/StudentExaminations';
@@ -30,6 +31,9 @@ import { StudentNotifications } from './pages/student/StudentNotifications';
 
 // STEP 6: Student Placement & Career Portal
 import { StudentPlacements } from './pages/student/StudentPlacements';
+import { StudentProfile } from './pages/student/StudentProfile';
+import { StudentServices } from './pages/student/StudentServices';
+import { StudentAIAssistant } from './pages/student/StudentAIAssistant';
 
 // STEP 7: Faculty Portal Modules
 import { FacultyDashboard } from './pages/faculty/FacultyDashboard';
@@ -238,13 +242,7 @@ export const App: React.FC = () => {
             path="/student/attendance"
             element={
               <ProtectedRoute allowedRole="student">
-                <StudentModulePlaceholder
-                  moduleName="Attendance Management"
-                  category="Academic"
-                  stepNumber={6}
-                  icon="fa-user-check"
-                  description="Subject-wise attendance logs, leave applications, biometrics integration, and low attendance risk alerts will be implemented in Step 6."
-                />
+                <StudentAttendance />
               </ProtectedRoute>
             }
           />
@@ -252,13 +250,7 @@ export const App: React.FC = () => {
             path="/student/services"
             element={
               <ProtectedRoute allowedRole="student">
-                <StudentModulePlaceholder
-                  moduleName="Campus Services & Helpdesk"
-                  category="Services"
-                  stepNumber={6}
-                  icon="fa-screwdriver-wrench"
-                  description="Facility requests, ID card re-issues, certificates, and student grievances will be implemented in Step 6."
-                />
+                <StudentServices />
               </ProtectedRoute>
             }
           />
@@ -266,13 +258,7 @@ export const App: React.FC = () => {
             path="/student/requests"
             element={
               <ProtectedRoute allowedRole="student">
-                <StudentModulePlaceholder
-                  moduleName="Service Requests"
-                  category="Services"
-                  stepNumber={6}
-                  icon="fa-list-check"
-                  description="Track ticket statuses, responses from campus admin, and service history will be implemented in Step 6."
-                />
+                <StudentServices />
               </ProtectedRoute>
             }
           />
@@ -345,13 +331,7 @@ export const App: React.FC = () => {
             path="/student/ai-assistant"
             element={
               <ProtectedRoute allowedRole="student">
-                <StudentModulePlaceholder
-                  moduleName="CampusOne AI Assistant"
-                  category="Intelligence"
-                  stepNumber={9}
-                  icon="fa-wand-magic-sparkles"
-                  description="Intelligent LLM assistant for instant queries, schedule summaries, and campus guidance will be implemented in Step 9."
-                />
+                <StudentAIAssistant />
               </ProtectedRoute>
             }
           />
@@ -359,13 +339,7 @@ export const App: React.FC = () => {
             path="/student/profile"
             element={
               <ProtectedRoute allowedRole="student">
-                <StudentModulePlaceholder
-                  moduleName="Student Profile & ID"
-                  category="Account"
-                  stepNumber={4}
-                  icon="fa-user-gear"
-                  description="Personal details, academic enrollment info, guardian contact, and security settings will be implemented in Step 4."
-                />
+                <StudentProfile />
               </ProtectedRoute>
             }
           />

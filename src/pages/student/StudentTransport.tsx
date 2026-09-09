@@ -5,6 +5,7 @@ import { mobilityData, TransportRoute } from '../../data/mobilityData';
 import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
+import { resolveEffectiveProfile } from '../../utils/userProfile';
 
 export const StudentTransport: React.FC = () => {
   const navigate = useNavigate();
@@ -355,7 +356,7 @@ export const StudentTransport: React.FC = () => {
                 <div className="pass-details-box">
                   <div className="pass-field">
                     <span className="p-lbl">Student Name:</span>
-                    <span className="p-val">{user?.name || 'Aditya Sharma'}</span>
+                    <span className="p-val">{resolveEffectiveProfile(user).name}</span>
                   </div>
                   <div className="pass-field">
                     <span className="p-lbl">Roll Number:</span>

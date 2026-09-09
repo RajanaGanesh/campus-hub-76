@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { Toast } from '../../components/Toast';
+import { downloadCSV } from '../../utils/fileDownloader';
 
 export interface ReportCategoryItem {
   id: string;
@@ -105,7 +106,35 @@ export const AdminReports: React.FC = () => {
   };
 
   const handleExportCSV = (repTitle: string) => {
-    showToast(`Exporting "${repTitle}" as CSV file... Download started.`, 'success');
+    let headers: string[] = ['ID', 'Name', 'Department', 'Status', 'Metric_Value', 'Date_Updated'];
+    let rows: (string | number)[][] = [
+      ['REC-001', 'Sample Student / Record 1', 'Computer Science', 'Active', '92.4%', '2026-08-15'],
+      ['REC-002', 'Sample Student / Record 2', 'Information Technology', 'Active', '88.1%', '2026-08-16'],
+      ['REC-003', 'Sample Student / Record 3', 'Electronics & Comm', 'Active', '94.6%', '2026-08-17'],
+      ['REC-004', 'Sample Student / Record 4', 'Mechanical Eng', 'Active', '79.2%', '2026-08-18'],
+      ['REC-005', 'Sample Student / Record 5', 'Computer Science', 'Active', '86.5%', '2026-08-19']
+    ];
+
+    if (repTitle.toLowerCase().includes('faculty')) {
+      headers = ['Emp_ID', 'Faculty_Name', 'Department', 'Designation', 'Teaching_Credits', 'Workload_Status'];
+      rows = [
+        ['FAC-101', 'Dr. Alok Verma', 'Computer Science', 'Professor & HOD', '18 Credits', 'Optimal'],
+        ['FAC-102', 'Prof. Sarah Jenkins', 'Computer Science', 'Associate Professor', '16 Credits', 'Optimal'],
+        ['FAC-103', 'Dr. Ramesh Nair', 'Information Tech', 'Professor', '14 Credits', 'Normal'],
+        ['FAC-104', 'Dr. Sunita Rao', 'Electronics & Comm', 'Assistant Professor', '18 Credits', 'Optimal']
+      ];
+    } else if (repTitle.toLowerCase().includes('fee') || repTitle.toLowerCase().includes('financ')) {
+      headers = ['Txn_ID', 'Roll_Number', 'Student_Name', 'Payment_Mode', 'Amount_INR', 'Status', 'Date'];
+      rows = [
+        ['TXN-8821', 'CS2023001', 'Alex Morgan', 'UPI / NetBanking', 45000, 'Success', '2026-08-10'],
+        ['TXN-8822', 'CS2023002', 'Sarah Chen', 'Credit Card', 45000, 'Success', '2026-08-11'],
+        ['TXN-8823', 'CS2023003', 'Michael Scott', 'Demand Draft', 52000, 'Success', '2026-08-12']
+      ];
+    }
+
+    const filename = `${repTitle.replace(/[^a-zA-Z0-9_-]/g, '_')}_Report.csv`;
+    downloadCSV(filename, headers, rows);
+    showToast(`Exported "${repTitle}" as CSV file to your downloads!`, 'success');
   };
 
   const handlePrintReport = (repTitle: string) => {

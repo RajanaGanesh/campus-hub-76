@@ -3,6 +3,7 @@ import { AppLayout } from '../../components/AppLayout';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 import { getFacultyMaterials, saveFacultyMaterials, FacultyMaterialItem } from '../../services/storageService';
+import { downloadLearningMaterial } from '../../utils/fileDownloader';
 
 export const FacultyMaterials: React.FC = () => {
   // Materials state loaded from persistent storage
@@ -245,7 +246,16 @@ export const FacultyMaterials: React.FC = () => {
                     type="button"
                     className="c1-btn c1-btn-secondary"
                     style={{ padding: '6px 12px', fontSize: '0.75rem' }}
-                    onClick={() => showToast(`Downloading "${mat.title}"...`, 'info')}
+                    onClick={() => {
+                      downloadLearningMaterial({
+                        title: mat.title,
+                        subject: mat.courseName || mat.courseCode,
+                        type: mat.type,
+                        size: mat.fileSize,
+                        uploadedDate: mat.date
+                      });
+                      showToast(`Downloaded "${mat.title}" successfully!`, 'success');
+                    }}
                   >
                     <i className="fa-solid fa-download"></i>
                     <span>Download</span>

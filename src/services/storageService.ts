@@ -263,3 +263,82 @@ export const getStudentNotifications = (): StudentNotificationItem[] =>
 
 export const saveStudentNotifications = (notifs: StudentNotificationItem[]): void =>
   safeSetStorage('campushub_student_notifications', notifs);
+
+// ----------------------------------------------------------------------
+// 9. Campus Transport Fleet & Routes
+// ----------------------------------------------------------------------
+export interface TransportRouteItem {
+  id: string;
+  name: string;
+  busNumber: string;
+  driverName: string;
+  driverPhone: string;
+  capacity: number;
+  assignedCount: number;
+  morningTime: string;
+  eveningTime: string;
+  stops: string[];
+  status?: 'Active' | 'Under Maintenance' | 'Suspended';
+}
+
+const DEFAULT_TRANSPORT_ROUTES: TransportRouteItem[] = [
+  {
+    id: 'RT-01',
+    name: 'Route 1: Silk Board – HSR – Campus',
+    busNumber: 'KA-01-FA-1204',
+    driverName: 'Mr. Ramesh Babu',
+    driverPhone: '+91 98450 12345',
+    capacity: 45,
+    assignedCount: 42,
+    morningTime: '07:15 AM',
+    eveningTime: '05:15 PM',
+    stops: ['Silk Board Junction', 'HSR BDA Complex', 'Agara Lake', 'Campus Main Gate'],
+    status: 'Active'
+  },
+  {
+    id: 'RT-02',
+    name: 'Route 2: Indiranagar – Koramangala – Campus',
+    busNumber: 'KA-01-FA-1208',
+    driverName: 'Mr. Manjunath Swamy',
+    driverPhone: '+91 98450 23456',
+    capacity: 45,
+    assignedCount: 44,
+    morningTime: '07:00 AM',
+    eveningTime: '05:15 PM',
+    stops: ['Indiranagar 100ft Rd', 'Domlur Flyover', 'Sony World Koramangala', 'Campus Main Gate'],
+    status: 'Active'
+  },
+  {
+    id: 'RT-03',
+    name: 'Route 3: Whitefield – Marathahalli – Campus',
+    busNumber: 'KA-01-FA-1212',
+    driverName: 'Mr. Suresh Gowda',
+    driverPhone: '+91 98450 34567',
+    capacity: 45,
+    assignedCount: 40,
+    morningTime: '07:10 AM',
+    eveningTime: '05:15 PM',
+    stops: ['Whitefield TTMC', 'Kundalahalli Gate', 'Marathahalli Bridge', 'Campus Main Gate'],
+    status: 'Active'
+  },
+  {
+    id: 'RT-04',
+    name: 'Route 4: Electronic City – Phase 1 & 2 – Campus',
+    busNumber: 'KA-01-FA-1216',
+    driverName: 'Mr. Venkatesh Rao',
+    driverPhone: '+91 98450 45678',
+    capacity: 45,
+    assignedCount: 38,
+    morningTime: '07:20 AM',
+    eveningTime: '05:15 PM',
+    stops: ['Infosys Gate 1', 'Wipro Gate', 'Electronic City Toll', 'Campus Main Gate'],
+    status: 'Active'
+  }
+];
+
+export const getTransportRoutes = (): TransportRouteItem[] =>
+  safeGetStorage<TransportRouteItem[]>('campushub_transport_routes', DEFAULT_TRANSPORT_ROUTES);
+
+export const saveTransportRoutes = (routes: TransportRouteItem[]): void =>
+  safeSetStorage('campushub_transport_routes', routes);
+

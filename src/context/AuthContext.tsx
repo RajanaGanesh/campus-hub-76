@@ -12,7 +12,7 @@ interface AuthContextType {
   role: UserRole | null;
   loading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<AuthResponse>;
+  login: (identifier: string, password: string, rememberMe?: boolean, role?: string) => Promise<AuthResponse>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<{ success: boolean; error?: string }>;
@@ -59,9 +59,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [refreshSession]);
 
-  const login = async (email: string, password: string, rememberMe: boolean = false): Promise<AuthResponse> => {
+  const login = async (
+    identifier: string,
+    password: string,
+    rememberMe: boolean = false,
+    role?: string
+  ): Promise<AuthResponse> => {
     try {
-      const result = await AuthService.signIn(email, password, rememberMe);
+      const result = await AuthService.signIn(identifier, password, rememberMe, role);
       if (result.success && result.profile) {
         setUser(result.profile);
       }

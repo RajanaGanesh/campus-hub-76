@@ -11,39 +11,52 @@ export interface EffectiveProfile {
 }
 
 export const getEffectiveInitials = (nameStr: string): string => {
-  if (!nameStr) return 'RG';
+  if (!nameStr) return 'ST';
   const parts = nameStr.trim().split(/\s+/).filter(Boolean);
   if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
   return nameStr.slice(0, 2).toUpperCase();
 };
 
-export const getSavedStudentProfile = () => {
+export const getSavedStudentProfile = (userId?: string) => {
   try {
-    const raw = localStorage.getItem('campushub_student_profile_data');
-    if (raw) {
-      return JSON.parse(raw);
+    if (userId) {
+      const scopedRaw = localStorage.getItem(`campushub_student_profile_data_${userId}`);
+      if (scopedRaw) return JSON.parse(scopedRaw);
     }
   } catch {}
   return null;
 };
 
 export const resolveEffectiveProfile = (authUser: any): EffectiveProfile => {
-  const saved = getSavedStudentProfile();
+  if (!authUser) {
+    return {
+      name: 'Student User',
+      email: 'student@campushub.edu',
+      role: 'student',
+      photoUrl: null,
+      initials: 'SU'
+    };
+  }
 
-  let name = saved?.name;
+  const saved = getSavedStudentProfile(authUser.id);
+
+  // Derive student details directly from active authUser
+  let name = authUser.name;
   if (!name || name === 'New User' || name === 'Campus User' || name === 'User' || name === 'Student') {
-    if (authUser?.name && authUser.name !== 'New User' && authUser.name !== 'Campus User') {
-      name = authUser.name;
+    if (saved?.name && saved.name !== 'New User' && saved.name !== 'Campus User') {
+      name = saved.name;
+    } else if (authUser.email) {
+      name = authUser.email.split('@')[0].replace(/[._0-9-]+/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
     } else {
-      name = 'Rajana Ganesh';
+      name = 'Student';
     }
   }
 
-  const email = saved?.email || authUser?.email || 'rajanaganesh143143@gmail.com';
-  const role: UserRole = normalizeRole(authUser?.role);
-  const photoUrl = saved?.photoUrl || authUser?.avatar_url || null;
+  const email = authUser.email || saved?.email || 'student@campushub.edu';
+  const role: UserRole = normalizeRole(authUser.role);
+  const photoUrl = saved?.photoUrl || authUser.avatar_url || null;
   const initials = getEffectiveInitials(name);
 
   return {

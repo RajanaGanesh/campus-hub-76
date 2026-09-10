@@ -21,8 +21,8 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ isOpen, onClos
     navigate('/login');
   };
 
-  const displayName = profile?.name || (user?.name && user.name !== 'New User' && user.name !== 'Campus User' ? user.name : 'Rajana Ganesh');
-  const displayEmail = profile?.email || user?.email || 'rajanaganesh143143@gmail.com';
+  const displayName = profile?.name || user?.name || 'Student';
+  const displayEmail = profile?.email || user?.email || 'student@campushub.edu';
   const userRole = profile?.role || user?.role || 'student';
   const profilePath = userRole === 'admin' ? '/admin/settings' : userRole === 'faculty' ? '/faculty/dashboard' : '/student/profile';
   const settingsPath = userRole === 'admin' ? '/admin/settings' : '/student/settings';
@@ -53,7 +53,7 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ isOpen, onClos
                 flexShrink: 0
               }}
             >
-              {profile?.initials || 'RG'}
+              {profile?.initials || displayName.slice(0, 2).toUpperCase()}
             </div>
           )}
           <div style={{ overflow: 'hidden' }}>

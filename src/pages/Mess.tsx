@@ -19,7 +19,7 @@ export const Mess: React.FC = () => {
   });
 
   // Give Feedback fields
-  const [fbMeal, setFbMeal] = useState('Lunch');
+  const [fbMeal, setFbMeal] = useState<MessFeedback['meal']>('Lunch');
   const [fbRating, setFbRating] = useState(5);
   const [fbComments, setFbComments] = useState('');
 
@@ -113,7 +113,7 @@ export const Mess: React.FC = () => {
                 <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Select Meal</label>
                 <select
                   value={fbMeal}
-                  onChange={(e) => setFbMeal(e.target.value)}
+                  onChange={(e) => setFbMeal(e.target.value as MessFeedback['meal'])}
                   style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '12.5px', outline: 'none' }}
                 >
                   <option value="Breakfast">Breakfast</option>

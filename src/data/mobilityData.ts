@@ -30,6 +30,11 @@ export interface HostelRequest {
 export interface MealDetail {
   menuItems: string;
   timing: string;
+  calories?: number;
+  protein?: string;
+  dietType?: 'Veg' | 'Non-Veg' | 'Egg' | 'Jain';
+  allergens?: string[];
+  isSpecial?: boolean;
 }
 
 export interface DayMenu {
@@ -42,10 +47,60 @@ export interface DayMenu {
 
 export interface MessFeedback {
   id: string;
+  studentName?: string;
   date: string;
-  meal: string;
+  meal: 'Breakfast' | 'Lunch' | 'Snacks' | 'Dinner';
   rating: number;
+  tags?: string[];
   comments: string;
+  response?: string;
+  isAnonymous?: boolean;
+}
+
+export interface MessRebateRequest {
+  id: string;
+  studentName: string;
+  studentId: string;
+  hostelBlock: string;
+  roomNumber: string;
+  startDate: string;
+  endDate: string;
+  daysCount: number;
+  rebatePerDay: number;
+  totalRebate: number;
+  reason: string;
+  status: 'Approved' | 'Under Review' | 'Credited' | 'Rejected';
+  submittedDate: string;
+  remarks?: string;
+}
+
+export interface DietaryProfile {
+  primaryDiet: 'Pure Vegetarian' | 'Non-Vegetarian' | 'Eggitarian' | 'Jain (No Onion/Garlic)' | 'Vegan';
+  spiceLevel: 'Mild' | 'Medium' | 'Spicy';
+  allergies: string[];
+  sickDietActive: boolean;
+  sickDietMeal?: 'Khichdi & Curd' | 'Clear Soup & Toast' | 'Boiled Rice & Dal' | 'Custom';
+  sickDietRoomDelivery: boolean;
+  sickDietNotes?: string;
+}
+
+export interface DiningHallInfo {
+  id: string;
+  name: string;
+  location: string;
+  activeMeal: string;
+  currentCapacity: number;
+  maxCapacity: number;
+  status: 'Open - Normal' | 'Peak Crowded' | 'Closing Soon' | 'Closed';
+  chefToday: string;
+}
+
+export interface MealAttendanceRecord {
+  date: string;
+  breakfast: boolean;
+  lunch: boolean;
+  snacks: boolean;
+  dinner: boolean;
 }
 
 export interface TransportRoute {
@@ -77,6 +132,9 @@ export interface MobilityData {
   requests: HostelRequest[];
   weeklyMenu: DayMenu[];
   feedbacks: MessFeedback[];
+  rebates: MessRebateRequest[];
+  diningHalls: DiningHallInfo[];
+  dietaryProfile: DietaryProfile;
   routes: TransportRoute[];
   pass: TransportPassData;
 }
@@ -115,55 +173,141 @@ export const mobilityData: MobilityData = {
   weeklyMenu: [
     {
       day: 'Monday',
-      Breakfast: { menuItems: 'Idli, Sambar, Coconut Chutney, Tea/Coffee', timing: '7:30 AM – 9:00 AM' },
-      Lunch: { menuItems: 'Veg Biryani, Raita, Mixed Veg Curry, Rice, Sambar', timing: '12:30 PM – 2:00 PM' },
-      Snacks: { menuItems: 'Samosa, Mint Chutney, Tea/Milk', timing: '4:30 PM – 5:30 PM' },
-      Dinner: { menuItems: 'Roti, Paneer Butter Masala, Dal Tadka, Rice, Curd', timing: '7:30 PM – 9:00 PM' }
+      Breakfast: { menuItems: 'Idli, Sambar, Coconut Chutney, Tomato Chutney, Tea / Coffee', timing: '7:30 AM – 9:00 AM', calories: 420, protein: '12g', dietType: 'Veg', allergens: ['Mustard'] },
+      Lunch: { menuItems: 'Hyderabadi Veg Biryani, Mirchi Ka Salan, Raita, Mixed Veg Curry, Steamed Rice, Sambar', timing: '12:30 PM – 2:00 PM', calories: 680, protein: '18g', dietType: 'Veg', allergens: ['Dairy'], isSpecial: true },
+      Snacks: { menuItems: 'Hot Crispy Samosa (2 pcs), Sweet Mint Chutney, Masala Chai / Milk', timing: '4:30 PM – 5:30 PM', calories: 290, protein: '6g', dietType: 'Veg', allergens: ['Gluten'] },
+      Dinner: { menuItems: 'Butter Roti, Paneer Butter Masala, Dal Tadka, Jeera Rice, Fresh Curd, Gulab Jamun', timing: '7:30 PM – 9:00 PM', calories: 720, protein: '22g', dietType: 'Veg', allergens: ['Dairy', 'Gluten'] }
     },
     {
       day: 'Tuesday',
-      Breakfast: { menuItems: 'Puri, Aloo Masala, Tea/Coffee', timing: '7:30 AM – 9:00 AM' },
-      Lunch: { menuItems: 'Roti, Dal Fry, Aloo Gobi, Rice, Rasam, Curd', timing: '12:30 PM – 2:00 PM' },
-      Snacks: { menuItems: 'Onion Pakoda, Tea/Coffee', timing: '4:30 PM – 5:30 PM' },
-      Dinner: { menuItems: 'Roti, Chicken Curry (or Kadai Paneer for Veg), Rice, Dal', timing: '7:30 PM – 9:00 PM' }
+      Breakfast: { menuItems: 'Hot Puri (3 pcs), Aloo Masala Bhaji, Suji Halwa, Tea / Coffee', timing: '7:30 AM – 9:00 AM', calories: 510, protein: '10g', dietType: 'Veg', allergens: ['Gluten'] },
+      Lunch: { menuItems: 'Phulka Roti, Dal Fry, Aloo Gobi Masala, Steamed Rice, Andhra Rasam, Fresh Curd', timing: '12:30 PM – 2:00 PM', calories: 610, protein: '16g', dietType: 'Veg', allergens: ['Gluten', 'Dairy'] },
+      Snacks: { menuItems: 'Crispy Onion Pakoda, Green Chutney, Filter Coffee / Tea', timing: '4:30 PM – 5:30 PM', calories: 260, protein: '5g', dietType: 'Veg', allergens: [] },
+      Dinner: { menuItems: 'Tawa Roti, Chettinad Chicken Curry / Kadai Paneer (Veg Option), Steamed Rice, Dal, Onion Salad', timing: '7:30 PM – 9:00 PM', calories: 750, protein: '34g', dietType: 'Non-Veg', allergens: ['Dairy', 'Gluten'], isSpecial: true }
     },
     {
       day: 'Wednesday',
-      Breakfast: { menuItems: 'Aloo Paratha, Butter, Pickle, Tea/Coffee', timing: '7:30 AM – 9:00 AM' },
-      Lunch: { menuItems: 'Roti, Egg Masala (or Paneer Tikka), Jeera Rice, Dal, Curd', timing: '12:30 PM – 2:00 PM' },
-      Snacks: { menuItems: 'Veg Cutlet, Tea/Milk', timing: '4:30 PM – 5:30 PM' },
-      Dinner: { menuItems: 'Roti, Mixed Veg Sabzi, Dal Makhani, Rice, Curd', timing: '7:30 PM – 9:00 PM' }
+      Breakfast: { menuItems: 'Stuffed Aloo Paratha with Amul Butter, Mango Pickle, Sweet Curd, Tea / Coffee', timing: '7:30 AM – 9:00 AM', calories: 540, protein: '12g', dietType: 'Veg', allergens: ['Dairy', 'Gluten'] },
+      Lunch: { menuItems: 'Tandoori Roti, Mughlai Egg Masala (or Shahi Paneer for Veg), Jeera Rice, Yellow Dal, Curd', timing: '12:30 PM – 2:00 PM', calories: 690, protein: '26g', dietType: 'Egg', allergens: ['Egg', 'Dairy', 'Gluten'] },
+      Snacks: { menuItems: 'Crispy Veg Cutlet (2 pcs), Tomato Ketchup, Cardamom Tea / Milk', timing: '4:30 PM – 5:30 PM', calories: 240, protein: '5g', dietType: 'Veg', allergens: ['Gluten'] },
+      Dinner: { menuItems: 'Soft Rotis, Dal Makhani, Mixed Seasonal Vegetable Sabzi, Steamed Rice, Curd, Fruit Custard', timing: '7:30 PM – 9:00 PM', calories: 680, protein: '19g', dietType: 'Veg', allergens: ['Dairy', 'Gluten'] }
     },
     {
       day: 'Thursday',
-      Breakfast: { menuItems: 'Mysore Bajji, Ginger Chutney, Tea/Coffee', timing: '7:30 AM – 9:00 AM' },
-      Lunch: { menuItems: 'Rice, Sambar, Ladies Finger Fry, Dal, Papad, Curd', timing: '12:30 PM – 2:00 PM' },
-      Snacks: { menuItems: 'Biscuits, Tea/Milk', timing: '4:30 PM – 5:30 PM' },
-      Dinner: { menuItems: 'Roti, Egg Bhurji (or Paneer Bhurji), Dal, Rice, Curd', timing: '7:30 PM – 9:00 PM' }
+      Breakfast: { menuItems: 'Mysore Bonda / Bajji (4 pcs), Allam Ginger Chutney, Sambar, Tea / Coffee', timing: '7:30 AM – 9:00 AM', calories: 480, protein: '9g', dietType: 'Veg', allergens: ['Gluten'] },
+      Lunch: { menuItems: 'Steamed Rice, Drumstick Sambar, Crispy Bhindi Fry, Tomato Dal, Appalam Papad, Curd', timing: '12:30 PM – 2:00 PM', calories: 590, protein: '15g', dietType: 'Veg', allergens: ['Dairy'] },
+      Snacks: { menuItems: 'Cream Biscuits & Roasted Peanut Mixture, Special Ginger Chai / Milk', timing: '4:30 PM – 5:30 PM', calories: 220, protein: '4g', dietType: 'Veg', allergens: ['Peanuts', 'Gluten'] },
+      Dinner: { menuItems: 'Butter Naan / Roti, Spicy Egg Bhurji (or Paneer Bhurji for Veg), Moong Dal, Jeera Rice, Curd', timing: '7:30 PM – 9:00 PM', calories: 710, protein: '28g', dietType: 'Egg', allergens: ['Egg', 'Dairy', 'Gluten'] }
     },
     {
       day: 'Friday',
-      Breakfast: { menuItems: 'Poha, Sev, Chutney, Tea/Coffee', timing: '7:30 AM – 9:00 AM' },
-      Lunch: { menuItems: 'Roti, Chana Masala, Veg Pulao, Dal, Curd', timing: '12:30 PM – 2:00 PM' },
-      Snacks: { menuItems: 'Kachori, Tea/Coffee', timing: '4:30 PM – 5:30 PM' },
-      Dinner: { menuItems: 'Roti, Chicken Biryani (or Paneer Biryani), Raita, Sweets', timing: '7:30 PM – 9:00 PM' }
+      Breakfast: { menuItems: 'Indori Poha with Nylon Sev, Lemon wedges, Fried Green Chillies, Tea / Coffee', timing: '7:30 AM – 9:00 AM', calories: 380, protein: '8g', dietType: 'Veg', allergens: ['Mustard', 'Peanuts'] },
+      Lunch: { menuItems: 'Soft Roti, Amritsari Chana Masala, Vegetable Pulao, Boondi Raita, Dal Tadka', timing: '12:30 PM – 2:00 PM', calories: 650, protein: '20g', dietType: 'Veg', allergens: ['Dairy', 'Gluten'] },
+      Snacks: { menuItems: 'Khasta Moong Dal Kachori, Sweet Tamarind Chutney, Tea / Coffee', timing: '4:30 PM – 5:30 PM', calories: 280, protein: '6g', dietType: 'Veg', allergens: ['Gluten'] },
+      Dinner: { menuItems: 'Special Dum Biryani (Chicken or Paneer), Mirchi Salan, Onion Raita, Double Ka Meetha sweet', timing: '7:30 PM – 9:00 PM', calories: 820, protein: '36g', dietType: 'Non-Veg', allergens: ['Dairy', 'Gluten'], isSpecial: true }
     },
     {
       day: 'Saturday',
-      Breakfast: { menuItems: 'Dosa, Sambar, Peanut Chutney, Tea/Coffee', timing: '7:30 AM – 9:00 AM' },
-      Lunch: { menuItems: 'Roti, Bhindi Masala, Dal, Rice, Rasam, Curd', timing: '12:30 PM – 2:00 PM' },
-      Snacks: { menuItems: 'Bread Butter Toast, Tea/Milk', timing: '4:30 PM – 5:30 PM' },
-      Dinner: { menuItems: 'Roti, Aloo Palak, Dal Tadka, Rice, Curd', timing: '7:30 PM – 9:00 PM' }
+      Breakfast: { menuItems: 'Crispy Masala Dosa, Potato Masala, Drumstick Sambar, Peanut Chutney, Filter Coffee', timing: '7:30 AM – 9:00 AM', calories: 460, protein: '11g', dietType: 'Veg', allergens: ['Peanuts'] },
+      Lunch: { menuItems: 'Phulka Roti, Rajma Masala, Steamed Basmati Rice, Pepper Rasam, Roasted Papad, Curd', timing: '12:30 PM – 2:00 PM', calories: 630, protein: '21g', dietType: 'Veg', allergens: ['Dairy', 'Gluten'] },
+      Snacks: { menuItems: 'Grilled Veg Sandwich / Butter Toast, Hot Chocolate / Masala Chai', timing: '4:30 PM – 5:30 PM', calories: 270, protein: '7g', dietType: 'Veg', allergens: ['Dairy', 'Gluten'] },
+      Dinner: { menuItems: 'Soft Roti, Aloo Palak, Gujarati Sweet Dal, Rice, Fresh Curd, Rasgulla (1 pc)', timing: '7:30 PM – 9:00 PM', calories: 660, protein: '17g', dietType: 'Veg', allergens: ['Dairy', 'Gluten'] }
     },
     {
       day: 'Sunday',
-      Breakfast: { menuItems: 'Bread, Omelette (or Jam), Fruit Juice, Tea/Coffee', timing: '7:30 AM – 9:00 AM' },
-      Lunch: { menuItems: 'Special Veg Thali, Puri, Paneer, Rice, Dal, Sweet Lassi', timing: '12:30 PM – 2:00 PM' },
-      Snacks: { menuItems: 'Pani Puri / Chat, Tea/Milk', timing: '4:30 PM – 5:30 PM' },
-      Dinner: { menuItems: 'Roti, Dum Aloo, Dal Fry, Rice, Ice Cream', timing: '7:30 PM – 9:00 PM' }
+      Breakfast: { menuItems: 'Fluffy Masala Omelette (or Vegetable Cutlet), Butter Toast, Banana, Mixed Fruit Juice', timing: '7:30 AM – 9:00 AM', calories: 490, protein: '18g', dietType: 'Egg', allergens: ['Egg', 'Gluten', 'Dairy'], isSpecial: true },
+      Lunch: { menuItems: 'Grand Sunday Feast: Bhature & Pindi Chole, Paneer Tikka, Veg Biryani, Sweet Mango Lassi', timing: '12:30 PM – 2:00 PM', calories: 880, protein: '25g', dietType: 'Veg', allergens: ['Dairy', 'Gluten'], isSpecial: true },
+      Snacks: { menuItems: 'Crispy Sev Puri / Bhel Puri chat, Cold Lemonade / Filter Coffee', timing: '4:30 PM – 5:30 PM', calories: 230, protein: '4g', dietType: 'Veg', allergens: ['Gluten', 'Peanuts'] },
+      Dinner: { menuItems: 'Butter Roti, Kashmiri Dum Aloo, Dal Fry, Jeera Rice, Vanilla Ice Cream with Choco Syrup', timing: '7:30 PM – 9:00 PM', calories: 710, protein: '15g', dietType: 'Veg', allergens: ['Dairy', 'Gluten'] }
     }
   ],
-  feedbacks: [],
+  feedbacks: [
+    {
+      id: 'FB-201',
+      studentName: 'Rajana Ganesh',
+      date: '16 Aug 2026',
+      meal: 'Lunch',
+      rating: 5,
+      tags: ['Great Taste', 'Hot & Fresh', 'Adequate Portions'],
+      comments: 'The Hyderabadi Dum Biryani and Mirchi Salan were exceptional today. Great improvement in flavor balance!',
+      response: 'Thank you for the review! Chef Ramu was pleased to hear your positive feedback.'
+    },
+    {
+      id: 'FB-202',
+      studentName: 'Rajana Ganesh',
+      date: '14 Aug 2026',
+      meal: 'Breakfast',
+      rating: 4,
+      tags: ['Quick Service', 'Good Hygiene'],
+      comments: 'Sambar was slightly less spicy than usual, but dosas were hot and crispy.',
+      response: 'Noted with the breakfast team. Spice consistency will be maintained.'
+    }
+  ],
+  rebates: [
+    {
+      id: 'MESS-REB-2026-089',
+      studentName: 'Rajana Ganesh',
+      studentId: '236F1A0551',
+      hostelBlock: 'Krishna Block',
+      roomNumber: 'B-304',
+      startDate: '2026-08-08',
+      endDate: '2026-08-11',
+      daysCount: 4,
+      rebatePerDay: 140,
+      totalRebate: 560,
+      reason: 'Attending Inter-College Hackathon at Bangalore Tech Summit',
+      status: 'Credited',
+      submittedDate: '04 Aug 2026',
+      remarks: 'Rebate amount ₹560 credited to next month hostel mess invoice ledger.'
+    },
+    {
+      id: 'MESS-REB-2026-094',
+      studentName: 'Rajana Ganesh',
+      studentId: '236F1A0551',
+      hostelBlock: 'Krishna Block',
+      roomNumber: 'B-304',
+      startDate: '2026-08-25',
+      endDate: '2026-08-28',
+      daysCount: 4,
+      rebatePerDay: 140,
+      totalRebate: 560,
+      reason: 'Home visit for family festival celebration (Raksha Bandhan)',
+      status: 'Approved',
+      submittedDate: '18 Aug 2026',
+      remarks: 'Warden approval granted. Gate-pass entry mapped.'
+    }
+  ],
+  diningHalls: [
+    {
+      id: 'hall-1',
+      name: 'Kaveri Central Dining Hall',
+      location: 'Ground Floor, Student Activity Centre',
+      activeMeal: 'Lunch',
+      currentCapacity: 165,
+      maxCapacity: 250,
+      status: 'Open - Normal',
+      chefToday: 'Chef R. Ramu (Executive Caterer)'
+    },
+    {
+      id: 'hall-2',
+      name: 'Godavari North Dining Wing',
+      location: 'First Floor, Hostel Block C',
+      activeMeal: 'Lunch',
+      currentCapacity: 78,
+      maxCapacity: 180,
+      status: 'Open - Normal',
+      chefToday: 'Chef S. Venkat'
+    }
+  ],
+  dietaryProfile: {
+    primaryDiet: 'Pure Vegetarian',
+    spiceLevel: 'Medium',
+    allergies: ['Peanuts'],
+    sickDietActive: false,
+    sickDietMeal: 'Khichdi & Curd',
+    sickDietRoomDelivery: false,
+    sickDietNotes: ''
+  },
   routes: [
     {
       routeNumber: 'Route 12',
@@ -255,5 +399,80 @@ export const saveMessFeedbacks = (feedbacks: MessFeedback[]) => {
   }
 };
 
+export const getMessRebates = (): MessRebateRequest[] => {
+  try {
+    const stored = localStorage.getItem('campushub_mess_rebates');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return parsed;
+    }
+    return mobilityData.rebates;
+  } catch {
+    return mobilityData.rebates;
+  }
+};
+
+export const saveMessRebates = (rebates: MessRebateRequest[]) => {
+  try {
+    localStorage.setItem('campushub_mess_rebates', JSON.stringify(rebates));
+  } catch (err) {
+    console.warn('Error saving mess rebates:', err);
+  }
+};
+
+export const getDietaryProfile = (): DietaryProfile => {
+  try {
+    const stored = localStorage.getItem('campushub_dietary_profile');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+    return mobilityData.dietaryProfile;
+  } catch {
+    return mobilityData.dietaryProfile;
+  }
+};
+
+export const saveDietaryProfile = (profile: DietaryProfile) => {
+  try {
+    localStorage.setItem('campushub_dietary_profile', JSON.stringify(profile));
+  } catch (err) {
+    console.warn('Error saving dietary profile:', err);
+  }
+};
+
+export const getMealAttendance = (): MealAttendanceRecord => {
+  const todayStr = new Date().toISOString().split('T')[0];
+  try {
+    const stored = localStorage.getItem(`campushub_meal_att_${todayStr}`);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+    return {
+      date: todayStr,
+      breakfast: true,
+      lunch: false,
+      snacks: false,
+      dinner: false
+    };
+  } catch {
+    return {
+      date: todayStr,
+      breakfast: true,
+      lunch: false,
+      snacks: false,
+      dinner: false
+    };
+  }
+};
+
+export const saveMealAttendance = (att: MealAttendanceRecord) => {
+  try {
+    localStorage.setItem(`campushub_meal_att_${att.date}`, JSON.stringify(att));
+  } catch (err) {
+    console.warn('Error saving meal attendance:', err);
+  }
+};
+
 export default mobilityData;
+
 

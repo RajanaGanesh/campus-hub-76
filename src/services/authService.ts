@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabase';
+import { getManagementData } from '../data/managementData';
+import { getUserAccounts } from './storageService';
 
 export type UserRole = 'student' | 'faculty' | 'admin';
 
@@ -19,14 +21,13 @@ export interface AuthResponse {
   error?: string;
 }
 
-// Development Demo Accounts Database with proper profile structures
-// Used in development mode and as reliable fallback
+// Institutional Pre-configured Accounts Database
 const DEV_PROFILES: Record<string, { profile: UserProfile; passwordHash: string }> = {
   'student@campushub.com': {
     passwordHash: 'student123',
     profile: {
-      id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-      email: 'student@campushub.edu',
+      id: '236F1A0551',
+      email: 'student@campushub.com',
       name: 'Aditya Sharma',
       role: 'student',
       department: 'Computer Science & Engineering',
@@ -38,9 +39,9 @@ const DEV_PROFILES: Record<string, { profile: UserProfile; passwordHash: string 
   'student@campushub.edu': {
     passwordHash: 'student123',
     profile: {
-      id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      id: '236F1A0551',
       email: 'student@campushub.edu',
-      name: 'Alex Vance',
+      name: 'Aditya Sharma',
       role: 'student',
       department: 'Computer Science & Engineering',
       avatar_url: null,
@@ -51,8 +52,8 @@ const DEV_PROFILES: Record<string, { profile: UserProfile; passwordHash: string 
   'faculty@campushub.com': {
     passwordHash: 'faculty123',
     profile: {
-      id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-      email: 'faculty@campushub.edu',
+      id: 'FAC-101',
+      email: 'faculty@campushub.com',
       name: 'Dr. S. Kumar',
       role: 'faculty',
       department: 'Computer Science & Engineering',
@@ -64,9 +65,9 @@ const DEV_PROFILES: Record<string, { profile: UserProfile; passwordHash: string 
   'faculty@campushub.edu': {
     passwordHash: 'faculty123',
     profile: {
-      id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+      id: 'FAC-101',
       email: 'faculty@campushub.edu',
-      name: 'Dr. Elena Rostova',
+      name: 'Dr. S. Kumar',
       role: 'faculty',
       department: 'Computer Science & Engineering',
       avatar_url: null,
@@ -77,7 +78,7 @@ const DEV_PROFILES: Record<string, { profile: UserProfile; passwordHash: string 
   'admin@campushub.com': {
     passwordHash: 'admin123',
     profile: {
-      id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+      id: 'ADM-001',
       email: 'admin@campushub.com',
       name: 'Administrator',
       role: 'admin',
@@ -90,9 +91,9 @@ const DEV_PROFILES: Record<string, { profile: UserProfile; passwordHash: string 
   'admin@campushub.edu': {
     passwordHash: 'admin123',
     profile: {
-      id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+      id: 'ADM-001',
       email: 'admin@campushub.edu',
-      name: 'Marcus Sterling',
+      name: 'Administrator',
       role: 'admin',
       department: 'Central Administration',
       avatar_url: null,
@@ -103,50 +104,11 @@ const DEV_PROFILES: Record<string, { profile: UserProfile; passwordHash: string 
   'grajana608@gmail.com': {
     passwordHash: '123456789',
     profile: {
-      id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+      id: 'ADM-002',
       email: 'grajana608@gmail.com',
       name: 'Rajana Ganesh (Admin)',
       role: 'admin',
       department: 'Central Administration',
-      avatar_url: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-  },
-  'rajanaganesh143143@gmail.com': {
-    passwordHash: '123456789',
-    profile: {
-      id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-      email: 'rajanaganesh143143@gmail.com',
-      name: 'Rajana Ganesh',
-      role: 'student',
-      department: 'Computer Science & Engineering',
-      avatar_url: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-  },
-  '236f1a0551': {
-    passwordHash: '123456789',
-    profile: {
-      id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-      email: 'rajanaganesh143143@gmail.com',
-      name: 'Rajana Ganesh',
-      role: 'student',
-      department: 'Computer Science & Engineering',
-      avatar_url: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-  },
-  'ganesh': {
-    passwordHash: '123456789',
-    profile: {
-      id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-      email: 'rajanaganesh143143@gmail.com',
-      name: 'Rajana Ganesh',
-      role: 'student',
-      department: 'Computer Science & Engineering',
       avatar_url: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -173,24 +135,34 @@ export class AuthService {
   }
 
   /**
-   * Perform user authentication using Supabase Auth or Development Provider
+   * Perform user authentication strictly restricting access to registered directory students, faculty, and admins
    */
-  static async signIn(email: string, password: string, rememberMe: boolean = false): Promise<AuthResponse> {
-    const normalizedEmail = email.trim().toLowerCase();
+  static async signIn(
+    identifier: string,
+    password: string,
+    rememberMe: boolean = false,
+    requestedRole?: string
+  ): Promise<AuthResponse> {
+    const rawInput = (identifier || '').trim();
+    const normalizedInput = rawInput.toLowerCase();
 
-    // 1. Try Supabase Auth if configured
-    if (this.isSupabaseActive() && supabase) {
+    if (!rawInput) {
+      return { success: false, error: 'Please enter your Name, Roll Number, or Email.' };
+    }
+
+    // 1. Try Supabase Auth if configured and identifier is an email
+    if (this.isSupabaseActive() && supabase && normalizedInput.includes('@')) {
       try {
         let { data, error } = await supabase.auth.signInWithPassword({
-          email: normalizedEmail,
+          email: normalizedInput,
           password
         });
 
         // Try alternate domain if first attempt failed (.com <-> .edu)
-        if (error && (normalizedEmail.endsWith('@campushub.com') || normalizedEmail.endsWith('@campushub.edu'))) {
-          const altEmail = normalizedEmail.endsWith('@campushub.com')
-            ? normalizedEmail.replace('@campushub.com', '@campushub.edu')
-            : normalizedEmail.replace('@campushub.edu', '@campushub.com');
+        if (error && (normalizedInput.endsWith('@campushub.com') || normalizedInput.endsWith('@campushub.edu'))) {
+          const altEmail = normalizedInput.endsWith('@campushub.com')
+            ? normalizedInput.replace('@campushub.com', '@campushub.edu')
+            : normalizedInput.replace('@campushub.edu', '@campushub.com');
 
           const altRes = await supabase.auth.signInWithPassword({
             email: altEmail,
@@ -203,88 +175,242 @@ export class AuthService {
         }
 
         if (!error && data?.user) {
-          // Fetch User Profile Record
-          const profile = await this.fetchUserProfile(data.user.id, data.user.email || normalizedEmail);
+          const profile = await this.fetchUserProfile(data.user.id, data.user.email || normalizedInput);
+          if (requestedRole && requestedRole !== 'all' && profile.role !== normalizeRole(requestedRole)) {
+            return {
+              success: false,
+              error: `This account is registered as ${profile.role.toUpperCase()}. Please switch your Log-in Type to ${profile.role.toUpperCase()}.`
+            };
+          }
           return { success: true, profile };
         }
       } catch (err: any) {
-        console.warn('Supabase authentication error, trying fallback profile:', err);
+        console.warn('Supabase authentication error, checking local student directory:', err);
       }
     }
 
-    // 2. Fallback to Development Demo Profiles (ensures instant testing on Vercel and local even without active Supabase credentials)
-    let devAccount = DEV_PROFILES[normalizedEmail] ||
-      (normalizedEmail.endsWith('@campushub.com') ? DEV_PROFILES[normalizedEmail.replace('@campushub.com', '@campushub.edu')] : null) ||
-      (normalizedEmail.endsWith('@campushub.edu') ? DEV_PROFILES[normalizedEmail.replace('@campushub.edu', '@campushub.com')] : null);
+    // 2. Lookup in Student Directory (Admin Registered Students)
+    const mgmtData = getManagementData();
+    const cleanDigits = rawInput.replace(/[^0-9]/g, '');
 
-    // If account not explicitly in dictionary, dynamically create a valid session for the email
-    if (!devAccount && normalizedEmail) {
-      const emailPrefix = normalizedEmail.split('@')[0];
-      const guessedName = normalizedEmail.includes('rajanaganesh') || normalizedEmail.includes('236f1a0551')
-        ? 'Rajana Ganesh'
-        : emailPrefix
-            .replace(/[._0-9-]+/g, ' ')
-            .trim()
-            .replace(/\b\w/g, (c) => c.toUpperCase()) || 'Campus User';
+    const matchedStudent = mgmtData.students.find((s) => {
+      const sId = (s.id || '').trim().toLowerCase();
+      const sName = (s.name || '').trim().toLowerCase();
+      const sEmail = (s.email || '').trim().toLowerCase();
+      const sPhoneDigits = (s.phone || '').replace(/[^0-9]/g, '');
 
-      const guessedRole: UserRole =
-        normalizedEmail.includes('admin') || normalizedEmail.includes('grajana') ? 'admin' : normalizedEmail.includes('faculty') ? 'faculty' : 'student';
+      return (
+        sId === normalizedInput ||
+        sEmail === normalizedInput ||
+        sName === normalizedInput ||
+        (cleanDigits.length >= 7 && sPhoneDigits.includes(cleanDigits)) ||
+        (normalizedInput.length >= 3 && sName.split(' ').includes(normalizedInput)) ||
+        (normalizedInput.length >= 4 && sName.startsWith(normalizedInput))
+      );
+    });
 
-      devAccount = {
-        passwordHash: password || '123456789',
-        profile: {
-          id: `usr-${Math.random().toString(36).substring(2, 10)}`,
-          email: normalizedEmail.includes('@') ? normalizedEmail : `${normalizedEmail}@campushub.edu`,
-          name: guessedName,
-          role: guessedRole,
-          department: 'Computer Science & Engineering',
-          avatar_url: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
+    if (matchedStudent) {
+      if (matchedStudent.status === 'Deactivated') {
+        return {
+          success: false,
+          error: `Student account for "${matchedStudent.name}" (${matchedStudent.id}) is deactivated. Please contact campus administration.`
+        };
+      }
+
+      if (requestedRole && requestedRole !== 'student' && requestedRole !== 'all') {
+        return {
+          success: false,
+          error: `Account "${matchedStudent.name}" is registered as a Student. Please select "Student" as your Log-in Type.`
+        };
+      }
+
+      const profile: UserProfile = {
+        id: matchedStudent.id,
+        email: matchedStudent.email || `${matchedStudent.id.toLowerCase()}@campushub.edu`,
+        name: matchedStudent.name,
+        role: 'student',
+        department: matchedStudent.department,
+        avatar_url: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
+
+      const sessionPayload = {
+        profile,
+        expiresAt: rememberMe ? Date.now() + 30 * 24 * 60 * 60 * 1000 : Date.now() + 24 * 60 * 60 * 1000
+      };
+
+      try {
+        if (rememberMe) {
+          localStorage.setItem(DEV_SESSION_KEY, JSON.stringify(sessionPayload));
+          sessionStorage.removeItem(DEV_SESSION_KEY);
+        } else {
+          sessionStorage.setItem(DEV_SESSION_KEY, JSON.stringify(sessionPayload));
+          localStorage.removeItem(DEV_SESSION_KEY);
+        }
+      } catch {}
+
+      return { success: true, profile };
     }
 
-    if (!devAccount) {
-      return { success: false, error: 'Invalid login credentials. Please check your user code/email and password.' };
-    }
+    // 3. Lookup in Faculty Directory (Admin Registered Faculty)
+    const matchedFaculty = mgmtData.faculty.find((f) => {
+      const fId = (f.id || '').trim().toLowerCase();
+      const fName = (f.name || '').trim().toLowerCase();
+      const fEmail = (f.email || '').trim().toLowerCase();
+      const cleanFName = fName.replace(/^(dr\.|prof\.|mr\.|ms\.|mrs\.)\s*/i, '').trim();
 
-    const isPasswordValid =
-      !password ||
-      devAccount.passwordHash === password ||
-      password === '123456789' ||
-      password === 'admin123' ||
-      password === 'student123' ||
-      password === 'faculty123' ||
-      password.length >= 4;
+      return (
+        fId === normalizedInput ||
+        fEmail === normalizedInput ||
+        fName === normalizedInput ||
+        cleanFName === normalizedInput ||
+        (normalizedInput.length >= 4 && (cleanFName.startsWith(normalizedInput) || cleanFName.split(' ').includes(normalizedInput)))
+      );
+    });
 
-    if (!isPasswordValid) {
-      return { success: false, error: 'Invalid login credentials. Please check your password.' };
-    }
-
-    const sessionPayload = {
-      profile: devAccount.profile,
-      expiresAt: rememberMe ? Date.now() + 30 * 24 * 60 * 60 * 1000 : Date.now() + 24 * 60 * 60 * 1000
-    };
-
-    try {
-      if (rememberMe) {
-        localStorage.setItem(DEV_SESSION_KEY, JSON.stringify(sessionPayload));
-        sessionStorage.removeItem(DEV_SESSION_KEY);
-      } else {
-        sessionStorage.setItem(DEV_SESSION_KEY, JSON.stringify(sessionPayload));
-        localStorage.removeItem(DEV_SESSION_KEY);
+    if (matchedFaculty) {
+      if (matchedFaculty.status === 'Deactivated') {
+        return {
+          success: false,
+          error: `Faculty account for "${matchedFaculty.name}" (${matchedFaculty.id}) is deactivated. Please contact campus administration.`
+        };
       }
-    } catch { }
 
+      if (requestedRole && requestedRole !== 'faculty' && requestedRole !== 'all') {
+        return {
+          success: false,
+          error: `Account "${matchedFaculty.name}" is registered as Faculty. Please select "Faculty" as your Log-in Type.`
+        };
+      }
+
+      const profile: UserProfile = {
+        id: matchedFaculty.id,
+        email: matchedFaculty.email || `${matchedFaculty.id.toLowerCase()}@campushub.edu`,
+        name: matchedFaculty.name,
+        role: 'faculty',
+        department: matchedFaculty.department,
+        avatar_url: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const sessionPayload = {
+        profile,
+        expiresAt: rememberMe ? Date.now() + 30 * 24 * 60 * 60 * 1000 : Date.now() + 24 * 60 * 60 * 1000
+      };
+
+      try {
+        if (rememberMe) {
+          localStorage.setItem(DEV_SESSION_KEY, JSON.stringify(sessionPayload));
+          sessionStorage.removeItem(DEV_SESSION_KEY);
+        } else {
+          sessionStorage.setItem(DEV_SESSION_KEY, JSON.stringify(sessionPayload));
+          localStorage.removeItem(DEV_SESSION_KEY);
+        }
+      } catch {}
+
+      return { success: true, profile };
+    }
+
+    // 4. Lookup in Admin User Accounts
+    const adminUsers = getUserAccounts();
+    const matchedAdmin = adminUsers.find((u) => {
+      const uId = (u.id || '').trim().toLowerCase();
+      const uName = (u.name || '').trim().toLowerCase();
+      const uEmail = (u.email || '').trim().toLowerCase();
+      return (
+        uId === normalizedInput ||
+        uName === normalizedInput ||
+        uEmail === normalizedInput ||
+        (normalizedInput.length >= 3 && uName.split(' ').includes(normalizedInput))
+      );
+    });
+
+    if (matchedAdmin) {
+      if (matchedAdmin.status === 'Suspended') {
+        return {
+          success: false,
+          error: `Administrator account for "${matchedAdmin.name}" has been suspended.`
+        };
+      }
+
+      if (requestedRole && requestedRole !== 'admin' && requestedRole !== 'all') {
+        return {
+          success: false,
+          error: `Account "${matchedAdmin.name}" has Administrator privileges. Please select "Admin" as your Log-in Type.`
+        };
+      }
+
+      const profile: UserProfile = {
+        id: matchedAdmin.id,
+        email: matchedAdmin.email,
+        name: matchedAdmin.name,
+        role: matchedAdmin.role,
+        department: 'Central Administration',
+        avatar_url: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const sessionPayload = {
+        profile,
+        expiresAt: rememberMe ? Date.now() + 30 * 24 * 60 * 60 * 1000 : Date.now() + 24 * 60 * 60 * 1000
+      };
+
+      try {
+        if (rememberMe) {
+          localStorage.setItem(DEV_SESSION_KEY, JSON.stringify(sessionPayload));
+          sessionStorage.removeItem(DEV_SESSION_KEY);
+        } else {
+          sessionStorage.setItem(DEV_SESSION_KEY, JSON.stringify(sessionPayload));
+          localStorage.removeItem(DEV_SESSION_KEY);
+        }
+      } catch {}
+
+      return { success: true, profile };
+    }
+
+    // 5. Lookup in Pre-configured Demo Accounts
+    const devAccount = DEV_PROFILES[normalizedInput] ||
+      (normalizedInput.endsWith('@campushub.com') ? DEV_PROFILES[normalizedInput.replace('@campushub.com', '@campushub.edu')] : null) ||
+      (normalizedInput.endsWith('@campushub.edu') ? DEV_PROFILES[normalizedInput.replace('@campushub.edu', '@campushub.com')] : null);
+
+    if (devAccount) {
+      if (requestedRole && devAccount.profile.role !== normalizeRole(requestedRole) && requestedRole !== 'all') {
+        return {
+          success: false,
+          error: `This account is registered as ${devAccount.profile.role.toUpperCase()}. Please switch your Log-in Type to ${devAccount.profile.role.toUpperCase()}.`
+        };
+      }
+
+      const sessionPayload = {
+        profile: devAccount.profile,
+        expiresAt: rememberMe ? Date.now() + 30 * 24 * 60 * 60 * 1000 : Date.now() + 24 * 60 * 60 * 1000
+      };
+
+      try {
+        if (rememberMe) {
+          localStorage.setItem(DEV_SESSION_KEY, JSON.stringify(sessionPayload));
+          sessionStorage.removeItem(DEV_SESSION_KEY);
+        } else {
+          sessionStorage.setItem(DEV_SESSION_KEY, JSON.stringify(sessionPayload));
+          localStorage.removeItem(DEV_SESSION_KEY);
+        }
+      } catch {}
+
+      return { success: true, profile: devAccount.profile };
+    }
+
+    // 6. STRICT ACCESS ENFORCEMENT: Reject any credentials not registered in the directory
     return {
-      success: true,
-      profile: devAccount.profile
+      success: false,
+      error: 'Access denied: No registered student, faculty, or staff account was found matching these credentials. Only users added via the Admin Panel can log in.'
     };
   }
 
   /**
-   * Fetch user profile from Supabase profiles table
+   * Fetch user profile from Supabase profiles table or local management data
    */
   static async fetchUserProfile(userId: string, fallbackEmail: string): Promise<UserProfile> {
     if (this.isSupabaseActive() && supabase) {
@@ -298,7 +424,7 @@ export class AuthService {
         if (data && !error) {
           let resolvedName = data.full_name || data.name;
           if (!resolvedName || resolvedName === 'New User' || resolvedName === 'Campus User') {
-            resolvedName = (data.email || fallbackEmail).includes('rajanaganesh') ? 'Rajana Ganesh' : 'Rajana Ganesh';
+            resolvedName = (data.email || fallbackEmail).split('@')[0].replace(/[._0-9-]+/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
           }
 
           return {
@@ -312,12 +438,32 @@ export class AuthService {
           };
         }
       } catch (err) {
-        console.warn('Could not fetch remote profile, falling back to local metadata:', err);
+        console.warn('Could not fetch remote profile, checking local directory:', err);
       }
     }
 
-    // Fallback profile
-    const fallbackName = fallbackEmail.includes('rajanaganesh') ? 'Rajana Ganesh' : 'Rajana Ganesh';
+    // Check local management data
+    const mgmt = getManagementData();
+    const matched = mgmt.students.find(s => s.id === userId || s.email === fallbackEmail) ||
+      mgmt.faculty.find(f => f.id === userId || f.email === fallbackEmail);
+
+    if (matched) {
+      return {
+        id: matched.id,
+        email: matched.email,
+        name: matched.name,
+        role: 'designation' in matched ? 'faculty' : 'student',
+        department: matched.department,
+        avatar_url: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+    }
+
+    const fallbackName = fallbackEmail
+      ? fallbackEmail.split('@')[0].replace(/[._0-9-]+/g, ' ').trim().replace(/\b\w/g, (c) => c.toUpperCase())
+      : 'Campus User';
+
     return {
       id: userId,
       email: fallbackEmail,
@@ -351,9 +497,6 @@ export class AuthService {
       if (rawSession) {
         const parsed = JSON.parse(rawSession);
         if (parsed?.expiresAt && parsed.expiresAt > Date.now() && parsed?.profile) {
-          if (!parsed.profile.name || parsed.profile.name === 'New User' || parsed.profile.name === 'Campus User') {
-            parsed.profile.name = 'Rajana Ganesh';
-          }
           return parsed.profile;
         } else {
           // Expired session
@@ -361,7 +504,7 @@ export class AuthService {
           sessionStorage.removeItem(DEV_SESSION_KEY);
         }
       }
-    } catch { }
+    } catch {}
 
     return null;
   }
@@ -385,6 +528,10 @@ export class AuthService {
       localStorage.removeItem('campusoneUser');
       sessionStorage.removeItem('campushub_user');
       sessionStorage.removeItem('campusoneUser');
+      localStorage.removeItem('campushub_student_profile_data');
+      // Clear any global legacy caches
+      window.dispatchEvent(new Event('campushub_profile_updated'));
+      window.dispatchEvent(new Event('storage'));
     } catch { }
   }
 

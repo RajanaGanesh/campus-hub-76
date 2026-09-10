@@ -1,16 +1,106 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
-import { getAcademicAssignments, saveAcademicAssignments, AssignmentItem } from '../../data/academicData';
+import { useAuth } from '../../context/AuthContext';
+import {
+  getManagementData,
+  AssignmentSubmission
+} from '../../data/managementData';
+import { dbService } from '../../services/dbService';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 
+export interface StudentAssignmentItem {
+  id: string;
+  courseCode: string;
+  subject: string;
+  title: string;
+  faculty: string;
+  due: string;
+  priority: 'High' | 'Medium' | 'Low';
+  status: 'Pending' | 'Submitted' | 'Graded' | 'Overdue' | 'Late';
+  description: string;
+  instructions: string;
+  createdDate: string;
+  maxMarks: number;
+  marks?: number | null;
+  feedback?: string;
+  comments?: string;
+  submittedFile?: string;
+  submittedDate?: string;
+}
+
 export const StudentAssignments: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  // Assignments state loaded from persistent storage
-  const [assignments, setAssignments] = useState<AssignmentItem[]>(() => getAcademicAssignments());
+  // Helper to construct unified assignments list for the active student
+  const loadMergedAssignments = useCallback((): StudentAssignmentItem[] => {
+    const mgmt = getManagementData();
+    const studentId = (user?.id || '').trim().toLowerCase();
+    const studentName = (user?.name || '').trim().toLowerCase();
+    const studentEmail = (user?.email || '').trim().toLowerCase();
+
+    return mgmt.assignments.map((asg) => {
+      // Find matching submission by this student
+      const sub = mgmt.submissions.find(
+        (s) =>
+          s.assignmentId === asg.id &&
+          (s.studentId.toLowerCase() === studentId ||
+           s.studentName.toLowerCase() === studentName ||
+           s.studentId.toLowerCase() === studentEmail ||
+           (studentName.length >= 3 && s.studentName.toLowerCase().includes(studentName)))
+      );
+
+      let status: StudentAssignmentItem['status'] = 'Pending';
+      if (sub) {
+        status = sub.status;
+      }
+
+      return {
+        id: asg.id,
+        courseCode: asg.courseCode || 'CSE-301',
+        subject: asg.courseName || asg.courseCode || 'Computer Science',
+        title: asg.title,
+        faculty: asg.facultyName || 'Dr. S. Kumar',
+        due: asg.dueDate,
+        priority: asg.priority || 'High',
+        status,
+        description: asg.description,
+        instructions: asg.instructions || 'Submit a clean PDF report, ZIP archive, or code source files covering all task requirements.',
+        createdDate: asg.createdDate || '12 Aug 2026',
+        maxMarks: asg.maxMarks || 100,
+        marks: sub?.marks,
+        feedback: sub?.feedback,
+        comments: sub?.comments,
+        submittedFile: sub?.fileName || (sub ? 'Submission_Document.pdf' : undefined),
+        submittedDate: sub?.submittedDate
+      };
+    });
+  }, [user]);
+
+  // Assignments state loaded from persistent management storage
+  const [assignments, setAssignments] = useState<StudentAssignmentItem[]>(() => loadMergedAssignments());
+
+  // Listen for real-time updates from faculty grading or other tabs
+  useEffect(() => {
+    const handleSync = () => {
+      setAssignments(loadMergedAssignments());
+    };
+
+    setAssignments(loadMergedAssignments());
+
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('campushub_assignments_updated', handleSync);
+    window.addEventListener('campushub_management_updated', handleSync);
+
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('campushub_assignments_updated', handleSync);
+      window.removeEventListener('campushub_management_updated', handleSync);
+    };
+  }, [loadMergedAssignments]);
 
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -19,8 +109,8 @@ export const StudentAssignments: React.FC = () => {
   const [sortBy, setSortBy] = useState<'soonest' | 'latest' | 'newest' | 'priority'>('soonest');
 
   // Modal states
-  const [detailsModalItem, setDetailsModalItem] = useState<AssignmentItem | null>(null);
-  const [submitModalItem, setSubmitModalItem] = useState<AssignmentItem | null>(null);
+  const [detailsModalItem, setDetailsModalItem] = useState<StudentAssignmentItem | null>(null);
+  const [submitModalItem, setSubmitModalItem] = useState<StudentAssignmentItem | null>(null);
 
   // Submission form states
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -84,7 +174,6 @@ export const StudentAssignments: React.FC = () => {
       if (sortBy === 'latest') {
         return new Date(b.due).getTime() - new Date(a.due).getTime();
       }
-      // 'soonest' default
       return new Date(a.due).getTime() - new Date(b.due).getTime();
     });
 
@@ -102,7 +191,7 @@ export const StudentAssignments: React.FC = () => {
   };
 
   // Open Submission Modal
-  const handleOpenSubmit = (item: AssignmentItem) => {
+  const handleOpenSubmit = (item: StudentAssignmentItem) => {
     setSubmitModalItem(item);
     setSelectedFile(null);
     setStudentComments(item.comments || '');
@@ -115,7 +204,7 @@ export const StudentAssignments: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const allowedExtensions = ['.pdf', '.docx', '.zip', '.py', '.java', '.sql', '.txt'];
+      const allowedExtensions = ['.pdf', '.docx', '.zip', '.py', '.java', '.sql', '.txt', '.cpp', '.c', '.js', '.ts', '.png', '.jpg'];
       const fileExt = '.' + file.name.split('.').pop()?.toLowerCase();
 
       if (!allowedExtensions.includes(fileExt)) {
@@ -135,12 +224,12 @@ export const StudentAssignments: React.FC = () => {
     }
   };
 
-  // Submit Assignment Flow
+  // Submit Assignment Flow (Persists to Management Data for Faculty Visibility)
   const handleConfirmSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!submitModalItem) return;
 
-    if (!selectedFile && submitModalItem.status !== 'Submitted') {
+    if (!selectedFile && submitModalItem.status !== 'Submitted' && submitModalItem.status !== 'Graded') {
       setUploadError('Please select a file to submit.');
       return;
     }
@@ -158,27 +247,54 @@ export const StudentAssignments: React.FC = () => {
         clearInterval(interval);
         setIsUploading(false);
 
-        // Update Assignment State
-        const updated = assignments.map((a) =>
-          a.id === submitModalItem.id
-            ? {
-                ...a,
-                status: 'Submitted' as const,
-                submittedFile: selectedFile ? selectedFile.name : a.submittedFile || 'Submission_Document.pdf',
-                comments: studentComments
-              }
-            : a
+        const mgmt = getManagementData();
+        const studentId = user?.id || '236F1A0551';
+        const studentName = user?.name || 'Aditya Sharma';
+        const studentIdentifier = studentId.toLowerCase().trim();
+        const studentEmail = (user?.email || 'student@campushub.com').toLowerCase().trim();
+
+        // Check if student already has a submission record for this assignment
+        const existingIdx = mgmt.submissions.findIndex(
+          (s) =>
+            s.assignmentId === submitModalItem.id &&
+            (s.studentId.toLowerCase().trim() === studentIdentifier ||
+             s.studentName.toLowerCase().trim() === studentName.toLowerCase().trim() ||
+             s.studentId.toLowerCase().trim() === studentEmail ||
+             (studentName.length >= 3 && s.studentName.toLowerCase().includes(studentName.toLowerCase().trim())))
         );
-        setAssignments(updated);
-        saveAcademicAssignments(updated);
+
+        const newSubmission: AssignmentSubmission = {
+          id: existingIdx >= 0 ? mgmt.submissions[existingIdx].id : `SUB-${Date.now()}`,
+          assignmentId: submitModalItem.id,
+          studentId: studentId,
+          studentName: studentName,
+          submittedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+          status: 'Submitted',
+          marks: existingIdx >= 0 ? mgmt.submissions[existingIdx].marks : null,
+          fileName: selectedFile ? selectedFile.name : (existingIdx >= 0 ? mgmt.submissions[existingIdx].fileName : 'Assignment_Submission.pdf'),
+          comments: studentComments
+        };
+
+        // Submit via dbService to ensure local management storage & Supabase sync
+        dbService.submitAssignment(newSubmission, user?.email).then(() => {
+          // Update local student assignment state
+          setAssignments(loadMergedAssignments());
+
+          // Notify all portal components & faculty tabs
+          window.dispatchEvent(new Event('storage'));
+          window.dispatchEvent(new Event('campushub_assignments_updated'));
+          window.dispatchEvent(new Event('campushub_management_updated'));
+        }).catch((err) => {
+          console.warn('Submission persistence notice:', err);
+        });
 
         setSubmitModalItem(null);
-        showToast(`Assignment "${submitModalItem.title}" submitted successfully!`, 'success');
+        showToast(`Assignment "${submitModalItem.title}" submitted to faculty successfully!`, 'success');
       }
     }, 200);
   };
 
-  const getStatusBadge = (status: AssignmentItem['status']) => {
+  const getStatusBadge = (status: StudentAssignmentItem['status']) => {
     switch (status) {
       case 'Submitted':
         return <span className="c1-badge c1-badge-success"><i className="fa-solid fa-circle-check"></i> Submitted</span>;
@@ -193,7 +309,7 @@ export const StudentAssignments: React.FC = () => {
     }
   };
 
-  const getPriorityTag = (priority: AssignmentItem['priority']) => {
+  const getPriorityTag = (priority: StudentAssignmentItem['priority']) => {
     switch (priority) {
       case 'High':
         return <span className="priority-pill priority-high"><i className="fa-solid fa-circle"></i> High Priority</span>;
@@ -439,8 +555,8 @@ export const StudentAssignments: React.FC = () => {
                         className="c1-btn c1-btn-secondary btn-action-half"
                         onClick={() => setDetailsModalItem(assignment)}
                       >
-                        <i className="fa-solid fa-award"></i>
-                        <span>Score: {assignment.maxMarks} Pts</span>
+                        <i className="fa-solid fa-award" style={{ color: '#10b981' }}></i>
+                        <span>Score: {assignment.marks !== null && assignment.marks !== undefined ? assignment.marks : assignment.maxMarks} / {assignment.maxMarks}</span>
                       </button>
                     ) : (
                       <button
@@ -521,6 +637,24 @@ export const StudentAssignments: React.FC = () => {
                 <h4>Submission Guidelines & Instructions</h4>
                 <p>{detailsModalItem.instructions}</p>
               </div>
+
+              {detailsModalItem.status === 'Graded' && (
+                <div className="details-section" style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: '8px', padding: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <h4 style={{ margin: 0, color: '#10b981', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <i className="fa-solid fa-award"></i> Evaluated & Graded
+                    </h4>
+                    <strong style={{ fontSize: '1.1rem', color: '#10b981' }}>
+                      {detailsModalItem.marks !== null && detailsModalItem.marks !== undefined ? detailsModalItem.marks : detailsModalItem.maxMarks} / {detailsModalItem.maxMarks} Marks
+                    </strong>
+                  </div>
+                  {detailsModalItem.feedback && (
+                    <p style={{ margin: '6px 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                      <strong>Faculty Feedback:</strong> {detailsModalItem.feedback}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {detailsModalItem.submittedFile && (
                 <div className="details-section submitted-box">

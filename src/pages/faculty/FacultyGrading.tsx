@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getManagementData, saveManagementData, AssignmentSubmission } from '../../data/managementData';
+import { dbService } from '../../services/dbService';
 
 export const FacultyGrading: React.FC = () => {
   const { assignmentId } = useParams<{ assignmentId: string }>();
@@ -17,9 +18,30 @@ export const FacultyGrading: React.FC = () => {
   // Modal grading student
   const [gradingSub, setGradingSub] = useState<AssignmentSubmission | null>(null);
   const [inputMarks, setInputMarks] = useState<number>(0);
+  const [inputFeedback, setInputFeedback] = useState<string>('');
 
   const [formError, setFormError] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  // Sync listener
+  const refreshData = useCallback(() => {
+    const mgmt = getManagementData();
+    setData(mgmt);
+    setSubmissions(mgmt.submissions.filter((s) => s.assignmentId === assignmentId));
+  }, [assignmentId]);
+
+  useEffect(() => {
+    refreshData();
+    window.addEventListener('storage', refreshData);
+    window.addEventListener('campushub_assignments_updated', refreshData);
+    window.addEventListener('campushub_management_updated', refreshData);
+
+    return () => {
+      window.removeEventListener('storage', refreshData);
+      window.removeEventListener('campushub_assignments_updated', refreshData);
+      window.removeEventListener('campushub_management_updated', refreshData);
+    };
+  }, [refreshData]);
 
   if (!assignment) {
     return (
@@ -33,14 +55,15 @@ export const FacultyGrading: React.FC = () => {
   }
 
   // Calculate stats
-  const totalStudents = 5; // totalCSE section size approx
+  const totalStudents = data.students?.length || 5;
   const submittedCount = submissions.length;
   const pendingCount = Math.max(0, totalStudents - submittedCount);
   const lateCount = submissions.filter((s) => s.status === 'Late').length;
 
   const handleOpenGrade = (sub: AssignmentSubmission) => {
     setGradingSub(sub);
-    setInputMarks(sub.marks || 0);
+    setInputMarks(sub.marks !== null && sub.marks !== undefined ? sub.marks : assignment.maxMarks);
+    setInputFeedback(sub.feedback || 'Good work. Submission verified.');
     setFormError(null);
   };
 
@@ -58,31 +81,41 @@ export const FacultyGrading: React.FC = () => {
       return;
     }
 
+    // Persist via dbService to sync locally and with Supabase
+    dbService.gradeAssignmentSubmission(gradingSub.id, inputMarks, inputFeedback.trim()).catch((err) => {
+      console.warn('Grade persistence notice:', err);
+    });
+
     // Update global state
-    const nextSubmissions = data.submissions.map((s) => {
+    const mgmt = getManagementData();
+    const nextSubmissions = mgmt.submissions.map((s) => {
       if (s.id === gradingSub.id) {
         return {
           ...s,
           status: 'Graded' as const,
-          marks: inputMarks
+          marks: inputMarks,
+          feedback: inputFeedback.trim()
         };
       }
       return s;
     });
 
     const updatedData = {
-      ...data,
+      ...mgmt,
       submissions: nextSubmissions
     };
 
-    setData(updatedData);
     saveManagementData(updatedData);
-
-    // Update local table state
+    setData(updatedData);
     setSubmissions(nextSubmissions.filter((s) => s.assignmentId === assignmentId));
 
+    // Dispatch sync events
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('campushub_assignments_updated'));
+    window.dispatchEvent(new Event('campushub_management_updated'));
+
     setGradingSub(null);
-    setToastMsg('Marks saved successfully.');
+    setToastMsg(`Marks of ${inputMarks}/${assignment.maxMarks} saved successfully.`);
     setTimeout(() => setToastMsg(null), 2500);
   };
 
@@ -211,25 +244,56 @@ export const FacultyGrading: React.FC = () => {
                 </div>
               )}
 
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Submitted File:</div>
+                <div style={{ fontSize: '12.5px', color: '#38bdf8', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <i className="fa-solid fa-file-pdf"></i>
+                  <span>{gradingSub.fileName || `${gradingSub.studentId}_Solution.pdf`}</span>
+                </div>
+                {gradingSub.comments && (
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px', fontStyle: 'italic' }}>
+                    Note: "{gradingSub.comments}"
+                  </div>
+                )}
+              </div>
+
               <form onSubmit={handleSaveGrade} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div className="form-group">
                   <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Student Candidate</label>
-                  <strong style={{ color: 'white', fontSize: '14px' }}>{gradingSub.studentName}</strong>
+                  <strong style={{ color: 'white', fontSize: '14px' }}>{gradingSub.studentName} ({gradingSub.studentId})</strong>
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="input-marks" style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Enter Marks Score (Max: {assignment.maxMarks})</label>
+                  <label htmlFor="input-marks" style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                    Enter Marks Score (Max: {assignment.maxMarks})
+                  </label>
                   <input
                     id="input-marks"
                     type="number"
                     value={inputMarks}
                     onChange={(e) => setInputMarks(Number(e.target.value))}
+                    min={0}
+                    max={assignment.maxMarks}
                     style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '13px' }}
                   />
                 </div>
 
+                <div className="form-group">
+                  <label htmlFor="input-feedback" style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                    Evaluation Feedback & Comments
+                  </label>
+                  <textarea
+                    id="input-feedback"
+                    rows={3}
+                    value={inputFeedback}
+                    onChange={(e) => setInputFeedback(e.target.value)}
+                    placeholder="Provide constructive feedback for student..."
+                    style={{ width: '100%', background: '#100f2e', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 10px', color: 'white', fontSize: '13px', resize: 'vertical' }}
+                  ></textarea>
+                </div>
+
                 <button type="submit" className="btn-signin" style={{ height: '40px', margin: 0, marginTop: '10px', fontSize: '13px' }}>
-                  Save Grade Marks
+                  Save Grade & Feedback
                 </button>
               </form>
             </div>

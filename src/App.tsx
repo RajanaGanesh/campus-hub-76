@@ -25,6 +25,7 @@ import { StudentLMS } from './pages/student/StudentLMS';
 import { StudentLibrary } from './pages/student/StudentLibrary';
 import { StudentFees } from './pages/student/StudentFees';
 import { StudentHostel } from './pages/student/StudentHostel';
+import { StudentMess } from './pages/student/StudentMess';
 import { StudentTransport } from './pages/student/StudentTransport';
 import { StudentNotices } from './pages/student/StudentNotices';
 import { StudentNotifications } from './pages/student/StudentNotifications';
@@ -266,13 +267,7 @@ export const App: React.FC = () => {
             path="/student/mess"
             element={
               <ProtectedRoute allowedRole="student">
-                <StudentModulePlaceholder
-                  moduleName="Mess & Dining Services"
-                  category="Campus Life"
-                  stepNumber={6}
-                  icon="fa-utensils"
-                  description="Weekly dining menu, dietary preferences, meal feedback, and mess rebates will be implemented in Step 6."
-                />
+                <StudentMess />
               </ProtectedRoute>
             }
           />

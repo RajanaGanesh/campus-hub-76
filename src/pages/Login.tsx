@@ -53,7 +53,7 @@ export const Login: React.FC = () => {
 
     const trimmedCode = userCode.trim();
     if (!trimmedCode) {
-      setUserCodeError('Please enter your user code, mobile number, or email.');
+      setUserCodeError('Please enter your name, roll number, mobile, or email.');
       isValid = false;
     }
 
@@ -80,26 +80,10 @@ export const Login: React.FC = () => {
     setIsSubmitting(true);
     setAuthError(null);
 
-    // Map user code / mobile / role to email
-    let authEmail = userCode.trim().toLowerCase();
-    
-    // Auto-map demo credentials if user entered role-based identifiers or roll number
-    if (!authEmail.includes('@')) {
-      if (authEmail === '236f1a0551' || authEmail === 'ganesh' || authEmail === '1001') {
-        authEmail = 'rajanaganesh143143@gmail.com';
-      } else if (loginType === 'student' || authEmail.toLowerCase().includes('student')) {
-        authEmail = 'rajanaganesh143143@gmail.com';
-      } else if (loginType === 'faculty' || authEmail.toLowerCase().includes('faculty') || authEmail === '2001') {
-        authEmail = 'faculty@campushub.com';
-      } else if (loginType === 'admin' || authEmail.toLowerCase().includes('admin') || authEmail === '3001') {
-        authEmail = 'grajana608@gmail.com';
-      } else {
-        authEmail = `${authEmail}@campushub.com`;
-      }
-    }
+    const enteredIdentifier = userCode.trim();
 
     try {
-      const res = await login(authEmail, password, rememberMe);
+      const res = await login(enteredIdentifier, password, rememberMe, loginType);
 
       if (res.success && res.profile) {
         showToast(`Welcome back, ${res.profile.name}!`, 'success');
@@ -114,32 +98,6 @@ export const Login: React.FC = () => {
       }
     } catch (err: any) {
       setAuthError(err?.message || 'Authentication service error. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Quick 1-click test role login
-  const handleQuickRoleLogin = async (role: string, demoEmail: string, demoPass: string) => {
-    setLoginType(role);
-    setUserCode(demoEmail);
-    setPassword(demoPass);
-    setLoginTypeError('');
-    setUserCodeError('');
-    setPasswordError('');
-    setAuthError(null);
-
-    setIsSubmitting(true);
-    try {
-      const res = await login(demoEmail, demoPass, true);
-      if (res.success && res.profile) {
-        showToast(`Logged in as ${res.profile.name} (${res.profile.role.toUpperCase()})`, 'success');
-        navigate(`/${res.profile.role}/dashboard`, { replace: true });
-      } else {
-        setAuthError(res.error || 'Authentication failed. Please check credentials.');
-      }
-    } catch (err: any) {
-      setAuthError(err?.message || 'Authentication error.');
     } finally {
       setIsSubmitting(false);
     }
@@ -237,14 +195,14 @@ export const Login: React.FC = () => {
             {/* 2. User Code */}
             <div className={`cms-field-group ${userCodeError ? 'has-error' : ''}`}>
               <label htmlFor="cms-user-code" className="cms-field-label">
-                User Code
+                User Code / Student Name / Email
               </label>
               <div className="cms-input-wrapper">
                 <input
                   id="cms-user-code"
                   type="text"
                   className="cms-text-input"
-                  placeholder="Enter Code Or Mobile"
+                  placeholder="Enter Student Name, Roll No, or Email"
                   value={userCode}
                   onChange={(e) => {
                     setUserCode(e.target.value);
@@ -328,42 +286,6 @@ export const Login: React.FC = () => {
               )}
             </button>
           </form>
-
-          {/* Quick 1-Click Role Evaluation Chips */}
-          <div className="cms-quick-roles">
-            <div className="cms-quick-roles-title">
-              <i className="fa-solid fa-key" style={{ color: '#f59e0b' }}></i>
-              <span>QUICK TEST LOG–IN</span>
-            </div>
-            <div className="cms-roles-grid">
-              <button
-                type="button"
-                className="cms-role-btn"
-                onClick={() => handleQuickRoleLogin('student', 'rajanaganesh143143@gmail.com', '123456789')}
-              >
-                <i className="fa-solid fa-graduation-cap" style={{ color: '#0284c7' }}></i>
-                <span>Student</span>
-              </button>
-
-              <button
-                type="button"
-                className="cms-role-btn"
-                onClick={() => handleQuickRoleLogin('faculty', 'faculty@campushub.com', 'faculty123')}
-              >
-                <i className="fa-solid fa-chalkboard-user" style={{ color: '#8b5cf6' }}></i>
-                <span>Faculty</span>
-              </button>
-
-              <button
-                type="button"
-                className="cms-role-btn"
-                onClick={() => handleQuickRoleLogin('admin', 'grajana608@gmail.com', '123456789')}
-              >
-                <i className="fa-solid fa-user-shield" style={{ color: '#ea580c' }}></i>
-                <span>Admin</span>
-              </button>
-            </div>
-          </div>
 
           <div className="cms-form-footer">
             <span>© {new Date().getFullYear()} College Management System • Institutional Access</span>

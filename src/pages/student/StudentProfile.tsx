@@ -6,6 +6,7 @@ import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 import { downloadStudentIdCard } from '../../utils/fileDownloader';
 import { notifyProfileUpdated } from '../../utils/userProfile';
+import { getManagementData } from '../../data/managementData';
 
 export interface StudentProfileData {
   name: string;
@@ -40,45 +41,71 @@ export const StudentProfile: React.FC = () => {
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const mgmtStudent = React.useMemo(() => {
+    const mgmt = getManagementData();
+    return mgmt.students.find(
+      (s) =>
+        s.id.toLowerCase() === (user?.id || '').toLowerCase() ||
+        s.email.toLowerCase() === (user?.email || '').toLowerCase() ||
+        s.name.toLowerCase() === (user?.name || '').toLowerCase()
+    );
+  }, [user]);
+
   // Derive initial student profile data
   const defaultProfile: StudentProfileData = {
-    name: user?.name && user.name !== 'New User' && user.name !== 'Campus User' 
-      ? user.name 
-      : (user?.email?.includes('rajanaganesh') ? 'Rajana Ganesh' : (user?.name || 'Rajana Ganesh')),
-    rollNumber: '236F1A0551',
-    email: user?.email || 'rajanaganesh143143@gmail.com',
-    phone: '+91 98765 43210',
+    name: user?.name || mgmtStudent?.name || 'Student',
+    rollNumber: user?.id || mgmtStudent?.id || '236F1A0551',
+    email: user?.email || mgmtStudent?.email || 'student@campushub.edu',
+    phone: mgmtStudent?.phone || '+91 98765 43210',
     dob: '14 May 2004',
     gender: 'Male',
     bloodGroup: 'O+ve',
-    department: 'Computer Science & Engineering',
+    department: user?.department || mgmtStudent?.department || 'Computer Science & Engineering',
     degree: 'B.Tech in Computer Science',
-    semester: 'Semester 8 (Final Year)',
-    section: 'CSE-A',
+    semester: `${mgmtStudent?.year || 'IV Year'} • Section ${mgmtStudent?.section || 'A'}`,
+    section: mgmtStudent?.section || 'A',
     admissionYear: '2023',
     validUntil: 'JULY 2027',
     advisor: 'Dr. Suresh Kumar (Professor & HOD)',
-    cgpa: '9.24',
-    attendance: '92.4%',
+    cgpa: mgmtStudent?.cgpa ? `${mgmtStudent.cgpa}` : '8.5',
+    attendance: `${mgmtStudent?.attendancePercent || 88}%`,
     hostelRoom: 'Block B - Room 304',
     busRoute: 'Route 4 - North Campus Express',
     address: 'Plot 42, Tech Park Enclave, University Boulevard, Hyderabad, India',
-    guardianName: 'R. Srinivasa Rao',
+    guardianName: 'Guardian',
     guardianPhone: '+91 98480 12345',
     guardianRelation: 'Father',
-    photoUrl: null
+    photoUrl: user?.avatar_url || null
   };
+
+  const userScopedKey = user?.id ? `${STORAGE_KEY}_${user.id}` : `${STORAGE_KEY}_default`;
 
   // State
   const [profile, setProfile] = useState<StudentProfileData>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        return { ...defaultProfile, ...JSON.parse(saved) };
+      if (user?.id) {
+        const saved = localStorage.getItem(`${STORAGE_KEY}_${user.id}`);
+        if (saved) {
+          return { ...defaultProfile, ...JSON.parse(saved) };
+        }
       }
     } catch {}
     return defaultProfile;
   });
+
+  // Re-sync profile when active user changes
+  React.useEffect(() => {
+    try {
+      if (user?.id) {
+        const saved = localStorage.getItem(`${STORAGE_KEY}_${user.id}`);
+        if (saved) {
+          setProfile({ ...defaultProfile, ...JSON.parse(saved) });
+          return;
+        }
+      }
+    } catch {}
+    setProfile(defaultProfile);
+  }, [user?.id, defaultProfile.name, defaultProfile.rollNumber, defaultProfile.email]);
 
   const [idCardSide, setIdCardSide] = useState<'front' | 'back'>('front');
   const [activeTab, setActiveTab] = useState<'personal' | 'academic' | 'documents'>('personal');
@@ -120,7 +147,7 @@ export const StudentProfile: React.FC = () => {
       setProfile(updated);
       setEditFormData((prev) => ({ ...prev, photoUrl: result }));
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        localStorage.setItem(userScopedKey, JSON.stringify(updated));
         notifyProfileUpdated();
       } catch {}
       showToast('Profile photo updated successfully!', 'success');
@@ -133,7 +160,7 @@ export const StudentProfile: React.FC = () => {
     setProfile(updated);
     setEditFormData((prev) => ({ ...prev, photoUrl: null }));
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      localStorage.setItem(userScopedKey, JSON.stringify(updated));
       notifyProfileUpdated();
     } catch {}
     showToast('Profile photo removed.', 'info');
@@ -147,7 +174,7 @@ export const StudentProfile: React.FC = () => {
     }
     setProfile(editFormData);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(editFormData));
+      localStorage.setItem(userScopedKey, JSON.stringify(editFormData));
       notifyProfileUpdated();
     } catch {}
     setIsEditModalOpen(false);

@@ -10,7 +10,7 @@ export interface UnauthorizedPageProps {
 
 export const UnauthorizedPage: React.FC<UnauthorizedPageProps> = ({ requiredRole }) => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, login } = useAuth();
 
   const handleReturnDashboard = () => {
     if (!user) {
@@ -23,6 +23,19 @@ export const UnauthorizedPage: React.FC<UnauthorizedPageProps> = ({ requiredRole
   const handleSignOut = async () => {
     await logout();
     navigate('/login');
+  };
+
+  const handleSwitchToRole = async (targetRole: string) => {
+    if (targetRole === 'admin') {
+      await login('grajana608@gmail.com', '123456789');
+      navigate('/admin/dashboard');
+    } else if (targetRole === 'faculty') {
+      await login('faculty@campushub.com', 'faculty123');
+      navigate('/faculty/dashboard');
+    } else {
+      await login('rajanaganesh143143@gmail.com', '123456789');
+      navigate('/student/dashboard');
+    }
   };
 
   return (
@@ -112,9 +125,21 @@ export const UnauthorizedPage: React.FC<UnauthorizedPageProps> = ({ requiredRole
         )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', marginTop: '10px' }}>
+          {requiredRole && requiredRole !== user?.role && (
+            <button
+              type="button"
+              className="c1-btn c1-btn-gradient"
+              onClick={() => handleSwitchToRole(requiredRole)}
+              style={{ width: '100%' }}
+            >
+              <i className="fa-solid fa-bolt"></i>
+              <span style={{ textTransform: 'capitalize' }}>Switch to {requiredRole} Account</span>
+            </button>
+          )}
+
           <button
             type="button"
-            className="c1-btn c1-btn-gradient"
+            className={requiredRole && requiredRole !== user?.role ? 'c1-btn c1-btn-secondary' : 'c1-btn c1-btn-gradient'}
             onClick={handleReturnDashboard}
             style={{ width: '100%' }}
           >

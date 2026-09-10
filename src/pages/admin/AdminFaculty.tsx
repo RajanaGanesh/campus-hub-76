@@ -1,12 +1,37 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { getManagementData, saveManagementData, FacultyRecord } from '../../data/managementData';
+import { dbService } from '../../services/dbService';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 
 export const AdminFaculty: React.FC = () => {
   // Faculty state loaded from persistent storage
   const [facultyList, setFacultyList] = useState<FacultyRecord[]>(() => getManagementData().faculty);
+
+  // Sync from Supabase on mount
+  useEffect(() => {
+    let isMounted = true;
+    const fetchRemoteFaculty = async () => {
+      try {
+        const remote = await dbService.getFaculty();
+        if (isMounted && remote && remote.length > 0) {
+          const mgmt = getManagementData();
+          const map = new Map<string, FacultyRecord>();
+          mgmt.faculty.forEach((f) => map.set(f.id.toUpperCase(), f));
+          remote.forEach((f) => map.set(f.id.toUpperCase(), { ...map.get(f.id.toUpperCase()), ...f }));
+          const merged = Array.from(map.values());
+          setFacultyList(merged);
+          saveManagementData({ ...mgmt, faculty: merged });
+        }
+      } catch (err) {
+        console.warn('Could not sync remote faculty:', err);
+      }
+    };
+
+    fetchRemoteFaculty();
+    return () => { isMounted = false; };
+  }, []);
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -17,14 +42,16 @@ export const AdminFaculty: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingFaculty, setEditingFaculty] = useState<FacultyRecord | null>(null);
   const [viewingFaculty, setViewingFaculty] = useState<FacultyRecord | null>(null);
+  const [deletingFaculty, setDeletingFaculty] = useState<FacultyRecord | null>(null);
   const [deactivatingFaculty, setDeactivatingFaculty] = useState<FacultyRecord | null>(null);
 
   // Form State
   const [name, setName] = useState('');
   const [empId, setEmpId] = useState('');
   const [email, setEmail] = useState('');
-  const [department, setDepartment] = useState('Computer Science');
+  const [department, setDepartment] = useState('CSE');
   const [designation, setDesignation] = useState('Associate Professor');
+  const [coursesInput, setCoursesInput] = useState('CSE-301');
 
   // Toast
   const [toastMsg, setToastMsg] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
@@ -35,28 +62,35 @@ export const AdminFaculty: React.FC = () => {
   };
 
   // Add Faculty Handler
-  const handleAddFaculty = (e: React.FormEvent) => {
+  const handleAddFaculty = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !empId.trim() || !email.trim()) {
       showToast('Please fill out all required fields.', 'error');
       return;
     }
 
-    if (facultyList.some((f) => f.id === empId.trim())) {
-      showToast(`Employee ID ${empId} is already registered.`, 'error');
+    const cleanEmpId = empId.trim().toUpperCase();
+    if (facultyList.some((f) => f.id.toUpperCase() === cleanEmpId)) {
+      showToast(`Employee ID ${cleanEmpId} is already registered.`, 'error');
       return;
     }
 
+    const assignedCourses = coursesInput
+      .split(',')
+      .map((c) => c.trim().toUpperCase())
+      .filter(Boolean);
+
     const newFac: FacultyRecord = {
-      id: empId.trim().toUpperCase(),
+      id: cleanEmpId,
       name: name.trim(),
       department,
       designation,
       email: email.trim().toLowerCase(),
-      courses: ['CSE-301'],
+      courses: assignedCourses.length > 0 ? assignedCourses : ['CSE-301'],
       status: 'Active'
     };
 
+    // 1. Update local state & cache
     const updated = [newFac, ...facultyList];
     setFacultyList(updated);
     const mgmt = getManagementData();
@@ -66,25 +100,83 @@ export const AdminFaculty: React.FC = () => {
     setName('');
     setEmpId('');
     setEmail('');
-    showToast(`Faculty member ${newFac.name} (${newFac.id}) added successfully!`, 'success');
+    setCoursesInput('CSE-301');
+
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('campushub_management_updated'));
+
+    // 2. Persist to Supabase
+    try {
+      const res = await dbService.addFaculty(newFac);
+      if (res.success) {
+        showToast(`Faculty member ${newFac.name} (${newFac.id}) registered successfully!`, 'success');
+      } else {
+        showToast(`Faculty added locally. (${res.error || 'Saved in local cache'})`, 'info');
+      }
+    } catch (err: any) {
+      showToast(`Faculty added locally. (${err?.message || 'Offline mode'})`, 'info');
+    }
   };
 
   // Edit Faculty Handler
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingFaculty) return;
 
-    const updated = facultyList.map((f) => (f.id === editingFaculty.id ? editingFaculty : f));
+    const cleanName = editingFaculty.name.trim();
+    if (!cleanName) {
+      showToast('Faculty name cannot be empty.', 'error');
+      return;
+    }
+
+    const targetFaculty = {
+      ...editingFaculty,
+      name: cleanName,
+      email: editingFaculty.email.trim().toLowerCase()
+    };
+
+    const updated = facultyList.map((f) => (f.id === targetFaculty.id ? targetFaculty : f));
     setFacultyList(updated);
     const mgmt = getManagementData();
     saveManagementData({ ...mgmt, faculty: updated });
 
     setEditingFaculty(null);
-    showToast(`Faculty member ${editingFaculty.name} updated successfully!`, 'success');
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('campushub_management_updated'));
+
+    try {
+      await dbService.updateFaculty(targetFaculty);
+      showToast(`Faculty member ${targetFaculty.name} updated successfully!`, 'success');
+    } catch {
+      showToast(`Faculty member ${targetFaculty.name} updated in local cache.`, 'success');
+    }
+  };
+
+  // Delete Faculty Handler
+  const handleConfirmDelete = async () => {
+    if (!deletingFaculty) return;
+
+    const targetFaculty = deletingFaculty;
+    const updated = facultyList.filter((f) => f.id !== targetFaculty.id);
+    setFacultyList(updated);
+
+    const mgmt = getManagementData();
+    saveManagementData({ ...mgmt, faculty: updated });
+
+    setDeletingFaculty(null);
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('campushub_management_updated'));
+
+    try {
+      await dbService.deleteFaculty(targetFaculty.id);
+      showToast(`Faculty member ${targetFaculty.name} (${targetFaculty.id}) deleted.`, 'info');
+    } catch {
+      showToast(`Faculty member ${targetFaculty.name} removed from cache.`, 'info');
+    }
   };
 
   // Toggle Status Handler
-  const handleConfirmToggleStatus = () => {
+  const handleConfirmToggleStatus = async () => {
     if (!deactivatingFaculty) return;
     const newStatus: 'Active' | 'Deactivated' = deactivatingFaculty.status === 'Active' ? 'Deactivated' : 'Active';
 
@@ -93,8 +185,17 @@ export const AdminFaculty: React.FC = () => {
     const mgmt = getManagementData();
     saveManagementData({ ...mgmt, faculty: updated });
 
+    const targetFaculty: FacultyRecord = { ...deactivatingFaculty, status: newStatus };
     setDeactivatingFaculty(null);
-    showToast(`Faculty status updated to ${newStatus}.`, 'info');
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('campushub_management_updated'));
+
+    try {
+      await dbService.updateFaculty(targetFaculty);
+      showToast(`Faculty status updated to ${newStatus}.`, 'info');
+    } catch {
+      showToast(`Faculty status updated to ${newStatus}.`, 'info');
+    }
   };
 
   // Filtering
@@ -114,6 +215,8 @@ export const AdminFaculty: React.FC = () => {
       return matchQ && matchDept && matchStatus;
     });
   }, [facultyList, searchQuery, deptFilter, statusFilter]);
+
+  const activeFacultyCount = facultyList.filter((f) => f.status === 'Active').length;
 
   return (
     <AppLayout>
@@ -151,7 +254,7 @@ export const AdminFaculty: React.FC = () => {
               <i className="fa-solid fa-chalkboard-user"></i>
             </div>
             <div className="stat-card-data">
-              <span className="stat-num">{facultyList.length * 14}</span>
+              <span className="stat-num">{facultyList.length}</span>
               <span className="stat-label">Total Faculty Members</span>
             </div>
           </div>
@@ -161,18 +264,20 @@ export const AdminFaculty: React.FC = () => {
               <i className="fa-solid fa-graduation-cap"></i>
             </div>
             <div className="stat-card-data">
-              <span className="stat-num">28</span>
+              <span className="stat-num">
+                {facultyList.filter((f) => f.designation.includes('Professor') || f.designation.includes('HOD')).length}
+              </span>
               <span className="stat-label">Professors & HODs</span>
             </div>
           </div>
 
           <div className="c1-card academic-stat-card">
             <div className="stat-card-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
-              <i className="fa-solid fa-award"></i>
+              <i className="fa-solid fa-circle-check"></i>
             </div>
             <div className="stat-card-data">
-              <span className="stat-num">32</span>
-              <span className="stat-label">Associate Professors</span>
+              <span className="stat-num">{activeFacultyCount} Active</span>
+              <span className="stat-label">Active Instructors</span>
             </div>
           </div>
 
@@ -181,8 +286,10 @@ export const AdminFaculty: React.FC = () => {
               <i className="fa-solid fa-book-open-reader"></i>
             </div>
             <div className="stat-card-data">
-              <span className="stat-num">24</span>
-              <span className="stat-label">Assistant Professors</span>
+              <span className="stat-num">
+                {facultyList.reduce((sum, f) => sum + (f.courses?.length || 0), 0)}
+              </span>
+              <span className="stat-label">Assigned Sections</span>
             </div>
           </div>
         </div>
@@ -219,10 +326,11 @@ export const AdminFaculty: React.FC = () => {
                 onChange={(e) => setDeptFilter(e.target.value)}
               >
                 <option value="All">All Departments</option>
-                <option value="Computer Science">Computer Science (CSE)</option>
-                <option value="Electronics">Electronics (ECE)</option>
-                <option value="Information Technology">Information Tech (IT)</option>
-                <option value="Mechanical">Mechanical (MECH)</option>
+                <option value="CSE">CSE / Computer Science</option>
+                <option value="ECE">ECE / Electronics</option>
+                <option value="IT">Information Technology</option>
+                <option value="MECH">Mechanical Engineering</option>
+                <option value="CIVIL">Civil Engineering</option>
               </select>
             </div>
 
@@ -244,14 +352,14 @@ export const AdminFaculty: React.FC = () => {
 
         {/* Faculty Table */}
         <div className="c1-card student-roster-card">
-          <div className="c1-card-header">
+          <div className="c1-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <h3 className="c1-card-title">Faculty Roster ({filteredFaculty.length} Instructors)</h3>
-              <p className="c1-card-subtitle">Official academic teaching staff directory</p>
+              <p className="c1-card-subtitle">Official academic teaching staff directory and course allocations</p>
             </div>
             <button
               type="button"
-              className="c1-btn c1-btn-secondary"
+              className="c1-btn c1-btn-gradient"
               onClick={() => setIsAddModalOpen(true)}
             >
               <i className="fa-solid fa-plus"></i>
@@ -260,79 +368,116 @@ export const AdminFaculty: React.FC = () => {
           </div>
 
           <div className="student-roster-table-wrap">
-            <table className="c1-table">
-              <thead>
-                <tr>
-                  <th>Employee ID</th>
-                  <th>Faculty Instructor</th>
-                  <th>Department</th>
-                  <th>Designation</th>
-                  <th>Assigned Courses</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredFaculty.map((fac) => (
-                  <tr key={fac.id}>
-                    <td><span className="course-code-cell">{fac.id}</span></td>
-                    <td>
-                      <div>
-                        <strong style={{ color: 'var(--text-primary)' }}>{fac.name}</strong>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{fac.email}</div>
-                      </div>
-                    </td>
-                    <td>{fac.department}</td>
-                    <td>
-                      <span className="c1-badge c1-badge-purple">{fac.designation}</span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                        {fac.courses.map((code) => (
-                          <span key={code} className="course-code-tag">{code}</span>
-                        ))}
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`c1-badge ${fac.status === 'Active' ? 'c1-badge-success' : 'c1-badge-error'}`}>
-                        {fac.status}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <button
-                          type="button"
-                          className="c1-btn c1-btn-secondary"
-                          style={{ padding: '6px 10px', fontSize: '0.75rem' }}
-                          onClick={() => setViewingFaculty(fac)}
-                          title="View faculty profile"
-                        >
-                          <i className="fa-solid fa-eye"></i>
-                        </button>
-                        <button
-                          type="button"
-                          className="c1-btn c1-btn-secondary"
-                          style={{ padding: '6px 10px', fontSize: '0.75rem' }}
-                          onClick={() => setEditingFaculty(fac)}
-                          title="Edit faculty"
-                        >
-                          <i className="fa-solid fa-pen"></i>
-                        </button>
-                        <button
-                          type="button"
-                          className="c1-btn c1-btn-secondary"
-                          style={{ padding: '6px 10px', fontSize: '0.75rem', color: fac.status === 'Active' ? 'var(--color-error)' : 'var(--color-success)' }}
-                          onClick={() => setDeactivatingFaculty(fac)}
-                          title={fac.status === 'Active' ? 'Deactivate faculty' : 'Activate faculty'}
-                        >
-                          <i className={`fa-solid ${fac.status === 'Active' ? 'fa-user-slash' : 'fa-user-check'}`}></i>
-                        </button>
-                      </div>
-                    </td>
+            {filteredFaculty.length > 0 ? (
+              <table className="c1-table">
+                <thead>
+                  <tr>
+                    <th>Employee ID</th>
+                    <th>Faculty Instructor</th>
+                    <th>Department</th>
+                    <th>Designation</th>
+                    <th>Assigned Courses</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredFaculty.map((fac) => (
+                    <tr key={fac.id}>
+                      <td><span className="course-code-cell">{fac.id}</span></td>
+                      <td>
+                        <div>
+                          <strong style={{ color: 'var(--text-primary)' }}>{fac.name}</strong>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{fac.email}</div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="c1-badge c1-badge-primary">{fac.department}</span>
+                      </td>
+                      <td>
+                        <span className="c1-badge c1-badge-purple">{fac.designation}</span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                          {fac.courses.map((code) => (
+                            <span key={code} className="course-code-tag">{code}</span>
+                          ))}
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`c1-badge ${fac.status === 'Active' ? 'c1-badge-success' : 'c1-badge-error'}`}>
+                          {fac.status}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                          <button
+                            type="button"
+                            className="c1-btn c1-btn-secondary"
+                            style={{ padding: '6px 10px', fontSize: '0.75rem' }}
+                            onClick={() => setViewingFaculty(fac)}
+                            title="View Faculty Profile"
+                          >
+                            <i className="fa-solid fa-eye"></i>
+                            <span>View</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="c1-btn c1-btn-secondary"
+                            style={{ padding: '6px 10px', fontSize: '0.75rem', color: 'var(--accent-blue)' }}
+                            onClick={() => setEditingFaculty({ ...fac })}
+                            title="Edit Faculty Details"
+                          >
+                            <i className="fa-solid fa-pen-to-square"></i>
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="c1-btn c1-btn-secondary"
+                            style={{
+                              padding: '6px 10px',
+                              fontSize: '0.75rem',
+                              color: fac.status === 'Active' ? '#f59e0b' : 'var(--color-success)'
+                            }}
+                            onClick={() => setDeactivatingFaculty(fac)}
+                            title={fac.status === 'Active' ? 'Deactivate faculty' : 'Activate faculty'}
+                          >
+                            <i className={`fa-solid ${fac.status === 'Active' ? 'fa-user-slash' : 'fa-user-check'}`}></i>
+                          </button>
+                          <button
+                            type="button"
+                            className="c1-btn c1-btn-secondary btn-icon-only"
+                            style={{ width: '32px', height: '32px', padding: 0, color: 'var(--color-error)' }}
+                            onClick={() => setDeletingFaculty(fac)}
+                            title="Delete Faculty Member"
+                          >
+                            <i className="fa-solid fa-trash-can"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--text-muted)' }}>
+                <i className="fa-solid fa-user-slash" style={{ fontSize: '2.5rem', marginBottom: '12px', display: 'block', opacity: 0.6 }}></i>
+                <p style={{ fontSize: '1rem', color: 'var(--text-primary)', fontWeight: 600 }}>No faculty members found matching your search</p>
+                <p style={{ fontSize: '0.85rem' }}>Try clearing your filters or adding a new faculty member.</p>
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  style={{ marginTop: '16px' }}
+                  onClick={() => {
+                    setSearchQuery('');
+                    setDeptFilter('All');
+                    setStatusFilter('All');
+                  }}
+                >
+                  Reset Filters
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -346,10 +491,12 @@ export const AdminFaculty: React.FC = () => {
             title="Register New Faculty Member"
             maxWidth="md"
           >
-            <form onSubmit={handleAddFaculty} className="faculty-form-stack">
-              <div className="form-fields-two-col">
-                <div className="form-field-wrap">
-                  <label className="form-label">Full Name & Title</label>
+            <form onSubmit={handleAddFaculty} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Full Name & Title *
+                  </label>
                   <input
                     type="text"
                     className="c1-input"
@@ -360,8 +507,10 @@ export const AdminFaculty: React.FC = () => {
                   />
                 </div>
 
-                <div className="form-field-wrap">
-                  <label className="form-label">Employee ID</label>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Employee ID *
+                  </label>
                   <input
                     type="text"
                     className="c1-input"
@@ -373,8 +522,10 @@ export const AdminFaculty: React.FC = () => {
                 </div>
               </div>
 
-              <div className="form-field-wrap">
-                <label className="form-label">Institutional Email</label>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                  Institutional Email *
+                </label>
                 <input
                   type="email"
                   className="c1-input"
@@ -385,36 +536,57 @@ export const AdminFaculty: React.FC = () => {
                 />
               </div>
 
-              <div className="form-fields-two-col">
-                <div className="form-field-wrap">
-                  <label className="form-label">Department</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Department
+                  </label>
                   <select
                     className="c1-select"
+                    style={{ width: '100%' }}
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
                   >
-                    <option value="Computer Science">Computer Science & Engineering</option>
-                    <option value="Electronics & Communication">Electronics & Communication</option>
-                    <option value="Information Technology">Information Technology</option>
-                    <option value="Mechanical Engineering">Mechanical Engineering</option>
+                    <option value="CSE">Computer Science & Engineering (CSE)</option>
+                    <option value="ECE">Electronics & Communication (ECE)</option>
+                    <option value="IT">Information Technology (IT)</option>
+                    <option value="MECH">Mechanical Engineering (MECH)</option>
+                    <option value="CIVIL">Civil Engineering (CIVIL)</option>
                   </select>
                 </div>
 
-                <div className="form-field-wrap">
-                  <label className="form-label">Academic Designation</label>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Academic Designation
+                  </label>
                   <select
                     className="c1-select"
+                    style={{ width: '100%' }}
                     value={designation}
                     onChange={(e) => setDesignation(e.target.value)}
                   >
                     <option value="Professor">Professor / HOD</option>
                     <option value="Associate Professor">Associate Professor</option>
                     <option value="Assistant Professor">Assistant Professor</option>
+                    <option value="Lecturer">Lecturer / Instructor</option>
                   </select>
                 </div>
               </div>
 
-              <div className="modal-dialog-footer">
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                  Assigned Course Codes (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  className="c1-input"
+                  placeholder="e.g. CSE-301, CSE-302"
+                  value={coursesInput}
+                  onChange={(e) => setCoursesInput(e.target.value)}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
                 <button
                   type="button"
                   className="c1-btn c1-btn-secondary"
@@ -441,59 +613,128 @@ export const AdminFaculty: React.FC = () => {
           <Modal
             isOpen={true}
             onClose={() => setEditingFaculty(null)}
-            title={`Edit Faculty: ${editingFaculty.id}`}
+            title={`Edit Faculty: ${editingFaculty.name} (${editingFaculty.id})`}
             maxWidth="md"
           >
-            <form onSubmit={handleSaveEdit} className="faculty-form-stack">
-              <div className="form-fields-two-col">
-                <div className="form-field-wrap">
-                  <label className="form-label">Full Name</label>
+            <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Employee ID
+                  </label>
                   <input
                     type="text"
+                    disabled
+                    className="c1-input"
+                    value={editingFaculty.id}
+                    style={{ background: 'var(--bg-primary)', color: 'var(--text-muted)' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
                     className="c1-input"
                     value={editingFaculty.name}
                     onChange={(e) => setEditingFaculty({ ...editingFaculty, name: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="form-field-wrap">
-                  <label className="form-label">Institutional Email</label>
-                  <input
-                    type="email"
-                    className="c1-input"
-                    value={editingFaculty.email}
-                    onChange={(e) => setEditingFaculty({ ...editingFaculty, email: e.target.value })}
-                    required
                   />
                 </div>
               </div>
 
-              <div className="form-fields-two-col">
-                <div className="form-field-wrap">
-                  <label className="form-label">Department</label>
-                  <input
-                    type="text"
-                    className="c1-input"
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                  Institutional Email *
+                </label>
+                <input
+                  type="email"
+                  required
+                  className="c1-input"
+                  value={editingFaculty.email}
+                  onChange={(e) => setEditingFaculty({ ...editingFaculty, email: e.target.value })}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Department
+                  </label>
+                  <select
+                    className="c1-select"
+                    style={{ width: '100%' }}
                     value={editingFaculty.department}
                     onChange={(e) => setEditingFaculty({ ...editingFaculty, department: e.target.value })}
-                    required
-                  />
+                  >
+                    <option value="CSE">Computer Science & Engineering (CSE)</option>
+                    <option value="ECE">Electronics & Communication (ECE)</option>
+                    <option value="IT">Information Technology (IT)</option>
+                    <option value="MECH">Mechanical Engineering (MECH)</option>
+                    <option value="CIVIL">Civil Engineering (CIVIL)</option>
+                  </select>
                 </div>
 
-                <div className="form-field-wrap">
-                  <label className="form-label">Designation</label>
-                  <input
-                    type="text"
-                    className="c1-input"
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Designation
+                  </label>
+                  <select
+                    className="c1-select"
+                    style={{ width: '100%' }}
                     value={editingFaculty.designation}
                     onChange={(e) => setEditingFaculty({ ...editingFaculty, designation: e.target.value })}
-                    required
-                  />
+                  >
+                    <option value="Professor">Professor / HOD</option>
+                    <option value="Associate Professor">Associate Professor</option>
+                    <option value="Assistant Professor">Assistant Professor</option>
+                    <option value="Lecturer">Lecturer / Instructor</option>
+                  </select>
                 </div>
               </div>
 
-              <div className="modal-dialog-footer">
+              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Assigned Courses (comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    className="c1-input"
+                    value={editingFaculty.courses.join(', ')}
+                    onChange={(e) =>
+                      setEditingFaculty({
+                        ...editingFaculty,
+                        courses: e.target.value.split(',').map((c) => c.trim().toUpperCase()).filter(Boolean)
+                      })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Status
+                  </label>
+                  <select
+                    className="c1-select"
+                    style={{ width: '100%' }}
+                    value={editingFaculty.status}
+                    onChange={(e) =>
+                      setEditingFaculty({
+                        ...editingFaculty,
+                        status: e.target.value as any
+                      })
+                    }
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Deactivated">Deactivated</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
                 <button
                   type="button"
                   className="c1-btn c1-btn-secondary"
@@ -514,7 +755,62 @@ export const AdminFaculty: React.FC = () => {
         )}
 
         {/* ============================================================
-            MODAL 3: VIEW PROFILE MODAL
+            MODAL 3: DELETE FACULTY MODAL
+            ============================================================ */}
+        {deletingFaculty && (
+          <Modal
+            isOpen={true}
+            onClose={() => setDeletingFaculty(null)}
+            title="Remove Faculty Member"
+            maxWidth="sm"
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div
+                style={{
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  borderRadius: '10px',
+                  padding: '16px',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px'
+                }}
+              >
+                <i className="fa-solid fa-triangle-exclamation" style={{ color: 'var(--color-error)', fontSize: '1.3rem', marginTop: '2px' }}></i>
+                <div>
+                  <h4 style={{ color: 'var(--text-primary)', fontSize: '0.9375rem', fontWeight: 600, marginBottom: '4px' }}>
+                    Confirm Removal
+                  </h4>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.8125rem', lineHeight: 1.5 }}>
+                    Are you sure you want to delete <strong>{deletingFaculty.name}</strong> (Employee ID: <strong>{deletingFaculty.id}</strong>) from the {deletingFaculty.department} department roster? This will permanently unassign their active courses.
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setDeletingFaculty(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="c1-btn"
+                  onClick={handleConfirmDelete}
+                  style={{ background: 'var(--color-error)', color: '#fff' }}
+                >
+                  <i className="fa-solid fa-trash-can"></i>
+                  <span>Delete Faculty</span>
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
+
+        {/* ============================================================
+            MODAL 4: VIEW PROFILE MODAL
             ============================================================ */}
         {viewingFaculty && (
           <Modal
@@ -551,11 +847,27 @@ export const AdminFaculty: React.FC = () => {
                 </div>
                 <div className="d-cell">
                   <span className="d-lbl">Status:</span>
-                  <span className="d-val" style={{ color: '#34d399' }}>{viewingFaculty.status}</span>
+                  <span className="d-val" style={{ color: viewingFaculty.status === 'Active' ? '#34d399' : '#fb7185' }}>
+                    {viewingFaculty.status}
+                  </span>
                 </div>
               </div>
 
-              <div className="modal-dialog-footer">
+              <div className="modal-dialog-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  style={{ color: 'var(--accent-blue)' }}
+                  onClick={() => {
+                    const f = viewingFaculty;
+                    setViewingFaculty(null);
+                    setEditingFaculty({ ...f });
+                  }}
+                >
+                  <i className="fa-solid fa-pen-to-square"></i>
+                  <span>Edit Faculty</span>
+                </button>
+
                 <button
                   type="button"
                   className="c1-btn c1-btn-secondary"
@@ -569,7 +881,7 @@ export const AdminFaculty: React.FC = () => {
         )}
 
         {/* ============================================================
-            MODAL 4: DEACTIVATE / ACTIVATE CONFIRMATION
+            MODAL 5: DEACTIVATE / ACTIVATE CONFIRMATION
             ============================================================ */}
         {deactivatingFaculty && (
           <Modal

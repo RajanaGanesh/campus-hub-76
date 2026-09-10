@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { getManagementData, saveManagementData, FacultyRecord } from '../../data/managementData';
 import { dbService } from '../../services/dbService';
+import { supabase } from '../../lib/supabase';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 
@@ -9,20 +10,17 @@ export const AdminFaculty: React.FC = () => {
   // Faculty state loaded from persistent storage
   const [facultyList, setFacultyList] = useState<FacultyRecord[]>(() => getManagementData().faculty);
 
-  // Sync from Supabase on mount
+  // Sync from Supabase on mount (only if live Supabase is connected)
   useEffect(() => {
     let isMounted = true;
     const fetchRemoteFaculty = async () => {
       try {
+        if (!supabase) return;
         const remote = await dbService.getFaculty();
         if (isMounted && remote && remote.length > 0) {
+          setFacultyList(remote);
           const mgmt = getManagementData();
-          const map = new Map<string, FacultyRecord>();
-          mgmt.faculty.forEach((f) => map.set(f.id.toUpperCase(), f));
-          remote.forEach((f) => map.set(f.id.toUpperCase(), { ...map.get(f.id.toUpperCase()), ...f }));
-          const merged = Array.from(map.values());
-          setFacultyList(merged);
-          saveManagementData({ ...mgmt, faculty: merged });
+          saveManagementData({ ...mgmt, faculty: remote });
         }
       } catch (err) {
         console.warn('Could not sync remote faculty:', err);

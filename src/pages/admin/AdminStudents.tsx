@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { getManagementData, saveManagementData, StudentRecord } from '../../data/managementData';
 import { dbService } from '../../services/dbService';
+import { supabase } from '../../lib/supabase';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 
@@ -9,20 +10,17 @@ export const AdminStudents: React.FC = () => {
   // Students state loaded from persistent storage
   const [students, setStudents] = useState<StudentRecord[]>(() => getManagementData().students);
 
-  // Sync from Supabase on mount
+  // Sync from Supabase on mount (only if live Supabase is connected)
   useEffect(() => {
     let isMounted = true;
     const fetchRemoteStudents = async () => {
       try {
+        if (!supabase) return;
         const remote = await dbService.getStudents();
         if (isMounted && remote && remote.length > 0) {
+          setStudents(remote);
           const mgmt = getManagementData();
-          const map = new Map<string, StudentRecord>();
-          mgmt.students.forEach((s) => map.set(s.id.toUpperCase(), s));
-          remote.forEach((s) => map.set(s.id.toUpperCase(), { ...map.get(s.id.toUpperCase()), ...s }));
-          const merged = Array.from(map.values());
-          setStudents(merged);
-          saveManagementData({ ...mgmt, students: merged });
+          saveManagementData({ ...mgmt, students: remote });
         }
       } catch (err) {
         console.warn('Could not sync remote students:', err);

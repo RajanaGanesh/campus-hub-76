@@ -223,31 +223,28 @@ export const initialManagementData: ManagementData = {
 export const getManagementData = (): ManagementData => {
   try {
     const stored = localStorage.getItem('campushub_management_data');
-    if (!stored) return initialManagementData;
+    if (!stored) {
+      try {
+        localStorage.setItem('campushub_management_data', JSON.stringify(initialManagementData));
+      } catch {}
+      return initialManagementData;
+    }
     const parsed = JSON.parse(stored);
 
-    const storedAssignments: ManagementAssignment[] = Array.isArray(parsed.assignments) ? parsed.assignments : [];
-    const assignmentMap = new Map<string, ManagementAssignment>();
-    initialManagementData.assignments.forEach((a) => assignmentMap.set(a.id, a));
-    storedAssignments.forEach((a) => assignmentMap.set(a.id, { ...assignmentMap.get(a.id), ...a }));
-    const mergedAssignments = Array.from(assignmentMap.values());
+    const mergedAssignments: ManagementAssignment[] = Array.isArray(parsed.assignments)
+      ? parsed.assignments
+      : initialManagementData.assignments;
 
-    const storedSubmissions: AssignmentSubmission[] = Array.isArray(parsed.submissions) ? parsed.submissions : [];
-    const submissionMap = new Map<string, AssignmentSubmission>();
-    initialManagementData.submissions.forEach((s) => submissionMap.set(s.id, s));
-    storedSubmissions.forEach((s) => submissionMap.set(s.id, { ...submissionMap.get(s.id), ...s }));
-    const mergedSubmissions = Array.from(submissionMap.values());
+    const mergedSubmissions: AssignmentSubmission[] = Array.isArray(parsed.submissions)
+      ? parsed.submissions
+      : initialManagementData.submissions;
 
-    const storedStudents: StudentRecord[] = Array.isArray(parsed.students) ? parsed.students : [];
-    const studentMap = new Map<string, StudentRecord>();
-    initialManagementData.students.forEach((s) => studentMap.set(s.id.toUpperCase(), s));
-    storedStudents.forEach((s) => {
-      const existing = studentMap.get(s.id.toUpperCase());
-      studentMap.set(s.id.toUpperCase(), { ...existing, ...s });
-    });
+    const storedStudents: StudentRecord[] = Array.isArray(parsed.students)
+      ? parsed.students
+      : initialManagementData.students;
 
-    // Compute up-to-date assignmentsCompleted for each student from merged submissions
-    const mergedStudents = Array.from(studentMap.values()).map((stu) => {
+    // Compute up-to-date assignmentsCompleted for each student from stored submissions
+    const mergedStudents = storedStudents.map((stu) => {
       const sId = (stu.id || '').toLowerCase().trim();
       const sName = (stu.name || '').toLowerCase().trim();
       const sEmail = (stu.email || '').toLowerCase().trim();
@@ -291,4 +288,5 @@ export const saveManagementData = (data: ManagementData) => {
     console.warn('Error saving management data:', err);
   }
 };
+
 

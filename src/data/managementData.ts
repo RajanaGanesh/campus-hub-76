@@ -267,10 +267,53 @@ export const getManagementData = (): ManagementData => {
       };
     });
 
+    const rawFaculty: FacultyRecord[] = Array.isArray(parsed.faculty) ? parsed.faculty : initialManagementData.faculty;
+    const rawCourses: CourseRecord[] = Array.isArray(parsed.courses) ? parsed.courses : initialManagementData.courses;
+
+    // Cross-synchronize faculty courses and courses list
+    const syncedCourses = [...rawCourses];
+    const syncedFaculty = rawFaculty.map((fac) => {
+      const assignedCodes = new Set(fac.courses || []);
+
+      // 1. Any course in courses table assigned to this faculty
+      syncedCourses.forEach((c) => {
+        if (
+          (c.facultyId && c.facultyId.toLowerCase() === fac.id.toLowerCase()) ||
+          (c.facultyName && c.facultyName.toLowerCase() === fac.name.toLowerCase())
+        ) {
+          assignedCodes.add(c.code);
+        }
+      });
+
+      // 2. Any course in faculty.courses that does not exist in courses table -> synthesize it
+      Array.from(assignedCodes).forEach((code) => {
+        const exists = syncedCourses.some((c) => c.code.toUpperCase() === code.toUpperCase());
+        if (!exists) {
+          syncedCourses.push({
+            code: code.toUpperCase(),
+            name: `${code.toUpperCase()} Course`,
+            department: fac.department || 'Computer Science & Engineering',
+            semester: '5th Semester',
+            facultyId: fac.id,
+            facultyName: fac.name,
+            studentsCount: 60,
+            status: 'Active',
+            progress: 0,
+            nextClass: 'Mon, Wed 09:00 AM'
+          });
+        }
+      });
+
+      return {
+        ...fac,
+        courses: Array.from(assignedCodes)
+      };
+    });
+
     return {
       students: mergedStudents,
-      faculty: Array.isArray(parsed.faculty) ? parsed.faculty : initialManagementData.faculty,
-      courses: Array.isArray(parsed.courses) ? parsed.courses : initialManagementData.courses,
+      faculty: syncedFaculty,
+      courses: syncedCourses,
       assignments: mergedAssignments,
       submissions: mergedSubmissions,
       examMarks: Array.isArray(parsed.examMarks) ? parsed.examMarks : initialManagementData.examMarks,
@@ -283,10 +326,138 @@ export const getManagementData = (): ManagementData => {
 
 export const saveManagementData = (data: ManagementData) => {
   try {
-    localStorage.setItem('campushub_management_data', JSON.stringify(data));
+    // Ensure two-way consistency between faculty courses and courses table before saving
+    const coursesCopy = [...(data.courses || [])];
+    const facultyCopy = (data.faculty || []).map((fac) => {
+      const assignedCodes = new Set(fac.courses || []);
+
+      // If a course has this faculty ID or Name, ensure it's in the faculty's assigned courses
+      coursesCopy.forEach((c) => {
+        if (
+          (c.facultyId && c.facultyId.toLowerCase() === fac.id.toLowerCase()) ||
+          (c.facultyName && c.facultyName.toLowerCase() === fac.name.toLowerCase())
+        ) {
+          assignedCodes.add(c.code);
+        }
+      });
+
+      // For every assigned code, ensure the course in coursesCopy has the facultyId & facultyName assigned
+      Array.from(assignedCodes).forEach((code) => {
+        const existingIdx = coursesCopy.findIndex((c) => c.code.toUpperCase() === code.toUpperCase());
+        if (existingIdx >= 0) {
+          coursesCopy[existingIdx] = {
+            ...coursesCopy[existingIdx],
+            facultyId: fac.id,
+            facultyName: fac.name
+          };
+        } else {
+          coursesCopy.push({
+            code: code.toUpperCase(),
+            name: `${code.toUpperCase()} Course`,
+            department: fac.department || 'Computer Science & Engineering',
+            semester: '5th Semester',
+            facultyId: fac.id,
+            facultyName: fac.name,
+            studentsCount: 60,
+            status: 'Active',
+            progress: 0,
+            nextClass: 'Mon, Wed 09:00 AM'
+          });
+        }
+      });
+
+      return {
+        ...fac,
+        courses: Array.from(assignedCodes)
+      };
+    });
+
+    const normalizedData: ManagementData = {
+      ...data,
+      faculty: facultyCopy,
+      courses: coursesCopy
+    };
+
+    localStorage.setItem('campushub_management_data', JSON.stringify(normalizedData));
   } catch (err) {
     console.warn('Error saving management data:', err);
   }
+};
+
+/**
+ * Returns the assigned courses for a given faculty user (or active session).
+ * Checks faculty ID, email, name, and faculty course assignments.
+ */
+export const getFacultyAssignedCourses = (authUser?: any): CourseRecord[] => {
+  const mgmt = getManagementData();
+
+  // Try to find matching faculty from authUser
+  let activeFaculty: FacultyRecord | undefined;
+
+  if (authUser) {
+    const uId = (authUser.id || '').toLowerCase().trim();
+    const uEmail = (authUser.email || '').toLowerCase().trim();
+    const uName = (authUser.name || '').toLowerCase().trim();
+
+    activeFaculty = mgmt.faculty.find(
+      (f) =>
+        (uId && f.id.toLowerCase() === uId) ||
+        (uEmail && f.email.toLowerCase() === uEmail) ||
+        (uName && f.name.toLowerCase() === uName)
+    );
+  }
+
+  // Fallback to active session in localStorage if not found
+  if (!activeFaculty) {
+    try {
+      const sessionRaw = localStorage.getItem('campusone_auth_session');
+      if (sessionRaw) {
+        const sessionUser = JSON.parse(sessionRaw);
+        const sId = (sessionUser.id || '').toLowerCase().trim();
+        const sEmail = (sessionUser.email || '').toLowerCase().trim();
+        const sName = (sessionUser.name || '').toLowerCase().trim();
+
+        activeFaculty = mgmt.faculty.find(
+          (f) =>
+            (sId && f.id.toLowerCase() === sId) ||
+            (sEmail && f.email.toLowerCase() === sEmail) ||
+            (sName && f.name.toLowerCase() === sName)
+        );
+      }
+    } catch {}
+  }
+
+  // If still not found and in faculty portal, default to first faculty member
+  if (!activeFaculty && mgmt.faculty.length > 0) {
+    activeFaculty = mgmt.faculty[0];
+  }
+
+  if (!activeFaculty) {
+    return mgmt.courses;
+  }
+
+  const facId = activeFaculty.id.toLowerCase();
+  const facName = activeFaculty.name.toLowerCase();
+  const assignedCodes = (activeFaculty.courses || []).map((c) => c.toUpperCase());
+
+  const matched = mgmt.courses.filter((c) => {
+    const cFacId = (c.facultyId || '').toLowerCase();
+    const cFacName = (c.facultyName || '').toLowerCase();
+    const cCode = (c.code || '').toUpperCase();
+
+    return (
+      cFacId === facId ||
+      cFacName === facName ||
+      assignedCodes.includes(cCode)
+    );
+  });
+
+  // If no courses matched for this faculty yet, return any course where faculty is not set or default courses
+  if (matched.length === 0 && mgmt.courses.length > 0) {
+    return mgmt.courses;
+  }
+
+  return matched;
 };
 
 

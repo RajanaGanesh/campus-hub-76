@@ -422,9 +422,71 @@ input, select, textarea {
   border: 1px solid var(--color-info-border);
 }
 
-@keyframes alertFadeIn {
-  0% { opacity: 0; transform: translateY(-4px) scale(0.98); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
+/* Form Controls & Inputs */
+.c1-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.c1-form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+  margin-bottom: 2px;
+}
+
+.c1-form-label .required {
+  color: #ef4444;
+  margin-left: 2px;
+}
+
+.c1-form-input,
+.c1-form-select,
+.c1-form-textarea,
+.c1-input {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-primary, #0f172a);
+  background-color: var(--bg-input, #ffffff);
+  border: 1.5px solid var(--border-medium, #cbd5e1);
+  border-radius: var(--radius-md, 8px);
+  outline: none;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.c1-form-input::placeholder,
+.c1-form-textarea::placeholder,
+.c1-input::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.c1-form-input:focus,
+.c1-form-select:focus,
+.c1-form-textarea:focus,
+.c1-input:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+  background-color: #ffffff;
+}
+
+.c1-form-select {
+  cursor: pointer;
+  appearance: auto;
+  -webkit-appearance: menulist;
+}
+
+.c1-form-select option {
+  background-color: #ffffff;
+  color: #0f172a;
+  padding: 8px;
 }
 
 /* Modal Overlay */

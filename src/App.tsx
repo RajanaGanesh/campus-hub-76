@@ -47,6 +47,7 @@ import { FacultyResults } from './pages/faculty/FacultyResults';
 import { FacultyMaterials } from './pages/faculty/FacultyMaterials';
 import { FacultyNotices } from './pages/faculty/FacultyNotices';
 import { FacultyNotifications } from './pages/faculty/FacultyNotifications';
+import { FacultyProfile } from './pages/faculty/FacultyProfile';
 
 // STEP 8: Admin Portal Modules
 import { AdminDashboard } from './pages/admin/AdminDashboard';
@@ -488,7 +489,7 @@ export const App: React.FC = () => {
             path="/faculty/profile"
             element={
               <ProtectedRoute allowedRole="faculty">
-                <FacultyDashboard />
+                <FacultyProfile />
               </ProtectedRoute>
             }
           />

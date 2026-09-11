@@ -1,18 +1,52 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AppLayout } from '../../components/AppLayout';
-import { getManagementData, saveManagementData, ExamMarkRecord } from '../../data/managementData';
+import { useAuth } from '../../context/AuthContext';
+import { getManagementData, saveManagementData, getFacultyAssignedCourses, CourseRecord, ExamMarkRecord } from '../../data/managementData';
 import { Toast } from '../../components/Toast';
 
 export const FacultyResults: React.FC = () => {
+  const { user } = useAuth();
+  const [courses, setCourses] = useState<CourseRecord[]>(() => getFacultyAssignedCourses(user));
+
   // Selected Course and Assessment
-  const [selectedCourse, setSelectedCourse] = useState('CSE-301');
+  const [selectedCourse, setSelectedCourse] = useState<string>(() => {
+    const assigned = getFacultyAssignedCourses(user);
+    return assigned.length > 0 ? assigned[0].code : 'CSE-301';
+  });
   const [selectedExamType, setSelectedExamType] = useState('Midterm Assessment 1 (Internal)');
 
   // Marks records state loaded from persistent storage
   const [marksList, setMarksList] = useState<ExamMarkRecord[]>(() => {
     const mgmt = getManagementData();
-    return mgmt.examMarks.filter((m) => m.courseCode === 'CSE-301');
+    const assigned = getFacultyAssignedCourses(user);
+    const initialCourse = assigned.length > 0 ? assigned[0].code : 'CSE-301';
+    return mgmt.examMarks.filter((m) => m.courseCode === initialCourse);
   });
+
+  const refreshCourses = useCallback(() => {
+    const updatedCourses = getFacultyAssignedCourses(user);
+    setCourses(updatedCourses);
+  }, [user]);
+
+  useEffect(() => {
+    refreshCourses();
+    const handleSync = () => refreshCourses();
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('campushub_management_updated', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('campushub_management_updated', handleSync);
+    };
+  }, [refreshCourses]);
+
+  useEffect(() => {
+    if (courses.length > 0 && !courses.some((c) => c.code === selectedCourse)) {
+      const nextCourse = courses[0].code;
+      setSelectedCourse(nextCourse);
+      const currentMgmt = getManagementData();
+      setMarksList(currentMgmt.examMarks.filter((m: ExamMarkRecord) => m.courseCode === nextCourse));
+    }
+  }, [courses, selectedCourse]);
 
   // Toast
   const [toastMsg, setToastMsg] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
@@ -153,9 +187,11 @@ export const FacultyResults: React.FC = () => {
                     setMarksList(currentMgmt.examMarks.filter((m: ExamMarkRecord) => m.courseCode === nextCourse));
                   }}
                 >
-                  <option value="CSE-301">CSE-301: Advanced Data Structures</option>
-                  <option value="CSE-302">CSE-302: Database Management Systems</option>
-                  <option value="CSE-401">CSE-401: Cloud Computing Architecture</option>
+                  {courses.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.code}: {c.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 

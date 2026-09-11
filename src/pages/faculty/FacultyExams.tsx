@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
+import { useAuth } from '../../context/AuthContext';
+import { getFacultyAssignedCourses, CourseRecord } from '../../data/managementData';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 
@@ -21,6 +23,18 @@ export interface FacultyExamItem {
 
 export const FacultyExams: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [courses, setCourses] = useState<CourseRecord[]>(() => getFacultyAssignedCourses(user));
+
+  useEffect(() => {
+    const handleSync = () => setCourses(getFacultyAssignedCourses(user));
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('campushub_management_updated', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('campushub_management_updated', handleSync);
+    };
+  }, [user]);
 
   // Exams state
   const [exams, setExams] = useState<FacultyExamItem[]>([
@@ -60,7 +74,10 @@ export const FacultyExams: React.FC = () => {
 
   // Form fields
   const [examName, setExamName] = useState('');
-  const [examCourse, setExamCourse] = useState('CSE-301');
+  const [examCourse, setExamCourse] = useState<string>(() => {
+    const assigned = getFacultyAssignedCourses(user);
+    return assigned.length > 0 ? assigned[0].code : 'CSE-301';
+  });
   const [examDate, setExamDate] = useState('2026-09-05');
   const [examTime, setExamTime] = useState('10:00 AM - 01:00 PM');
   const [examRoom, setExamRoom] = useState('Room CSE-204');
@@ -263,9 +280,11 @@ export const FacultyExams: React.FC = () => {
                     value={examCourse}
                     onChange={(e) => setExamCourse(e.target.value)}
                   >
-                    <option value="CSE-301">CSE-301: Advanced Data Structures</option>
-                    <option value="CSE-302">CSE-302: Database Management Systems</option>
-                    <option value="CSE-401">CSE-401: Cloud Computing Architecture</option>
+                    {courses.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.code}: {c.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

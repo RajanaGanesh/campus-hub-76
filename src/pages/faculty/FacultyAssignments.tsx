@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AppLayout } from '../../components/AppLayout';
-import { getManagementData, saveManagementData, ManagementAssignment, AssignmentSubmission } from '../../data/managementData';
+import { useAuth } from '../../context/AuthContext';
+import { getManagementData, saveManagementData, getFacultyAssignedCourses, CourseRecord, ManagementAssignment, AssignmentSubmission } from '../../data/managementData';
 import { dbService } from '../../services/dbService';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 
 export const FacultyAssignments: React.FC = () => {
+  const { user } = useAuth();
   // Assignments & submissions state loaded from centralized persistent storage
   const [assignments, setAssignments] = useState<ManagementAssignment[]>(() => getManagementData().assignments);
   const [submissions, setSubmissions] = useState<AssignmentSubmission[]>(() => getManagementData().submissions);
+  const [courses, setCourses] = useState<CourseRecord[]>(() => getFacultyAssignedCourses(user));
 
   // Active section tab & filters
   const [activeTab, setActiveTab] = useState<'list' | 'submissions'>('list');
@@ -23,7 +26,10 @@ export const FacultyAssignments: React.FC = () => {
 
   // Create Assignment Form
   const [newTitle, setNewTitle] = useState('');
-  const [newCourseCode, setNewCourseCode] = useState('CSE-301');
+  const [newCourseCode, setNewCourseCode] = useState<string>(() => {
+    const assigned = getFacultyAssignedCourses(user);
+    return assigned.length > 0 ? assigned[0].code : 'CSE-301';
+  });
   const [newDueDate, setNewDueDate] = useState('2026-09-10');
   const [newMaxMarks, setNewMaxMarks] = useState<number>(100);
   const [newPriority, setNewPriority] = useState<'High' | 'Medium' | 'Low'>('High');
@@ -47,7 +53,8 @@ export const FacultyAssignments: React.FC = () => {
     const mgmt = getManagementData();
     setAssignments(mgmt.assignments);
     setSubmissions(mgmt.submissions);
-  }, []);
+    setCourses(getFacultyAssignedCourses(user));
+  }, [user]);
 
   useEffect(() => {
     refreshFromStorage();
@@ -657,12 +664,11 @@ export const FacultyAssignments: React.FC = () => {
                     value={newCourseCode}
                     onChange={(e) => setNewCourseCode(e.target.value)}
                   >
-                    <option value="CSE-301">CSE-301: Data Structures & Algorithms</option>
-                    <option value="CSE-302">CSE-302: Database Management Systems</option>
-                    <option value="CSE-303">CSE-303: Computer Networks</option>
-                    <option value="CSE-304">CSE-304: Software Engineering</option>
-                    <option value="CSE-305">CSE-305: Operating Systems</option>
-                    <option value="CSE-401">CSE-401: Cloud Computing Architecture</option>
+                    {courses.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.code}: {c.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

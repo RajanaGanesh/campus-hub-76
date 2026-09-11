@@ -24,7 +24,7 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ isOpen, onClos
   const displayName = profile?.name || user?.name || 'Student';
   const displayEmail = profile?.email || user?.email || 'student@campushub.edu';
   const userRole = profile?.role || user?.role || 'student';
-  const profilePath = userRole === 'admin' ? '/admin/settings' : userRole === 'faculty' ? '/faculty/dashboard' : '/student/profile';
+  const profilePath = userRole === 'admin' ? '/admin/settings' : userRole === 'faculty' ? '/faculty/profile' : '/student/profile';
   const settingsPath = userRole === 'admin' ? '/admin/settings' : '/student/settings';
 
   return (

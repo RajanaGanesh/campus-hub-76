@@ -25,6 +25,17 @@ export const Login: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [toastMsg, setToastMsg] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
 
+  // Clear fields on mount to prevent browser cached/autofilled credentials from appearing
+  useEffect(() => {
+    setUserCode('');
+    setPassword('');
+    const timer = setTimeout(() => {
+      setUserCode('');
+      setPassword('');
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Redirect if already authenticated
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
@@ -164,7 +175,7 @@ export const Login: React.FC = () => {
           )}
 
           {/* Authentication Form */}
-          <form className="cms-auth-form" onSubmit={handleSubmit} noValidate>
+          <form className="cms-auth-form" onSubmit={handleSubmit} noValidate autoComplete="off">
             {/* 1. Select Log-In Type */}
             <div className={`cms-field-group ${loginTypeError ? 'has-error' : ''}`}>
               <label htmlFor="cms-login-type" className="cms-field-label">
@@ -173,6 +184,7 @@ export const Login: React.FC = () => {
               <div className="cms-select-wrapper">
                 <select
                   id="cms-login-type"
+                  name="cms_auth_role"
                   className="cms-select-input"
                   value={loginType}
                   onChange={(e) => {
@@ -200,6 +212,7 @@ export const Login: React.FC = () => {
               <div className="cms-input-wrapper">
                 <input
                   id="cms-user-code"
+                  name="cms_auth_identifier"
                   type="text"
                   className="cms-text-input"
                   placeholder="Enter Student Name, Roll No, or Email"
@@ -209,7 +222,8 @@ export const Login: React.FC = () => {
                     if (userCodeError) setUserCodeError('');
                   }}
                   disabled={isSubmitting}
-                  autoComplete="username"
+                  autoComplete="off"
+                  spellCheck="false"
                 />
               </div>
               {userCodeError && (
@@ -225,6 +239,7 @@ export const Login: React.FC = () => {
               <div className="cms-input-wrapper">
                 <input
                   id="cms-password"
+                  name="cms_auth_secret"
                   type={showPassword ? 'text' : 'password'}
                   className="cms-text-input"
                   placeholder="••••••••••••"
@@ -234,7 +249,7 @@ export const Login: React.FC = () => {
                     if (passwordError) setPasswordError('');
                   }}
                   disabled={isSubmitting}
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                 />
                 <button
                   type="button"

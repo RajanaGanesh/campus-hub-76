@@ -306,6 +306,70 @@ DISCLAIMER & TERMS:
   downloadFile(filename, content, 'text/plain;charset=utf-8');
 };
 
+export interface FacultyIdCardInfo {
+  facultyName: string;
+  empId: string;
+  department: string;
+  designation: string;
+  email: string;
+  phone: string;
+  bloodGroup: string;
+  validUntil: string;
+  specialization?: string;
+  cabinRoom?: string;
+  emergencyContact?: string;
+}
+
+/**
+ * Generate and download official Faculty & Staff ID Badge record
+ */
+export const downloadFacultyIdCard = (card: FacultyIdCardInfo): void => {
+  const filename = `Faculty_ID_Badge_${card.empId || 'Badge'}.txt`;
+
+  const content = `=============================================================================
+             CAMPUSHUB CENTRAL UNIVERSITY - OFFICIAL FACULTY ID BADGE
+=============================================================================
+EMPLOYEE ID NUMBER : ${card.empId || 'FAC-101'}
+VALIDITY PERIOD    : ACTIVE / TENURED (${card.validUntil || 'PERMANENT'})
+ACCREDITATION      : NAAC A++ Autonomous University Senate
+DESIGNATION ROLE   : ${card.designation?.toUpperCase() || 'PROFESSOR'}
+=============================================================================
+
+FACULTY MEMBER PARTICULARS:
+-----------------------------------------------------------------------------
+Faculty Full Name  : ${card.facultyName || 'Dr. Suresh Kumar'}
+Academic Department: ${card.department || 'Computer Science & Engineering'}
+Designation / Rank : ${card.designation || 'Professor & Department Chair'}
+Areas of Research  : ${card.specialization || 'Distributed Systems, Advanced Algorithms'}
+Office / Cabin Loc : ${card.cabinRoom || 'Cabin 302, Academic Block 2'}
+Institutional Mail : ${card.email || 'faculty@campushub.com'}
+Contact Phone      : ${card.phone || '+91 98765 43201'}
+Blood Group        : ${card.bloodGroup || 'A+ve'}
+Emergency Contact  : ${card.emergencyContact || '+91 98765 00000'}
+
+CAMPUS ACCESS TOKENS & METRICS:
+-----------------------------------------------------------------------------
+Faculty RFID Tag   : #FAC-RFID-${Math.floor(100000 + Math.random() * 900000)}
+Faculty Keycard PIN: ||| |||||| ||||| |||| ||||||| 9402108
+Lab Access Level   : Level 4 Autonomous Access (Research & Server Labs)
+Library Privilege  : Tier 1 Research Privilege (15 Concurrent Volumes)
+Parking Permit     : Designated Slot - Faculty Reserved Tier P1
+
+SECURITY ENCRYPTED TOKEN:
+-----------------------------------------------------------------------------
+Digital Signature  : [SHA256: 9e32f17042a967f6bb30e1688d0b284e3c914d9b40fae4209db89324e908b1a8]
+Issuing Authority  : Office of the Registrar & University Senate
+
+DISCLAIMER & TERMS:
+1. This identity credential is the property of CampusHub Central University.
+2. Must be presented upon request at campus security checkpoints and research facilities.
+3. Cardholder is authorized for faculty parking, faculty lounge, and 24/7 academic block access.
+=============================================================================
+`;
+
+  downloadFile(filename, content, 'text/plain;charset=utf-8');
+};
+
 export interface AttendanceReportInfo {
   studentName: string;
   rollNumber: string;

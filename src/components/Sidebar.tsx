@@ -40,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, isMobileOpen, onM
               { id: 'faculty-assignments', label: 'Assignments', icon: 'fa-file-invoice', path: '/faculty/assignments' },
               { id: 'faculty-exams', label: 'Examinations', icon: 'fa-receipt', path: '/faculty/exams' },
               { id: 'faculty-announcements', label: 'Announcements', icon: 'fa-bullhorn', path: '/faculty/announcements' },
-              { id: 'faculty-ai', label: 'Campus AI', icon: 'fa-wand-magic-sparkles', path: '/assistant' }
+              { id: 'faculty-profile', label: 'Profile & ID Card', icon: 'fa-id-badge', path: '/faculty/profile' }
             ]
           }
         ];

@@ -1,16 +1,31 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
 import { useAuth } from '../../context/AuthContext';
-import { getManagementData } from '../../data/managementData';
+import { getFacultyAssignedCourses, CourseRecord } from '../../data/managementData';
 
 export const FacultyDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const mgmt = getManagementData();
 
-  // Filter courses for this faculty
-  const myCourses = mgmt.courses.filter((c) => c.facultyId === 'FAC-101');
+  // Dynamically load assigned courses for this faculty
+  const [myCourses, setMyCourses] = useState<CourseRecord[]>(() => getFacultyAssignedCourses(user));
+
+  const refreshDashboardCourses = useCallback(() => {
+    setMyCourses(getFacultyAssignedCourses(user));
+  }, [user]);
+
+  useEffect(() => {
+    refreshDashboardCourses();
+    const handleSync = () => refreshDashboardCourses();
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('campushub_management_updated', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('campushub_management_updated', handleSync);
+    };
+  }, [refreshDashboardCourses]);
+
   const facultyName = user?.name || 'Dr. Suresh Kumar';
 
   // Today's classes schedule

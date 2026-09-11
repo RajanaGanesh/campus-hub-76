@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppLayout } from '../../components/AppLayout';
-import { getManagementData } from '../../data/managementData';
+import { useAuth } from '../../context/AuthContext';
+import { getManagementData, getFacultyAssignedCourses, CourseRecord } from '../../data/managementData';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 import { getFacultyAttendanceHistory, saveFacultyAttendanceHistory, AttendanceHistoryRecord } from '../../services/storageService';
@@ -12,10 +13,33 @@ interface StudentAttendanceEntry {
 }
 
 export const FacultyAttendance: React.FC = () => {
+  const { user } = useAuth();
   const mgmt = getManagementData();
 
+  // Load faculty assigned courses
+  const [courses, setCourses] = useState<CourseRecord[]>(() => getFacultyAssignedCourses(user));
+
+  useEffect(() => {
+    const handleSync = () => setCourses(getFacultyAssignedCourses(user));
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('campushub_management_updated', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('campushub_management_updated', handleSync);
+    };
+  }, [user]);
+
   // Active section / course selection
-  const [selectedCourseCode, setSelectedCourseCode] = useState('CSE-301');
+  const [selectedCourseCode, setSelectedCourseCode] = useState<string>(() => {
+    const assigned = getFacultyAssignedCourses(user);
+    return assigned.length > 0 ? assigned[0].code : 'CSE-301';
+  });
+
+  useEffect(() => {
+    if (courses.length > 0 && !courses.some((c) => c.code === selectedCourseCode)) {
+      setSelectedCourseCode(courses[0].code);
+    }
+  }, [courses, selectedCourseCode]);
   const [selectedSection, setSelectedSection] = useState('A');
   const [attendanceDate, setAttendanceDate] = useState('2026-08-18');
 
@@ -43,10 +67,10 @@ export const FacultyAttendance: React.FC = () => {
     setTimeout(() => setToastMsg(null), 3500);
   };
 
-  // Toggle individual student attendance
-  const handleToggleStatus = (id: string) => {
+  // Set individual student attendance status
+  const handleSetStatus = (id: string, status: 'Present' | 'Absent') => {
     setRoster((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, status: s.status === 'Present' ? 'Absent' : 'Present' } : s))
+      prev.map((s) => (s.id === id ? { ...s, status } : s))
     );
   };
 
@@ -207,10 +231,11 @@ export const FacultyAttendance: React.FC = () => {
                       value={selectedCourseCode}
                       onChange={(e) => setSelectedCourseCode(e.target.value)}
                     >
-                      <option value="CSE-301">CSE-301: Advanced Data Structures</option>
-                      <option value="CSE-302">CSE-302: Database Management Systems</option>
-                      <option value="CSE-401">CSE-401: Cloud Computing Architecture</option>
-                      <option value="CSE-402">CSE-402: Software Engineering & Agile</option>
+                      {courses.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.code}: {c.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
@@ -295,7 +320,7 @@ export const FacultyAttendance: React.FC = () => {
                       <th>Assigned Course</th>
                       <th>Class Section</th>
                       <th>Attendance Status</th>
-                      <th>Action</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -319,14 +344,26 @@ export const FacultyAttendance: React.FC = () => {
                           )}
                         </td>
                         <td>
-                          <button
-                            type="button"
-                            className={`c1-btn ${stu.status === 'Present' ? 'c1-btn-secondary' : 'c1-btn-gradient'}`}
-                            style={{ padding: '6px 14px', fontSize: '0.75rem' }}
-                            onClick={() => handleToggleStatus(stu.id)}
-                          >
-                            <span>Toggle to {stu.status === 'Present' ? 'Absent' : 'Present'}</span>
-                          </button>
+                          <div className="attendance-action-group">
+                            <button
+                              type="button"
+                              className={`attendance-action-btn present-btn ${stu.status === 'Present' ? 'active' : ''}`}
+                              onClick={() => handleSetStatus(stu.id, 'Present')}
+                              title={`Mark ${stu.name} as Present`}
+                            >
+                              <i className="fa-solid fa-check"></i>
+                              <span>Present</span>
+                            </button>
+                            <button
+                              type="button"
+                              className={`attendance-action-btn absent-btn ${stu.status === 'Absent' ? 'active' : ''}`}
+                              onClick={() => handleSetStatus(stu.id, 'Absent')}
+                              title={`Mark ${stu.name} as Absent`}
+                            >
+                              <i className="fa-solid fa-xmark"></i>
+                              <span>Absent</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

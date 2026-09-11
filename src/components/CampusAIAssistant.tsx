@@ -98,6 +98,10 @@ export const CampusAIAssistant: React.FC = () => {
     navigate(path);
   };
 
+  if (userRole === 'faculty') {
+    return null;
+  }
+
   return (
     <>
       {/* Floating Trigger Button (NxtWave Purple Floating Chat FAB) */}

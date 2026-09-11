@@ -1,17 +1,32 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
-import { getManagementData, CourseRecord } from '../../data/managementData';
+import { useAuth } from '../../context/AuthContext';
+import { getFacultyAssignedCourses, CourseRecord } from '../../data/managementData';
 import { Modal } from '../../components/Modal';
 
 export const FacultyCourses: React.FC = () => {
   const navigate = useNavigate();
-  const mgmt = getManagementData();
+  const { user } = useAuth();
 
   // Load faculty assigned courses
-  const [courses] = useState<CourseRecord[]>(() => {
-    return mgmt.courses.filter((c) => c.facultyId === 'FAC-101');
-  });
+  const [courses, setCourses] = useState<CourseRecord[]>(() => getFacultyAssignedCourses(user));
+
+  // Real-time synchronization when courses/faculty are updated in Admin panel
+  const refreshCourses = useCallback(() => {
+    setCourses(getFacultyAssignedCourses(user));
+  }, [user]);
+
+  useEffect(() => {
+    refreshCourses();
+    const handleSync = () => refreshCourses();
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('campushub_management_updated', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('campushub_management_updated', handleSync);
+    };
+  }, [refreshCourses]);
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');

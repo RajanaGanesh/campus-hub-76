@@ -68,7 +68,7 @@ export const resolveEffectiveProfile = (authUser: any): EffectiveProfile => {
   };
 };
 
-export const notifyProfileUpdated = () => {
+export const notifyProfileUpdated = (_data?: any) => {
   try {
     window.dispatchEvent(new Event('campushub_profile_updated'));
     window.dispatchEvent(new Event('storage'));

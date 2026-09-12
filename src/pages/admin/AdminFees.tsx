@@ -1175,7 +1175,6 @@ export const AdminFees: React.FC = () => {
                     setPayStudentId(sid);
                     const stu = studentFeeReports.find(s => s.id === sid);
                     if (stu) {
-                      setPaymentTargetStudent(stu);
                       setPayAmount(stu.pendingAmount > 0 ? stu.pendingAmount : 42500);
                     }
                   }}

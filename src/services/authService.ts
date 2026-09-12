@@ -150,42 +150,103 @@ export class AuthService {
       return { success: false, error: 'Please enter your Name, Roll Number, or Email.' };
     }
 
-    // 1. Try Supabase Auth if configured and identifier is an email
-    if (this.isSupabaseActive() && supabase && normalizedInput.includes('@')) {
-      try {
-        let { data, error } = await supabase.auth.signInWithPassword({
-          email: normalizedInput,
-          password
-        });
+    // 1. Try Supabase Auth if configured
+    if (this.isSupabaseActive() && supabase) {
+      let targetEmail = normalizedInput.includes('@') ? normalizedInput : '';
 
-        // Try alternate domain if first attempt failed (.com <-> .edu)
-        if (error && (normalizedInput.endsWith('@campushub.com') || normalizedInput.endsWith('@campushub.edu'))) {
-          const altEmail = normalizedInput.endsWith('@campushub.com')
-            ? normalizedInput.replace('@campushub.com', '@campushub.edu')
-            : normalizedInput.replace('@campushub.edu', '@campushub.com');
+      // If user provided a Student ID, Roll No, or Name instead of an email, look up in Supabase
+      if (!targetEmail) {
+        try {
+          // Check students table by student_id
+          const { data: stu } = await supabase
+            .from('students')
+            .select('id, student_id')
+            .ilike('student_id', normalizedInput)
+            .maybeSingle();
 
-          const altRes = await supabase.auth.signInWithPassword({
-            email: altEmail,
+          if (stu?.id) {
+            const { data: prof } = await supabase.from('profiles').select('email').eq('id', stu.id).maybeSingle();
+            if (prof?.email) targetEmail = prof.email.toLowerCase().trim();
+          }
+
+          if (!targetEmail) {
+            // Check faculty table by faculty_id
+            const { data: fac } = await supabase
+              .from('faculty')
+              .select('id, faculty_id')
+              .ilike('faculty_id', normalizedInput)
+              .maybeSingle();
+
+            if (fac?.id) {
+              const { data: prof } = await supabase.from('profiles').select('email').eq('id', fac.id).maybeSingle();
+              if (prof?.email) targetEmail = prof.email.toLowerCase().trim();
+            }
+          }
+
+          if (!targetEmail) {
+            // Check profiles table by name
+            const { data: prof } = await supabase
+              .from('profiles')
+              .select('email')
+              .ilike('name', `%${normalizedInput}%`)
+              .maybeSingle();
+            if (prof?.email) targetEmail = prof.email.toLowerCase().trim();
+          }
+        } catch (dirErr) {
+          console.warn('Supabase directory lookup notice:', dirErr);
+        }
+      }
+
+      if (targetEmail) {
+        try {
+          let { data, error } = await supabase.auth.signInWithPassword({
+            email: targetEmail,
             password
           });
-          if (!altRes.error && altRes.data?.user) {
-            data = altRes.data;
-            error = null;
-          }
-        }
 
-        if (!error && data?.user) {
-          const profile = await this.fetchUserProfile(data.user.id, data.user.email || normalizedInput);
-          if (requestedRole && requestedRole !== 'all' && profile.role !== normalizeRole(requestedRole)) {
-            return {
-              success: false,
-              error: `This account is registered as ${profile.role.toUpperCase()}. Please switch your Log-in Type to ${profile.role.toUpperCase()}.`
-            };
+          // Try alternate domain if first attempt failed (.com <-> .edu)
+          if (error && (targetEmail.endsWith('@campushub.com') || targetEmail.endsWith('@campushub.edu'))) {
+            const altEmail = targetEmail.endsWith('@campushub.com')
+              ? targetEmail.replace('@campushub.com', '@campushub.edu')
+              : targetEmail.replace('@campushub.edu', '@campushub.com');
+
+            const altRes = await supabase.auth.signInWithPassword({
+              email: altEmail,
+              password
+            });
+            if (!altRes.error && altRes.data?.user) {
+              data = altRes.data;
+              error = null;
+            }
           }
-          return { success: true, profile };
+
+          if (!error && data?.user) {
+            const profile = await this.fetchUserProfile(data.user.id, data.user.email || targetEmail);
+            if (requestedRole && requestedRole !== 'all' && profile.role !== normalizeRole(requestedRole)) {
+              return {
+                success: false,
+                error: `This account is registered as ${profile.role.toUpperCase()}. Please switch your Log-in Type to ${profile.role.toUpperCase()}.`
+              };
+            }
+            return { success: true, profile };
+          } else if (error) {
+            // Check if user exists in profiles to provide exact helpful feedback
+            const { data: existingUser } = await supabase
+              .from('profiles')
+              .select('id, role')
+              .eq('email', targetEmail)
+              .maybeSingle();
+
+            if (existingUser) {
+              return {
+                success: false,
+                error: 'Invalid password entered. Please verify your password and try again.'
+              };
+            }
+          }
+        } catch (err: any) {
+          console.warn('Supabase authentication error:', err);
         }
-      } catch (err: any) {
-        console.warn('Supabase authentication error, checking local student directory:', err);
       }
     }
 
@@ -423,15 +484,32 @@ export class AuthService {
 
         if (data && !error) {
           let resolvedName = data.full_name || data.name;
+          const email = data.email || fallbackEmail;
+          const role = normalizeRole(data.role);
+          let department = data.department;
+          let customId = data.id;
+
+          if (role === 'student') {
+            const { data: stuData } = await supabase.from('students').select('*').eq('id', userId).maybeSingle();
+            if (stuData?.department) department = stuData.department;
+            if (stuData?.student_id) customId = stuData.student_id;
+          } else if (role === 'faculty') {
+            const { data: facData } = await supabase.from('faculty').select('*').eq('id', userId).maybeSingle();
+            if (facData?.department) department = facData.department;
+            if (facData?.faculty_id) customId = facData.faculty_id;
+          }
+
           if (!resolvedName || resolvedName === 'New User' || resolvedName === 'Campus User') {
-            resolvedName = (data.email || fallbackEmail).split('@')[0].replace(/[._0-9-]+/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+            const emailPrefix = email.split('@')[0].replace(/[._0-9-]+/g, ' ').trim();
+            resolvedName = emailPrefix.replace(/\b\w/g, (c: string) => c.toUpperCase()) || 'Student Candidate';
           }
 
           return {
-            id: data.id,
-            email: data.email || fallbackEmail,
+            id: customId || data.id,
+            email,
             name: resolvedName,
-            role: normalizeRole(data.role),
+            role,
+            department: department || 'Computer Science & Engineering',
             avatar_url: data.avatar_url || null,
             created_at: data.created_at,
             updated_at: data.updated_at

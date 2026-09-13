@@ -107,24 +107,294 @@ export interface ManagementData {
 }
 
 export const initialManagementData: ManagementData = {
-  students: [],
-  faculty: [],
-  courses: [],
+  students: [
+    {
+      id: '236F1A0551',
+      name: 'Alex Vance',
+      department: 'Computer Science & Engineering',
+      year: 'IV Year',
+      section: 'A',
+      cgpa: 8.65,
+      email: 'student@campushub.edu',
+      phone: '+91 98765 43210',
+      status: 'Active',
+      attendancePercent: 88,
+      assignmentsCompleted: 10,
+      performance: 'Excellent'
+    },
+    {
+      id: '236F1A0501',
+      name: 'Aarav Sharma',
+      department: 'Computer Science & Engineering',
+      year: 'IV Year',
+      section: 'A',
+      cgpa: 8.92,
+      email: 'aarav.s@campushub.edu',
+      phone: '+91 98765 43201',
+      status: 'Active',
+      attendancePercent: 92,
+      assignmentsCompleted: 11,
+      performance: 'Excellent'
+    },
+    {
+      id: '236F1A0502',
+      name: 'Ananya Iyer',
+      department: 'Computer Science & Engineering',
+      year: 'IV Year',
+      section: 'A',
+      cgpa: 9.15,
+      email: 'ananya.i@campushub.edu',
+      phone: '+91 98765 43202',
+      status: 'Active',
+      attendancePercent: 95,
+      assignmentsCompleted: 12,
+      performance: 'Excellent'
+    },
+    {
+      id: '236F1A0503',
+      name: 'Rohan Patel',
+      department: 'Computer Science & Engineering',
+      year: 'IV Year',
+      section: 'A',
+      cgpa: 7.84,
+      email: 'rohan.p@campushub.edu',
+      phone: '+91 98765 43203',
+      status: 'Active',
+      attendancePercent: 71,
+      assignmentsCompleted: 8,
+      performance: 'Needs Improvement'
+    },
+    {
+      id: '236F1A0504',
+      name: 'Sneha Reddy',
+      department: 'Computer Science & Engineering',
+      year: 'IV Year',
+      section: 'A',
+      cgpa: 8.45,
+      email: 'sneha.r@campushub.edu',
+      phone: '+91 98765 43204',
+      status: 'Active',
+      attendancePercent: 84,
+      assignmentsCompleted: 9,
+      performance: 'Good'
+    },
+    {
+      id: '236F1A0505',
+      name: 'Vikramaditya Rao',
+      department: 'Computer Science & Engineering',
+      year: 'IV Year',
+      section: 'A',
+      cgpa: 7.20,
+      email: 'vikram.r@campushub.edu',
+      phone: '+91 98765 43205',
+      status: 'Active',
+      attendancePercent: 68,
+      assignmentsCompleted: 7,
+      performance: 'Needs Improvement'
+    },
+    {
+      id: '236F1A0506',
+      name: 'Pooja Hegde',
+      department: 'Computer Science & Engineering',
+      year: 'IV Year',
+      section: 'B',
+      cgpa: 8.70,
+      email: 'pooja.h@campushub.edu',
+      phone: '+91 98765 43206',
+      status: 'Active',
+      attendancePercent: 89,
+      assignmentsCompleted: 10,
+      performance: 'Excellent'
+    },
+    {
+      id: '236F1A0507',
+      name: 'Karthik Menon',
+      department: 'Computer Science & Engineering',
+      year: 'IV Year',
+      section: 'B',
+      cgpa: 8.10,
+      email: 'karthik.m@campushub.edu',
+      phone: '+91 98765 43207',
+      status: 'Active',
+      attendancePercent: 82,
+      assignmentsCompleted: 9,
+      performance: 'Good'
+    },
+    {
+      id: '236F1A0508',
+      name: 'Divya Nair',
+      department: 'Computer Science & Engineering',
+      year: 'IV Year',
+      section: 'B',
+      cgpa: 9.30,
+      email: 'divya.n@campushub.edu',
+      phone: '+91 98765 43208',
+      status: 'Active',
+      attendancePercent: 96,
+      assignmentsCompleted: 12,
+      performance: 'Excellent'
+    },
+    {
+      id: '236F1A0509',
+      name: 'Rahul Verma',
+      department: 'Computer Science & Engineering',
+      year: 'IV Year',
+      section: 'B',
+      cgpa: 7.15,
+      email: 'rahul.v@campushub.edu',
+      phone: '+91 98765 43209',
+      status: 'Active',
+      attendancePercent: 64,
+      assignmentsCompleted: 6,
+      performance: 'Needs Improvement'
+    },
+    {
+      id: '236F1A0510',
+      name: 'Meera Joshi',
+      department: 'Computer Science & Engineering',
+      year: 'IV Year',
+      section: 'B',
+      cgpa: 8.55,
+      email: 'meera.j@campushub.edu',
+      phone: '+91 98765 43210',
+      status: 'Active',
+      attendancePercent: 87,
+      assignmentsCompleted: 10,
+      performance: 'Good'
+    }
+  ],
+  faculty: [
+    {
+      id: 'FAC-101',
+      name: 'Dr. Sandeep Kumar',
+      department: 'Computer Science & Engineering',
+      designation: 'Associate Professor',
+      email: 'sandeepsgec@gmail.com',
+      courses: ['CSE-301', 'CSE-304'],
+      status: 'Active'
+    },
+    {
+      id: 'FAC-102',
+      name: 'Dr. Rajesh Varma',
+      department: 'Computer Science & Engineering',
+      designation: 'Professor',
+      email: 'rajesh.varma@campushub.edu',
+      courses: ['CSE-301'],
+      status: 'Active'
+    },
+    {
+      id: 'FAC-103',
+      name: 'Prof. Ananya Sen',
+      department: 'Computer Science & Engineering',
+      designation: 'Assistant Professor',
+      email: 'ananya.sen@campushub.edu',
+      courses: ['CSE-302'],
+      status: 'Active'
+    },
+    {
+      id: 'FAC-104',
+      name: 'Dr. Elena Rostova',
+      department: 'Computer Science & Engineering',
+      designation: 'Associate Professor',
+      email: 'faculty@campushub.edu',
+      courses: ['CSE-303'],
+      status: 'Active'
+    },
+    {
+      id: 'FAC-105',
+      name: 'Dr. Suresh Kumar',
+      department: 'Computer Science & Engineering',
+      designation: 'Professor & HOD',
+      email: 'suresh.kumar@campushub.edu',
+      courses: ['CSE-303'],
+      status: 'Active'
+    },
+    {
+      id: 'FAC-106',
+      name: 'Prof. Vikram Malhotra',
+      department: 'Computer Science & Engineering',
+      designation: 'Assistant Professor',
+      email: 'vikram.m@campushub.edu',
+      courses: ['CSE-304'],
+      status: 'Active'
+    },
+    {
+      id: 'FAC-107',
+      name: 'Dr. Priya Murthy',
+      department: 'Computer Science & Engineering',
+      designation: 'Associate Professor',
+      email: 'priya.m@campushub.edu',
+      courses: ['CSE-305'],
+      status: 'Active'
+    }
+  ],
+  courses: [
+    {
+      code: 'CSE-301',
+      name: 'Distributed Systems & Cloud Architecture',
+      department: 'Computer Science & Engineering',
+      semester: '5th Semester',
+      facultyId: 'FAC-101',
+      facultyName: 'Dr. Sandeep Kumar',
+      studentsCount: 60,
+      status: 'Active',
+      progress: 65,
+      nextClass: 'Mon, Wed 09:00 AM'
+    },
+    {
+      code: 'CSE-302',
+      name: 'Machine Learning & Neural Networks',
+      department: 'Computer Science & Engineering',
+      semester: '5th Semester',
+      facultyId: 'FAC-103',
+      facultyName: 'Prof. Ananya Sen',
+      studentsCount: 60,
+      status: 'Active',
+      progress: 58,
+      nextClass: 'Tue, Thu 10:00 AM'
+    },
+    {
+      code: 'CSE-303',
+      name: 'Information & Network Security',
+      department: 'Computer Science & Engineering',
+      semester: '5th Semester',
+      facultyId: 'FAC-105',
+      facultyName: 'Dr. Suresh Kumar',
+      studentsCount: 60,
+      status: 'Active',
+      progress: 70,
+      nextClass: 'Mon, Fri 11:15 AM'
+    },
+    {
+      code: 'CSE-304',
+      name: 'Full Stack Cloud Native Development',
+      department: 'Computer Science & Engineering',
+      semester: '5th Semester',
+      facultyId: 'FAC-101',
+      facultyName: 'Dr. Sandeep Kumar',
+      studentsCount: 60,
+      status: 'Active',
+      progress: 60,
+      nextClass: 'Tue, Thu 02:00 PM'
+    },
+    {
+      code: 'CSE-305',
+      name: 'Natural Language Processing & LLMs',
+      department: 'Computer Science & Engineering',
+      semester: '5th Semester',
+      facultyId: 'FAC-107',
+      facultyName: 'Dr. Priya Murthy',
+      studentsCount: 60,
+      status: 'Active',
+      progress: 52,
+      nextClass: 'Wed, Fri 02:00 PM'
+    }
+  ],
   assignments: [],
   submissions: [],
   examMarks: [],
   announcements: []
 };
-
-// Legacy sample data ID blacklist to purge stale localStorage caches
-const SAMPLE_IDS = new Set([
-  '236F1A0551', '236F1A0502', '236F1A0503', '236F1A0412', '236F1A0522',
-  'FAC-101', 'FAC-102', 'FAC-103',
-  'CSE-301', 'CSE-302', 'CSE-303', 'ECE-304', 'CSE-304', 'CSE-305',
-  'ASSIGN-101', 'ASSIGN-102', 'ASSIGN-103', 'ASSIGN-104', 'ASSIGN-105',
-  'SUB-201', 'SUB-202', 'SUB-203', 'SUB-204', 'SUB-205', 'SUB-206', 'SUB-207',
-  'ANN-101', 'ANN-102', 'ANN-103'
-]);
 
 export const getManagementData = (): ManagementData => {
   try {
@@ -138,13 +408,13 @@ export const getManagementData = (): ManagementData => {
     const parsed = JSON.parse(stored);
 
     const rawAssignments: ManagementAssignment[] = Array.isArray(parsed.assignments) ? parsed.assignments : [];
-    const mergedAssignments = rawAssignments.filter(a => !SAMPLE_IDS.has(a.id) && !SAMPLE_IDS.has(a.courseCode));
+    const mergedAssignments = rawAssignments;
 
     const rawSubmissions: AssignmentSubmission[] = Array.isArray(parsed.submissions) ? parsed.submissions : [];
-    const mergedSubmissions = rawSubmissions.filter(s => !SAMPLE_IDS.has(s.id) && !SAMPLE_IDS.has(s.assignmentId) && !SAMPLE_IDS.has(s.studentId));
+    const mergedSubmissions = rawSubmissions;
 
-    const rawStudents: StudentRecord[] = Array.isArray(parsed.students) ? parsed.students : [];
-    const storedStudents = rawStudents.filter(s => !SAMPLE_IDS.has(s.id) && s.email !== 'student@campushub.com');
+    const rawStudents: StudentRecord[] = Array.isArray(parsed.students) && parsed.students.length > 0 ? parsed.students : initialManagementData.students;
+    const storedStudents = rawStudents;
 
     // Compute up-to-date assignmentsCompleted for each student from stored submissions
     const mergedStudents = storedStudents.map((stu) => {
@@ -170,11 +440,25 @@ export const getManagementData = (): ManagementData => {
       };
     });
 
-    const rawFacultyList: FacultyRecord[] = Array.isArray(parsed.faculty) ? parsed.faculty : [];
-    const rawFaculty = rawFacultyList.filter(f => !SAMPLE_IDS.has(f.id) && f.email !== 'faculty@campushub.com');
+    const rawFacultyList: FacultyRecord[] = Array.isArray(parsed.faculty) && parsed.faculty.length > 0 ? parsed.faculty : initialManagementData.faculty;
+    
+    // Ensure sandeepsgec@gmail.com is in faculty list
+    if (!rawFacultyList.some(f => (f.email || '').toLowerCase() === 'sandeepsgec@gmail.com')) {
+      rawFacultyList.unshift({
+        id: 'FAC-101',
+        name: 'Dr. Sandeep Kumar',
+        department: 'Computer Science & Engineering',
+        designation: 'Associate Professor',
+        email: 'sandeepsgec@gmail.com',
+        courses: ['CSE-301', 'CSE-304'],
+        status: 'Active'
+      });
+    }
 
-    const rawCoursesList: CourseRecord[] = Array.isArray(parsed.courses) ? parsed.courses : [];
-    const rawCourses = rawCoursesList.filter(c => !SAMPLE_IDS.has(c.code));
+    const rawFaculty = rawFacultyList;
+
+    const rawCoursesList: CourseRecord[] = Array.isArray(parsed.courses) && parsed.courses.length > 0 ? parsed.courses : initialManagementData.courses;
+    const rawCourses = rawCoursesList;
 
     // Cross-synchronize faculty courses and courses list
     const syncedCourses = [...rawCourses];

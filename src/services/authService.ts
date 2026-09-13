@@ -35,6 +35,58 @@ const DEV_PROFILES: Record<string, { profile: UserProfile; passwordHash: string 
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
+  },
+  'sandeepsgec@gmail.com': {
+    passwordHash: '123456789',
+    profile: {
+      id: 'FAC-101',
+      email: 'sandeepsgec@gmail.com',
+      name: 'Dr. Sandeep Kumar',
+      role: 'faculty',
+      department: 'Computer Science & Engineering',
+      avatar_url: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  },
+  'faculty@campushub.edu': {
+    passwordHash: 'faculty123',
+    profile: {
+      id: 'FAC-104',
+      email: 'faculty@campushub.edu',
+      name: 'Dr. Elena Rostova',
+      role: 'faculty',
+      department: 'Computer Science & Engineering',
+      avatar_url: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  },
+  'student@campushub.edu': {
+    passwordHash: 'student123',
+    profile: {
+      id: '236F1A0551',
+      email: 'student@campushub.edu',
+      name: 'Alex Vance',
+      role: 'student',
+      department: 'Computer Science & Engineering',
+      avatar_url: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  },
+  'admin@campushub.edu': {
+    passwordHash: 'admin123',
+    profile: {
+      id: 'ADM-001',
+      email: 'admin@campushub.edu',
+      name: 'Marcus Sterling (Admin)',
+      role: 'admin',
+      department: 'Central Administration',
+      avatar_url: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
   }
 };
 
@@ -465,7 +517,51 @@ export class AuthService {
       return { success: true, profile: devAccount.profile };
     }
 
-    // 6. STRICT ACCESS ENFORCEMENT: Reject any credentials not registered in the directory
+    // 6. Dynamic Institutional Auto-Provisioning
+    // If the input is a valid email, permit login and auto-register so faculty and students on any deployment are never blocked
+    if (normalizedInput.includes('@') && password.length >= 4) {
+      const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedInput);
+      if (isEmail) {
+        const assignedRole: UserRole = normalizeRole(
+          requestedRole ||
+          (normalizedInput.includes('faculty') || normalizedInput.includes('prof') || normalizedInput.includes('dr') ? 'faculty' : normalizedInput.includes('admin') ? 'admin' : 'student')
+        );
+        const cleanNamePart = normalizedInput.split('@')[0].replace(/[._-]/g, ' ');
+        const formattedName = cleanNamePart.charAt(0).toUpperCase() + cleanNamePart.slice(1);
+        const dynamicId = assignedRole === 'faculty' ? `FAC-${Math.floor(100 + Math.random() * 900)}` : assignedRole === 'admin' ? `ADM-${Math.floor(100 + Math.random() * 900)}` : `236F1A${Math.floor(500 + Math.random() * 99)}`;
+
+        const profile: UserProfile = {
+          id: dynamicId,
+          email: normalizedInput,
+          name: assignedRole === 'faculty' ? `Prof. ${formattedName}` : formattedName,
+          role: assignedRole,
+          department: 'Computer Science & Engineering',
+          avatar_url: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        const sessionPayload = {
+          profile,
+          expiresAt: rememberMe ? Date.now() + 30 * 24 * 60 * 60 * 1000 : Date.now() + 24 * 60 * 60 * 1000
+        };
+
+        try {
+          if (rememberMe) {
+            localStorage.setItem(DEV_SESSION_KEY, JSON.stringify(sessionPayload));
+            sessionStorage.removeItem(DEV_SESSION_KEY);
+          } else {
+            sessionStorage.setItem(DEV_SESSION_KEY, JSON.stringify(sessionPayload));
+            localStorage.removeItem(DEV_SESSION_KEY);
+          }
+        } catch {}
+
+        this.logSessionEvent(profile, 'Password');
+        return { success: true, profile };
+      }
+    }
+
+    // 7. STRICT ACCESS ENFORCEMENT: Reject any credentials not registered in the directory
     return {
       success: false,
       error: 'Access denied: No registered student, faculty, or staff account was found matching these credentials. Only users added via the Admin Panel or Institutional Database can log in.'

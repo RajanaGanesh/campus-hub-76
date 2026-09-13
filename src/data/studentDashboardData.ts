@@ -106,6 +106,10 @@ export interface StudentDashboardData {
   presentCount?: number;
   absentCount?: number;
   totalClasses?: number;
+  labAttendancePercentage?: number;
+  labPresentCount?: number;
+  labAbsentCount?: number;
+  labTotalClasses?: number;
   attendanceSubjects: AttendanceSubject[];
   performanceHistory: PerformanceSem[];
   timetable: TimetableClass[];
@@ -132,36 +136,51 @@ export interface StudentDashboardData {
 
 export const studentDashboardData: StudentDashboardData = {
   profile: {
-    studentId: '',
+    studentId: '236F1A0551',
     department: 'Computer Science & Engineering',
-    yearSection: '1st Year • CSE-A',
-    semester: '1st Semester',
-    email: '',
-    avatarInitials: 'ST'
+    yearSection: 'IV Year • CSE-A',
+    semester: '8th Semester',
+    email: 'student@campushub.edu',
+    avatarInitials: 'AV'
   },
   stats: [
-    { icon: 'fa-user-check', title: 'Attendance', value: '0%', description: 'Overall Attendance', status: 'Active', statusType: 'active', progress: 0, colorVariant: 'primary' },
-    { icon: 'fa-award', title: 'CGPA', value: '0.0', description: 'Current CGPA', status: 'Active', statusType: 'active', colorVariant: 'cyan' },
-    { icon: 'fa-file-invoice', title: 'Assignments', value: '0', description: 'Pending Assignments', status: 'None', statusType: 'good', colorVariant: 'green' },
-    { icon: 'fa-receipt', title: 'Exams', value: '0', description: 'Upcoming Exams', status: 'None', statusType: 'active', colorVariant: 'red' },
+    { icon: 'fa-user-check', title: 'Attendance', value: '86.4%', description: 'Overall Attendance (32/36 Labs)', status: 'Safe', statusType: 'good', progress: 86.4, colorVariant: 'primary' },
+    { icon: 'fa-award', title: 'CGPA', value: '8.65', description: 'Current CGPA', status: 'Excellent', statusType: 'excellent', colorVariant: 'cyan' },
+    { icon: 'fa-file-invoice', title: 'Assignments', value: '3', description: 'Pending Assignments', status: 'Due Soon', statusType: 'due', colorVariant: 'green' },
+    { icon: 'fa-receipt', title: 'Exams', value: '2', description: 'Upcoming Exams', status: 'Prepare', statusType: 'active', colorVariant: 'red' },
     { icon: 'fa-wallet', title: 'Pending Fees', value: '₹0', description: 'Pending Tuition', status: 'Paid', statusType: 'good', colorVariant: 'green' },
-    { icon: 'fa-book-open', title: 'Library Books', value: '0', description: 'Books Issued', status: 'None', statusType: 'active', colorVariant: 'cyan' }
+    { icon: 'fa-book-open', title: 'Library Books', value: '2', description: 'Books Issued', status: 'Active', statusType: 'active', colorVariant: 'cyan' }
   ],
-  overallAttendance: 0,
+  overallAttendance: 86.4,
+  presentCount: 216,
+  absentCount: 28,
+  totalClasses: 250,
+  labAttendancePercentage: 88.9,
+  labPresentCount: 32,
+  labAbsentCount: 4,
+  labTotalClasses: 36,
   attendanceSubjects: [],
-  performanceHistory: [],
+  performanceHistory: [
+    { semester: 'Sem 1', cgpa: 8.2 },
+    { semester: 'Sem 2', cgpa: 8.4 },
+    { semester: 'Sem 3', cgpa: 8.5 },
+    { semester: 'Sem 4', cgpa: 8.3 },
+    { semester: 'Sem 5', cgpa: 8.7 },
+    { semester: 'Sem 6', cgpa: 8.6 },
+    { semester: 'Sem 7', cgpa: 8.8 }
+  ],
   timetable: [],
   assignments: [],
   exams: [],
   results: [],
   fees: {
-    total: 0,
-    paid: 0,
+    total: 85000,
+    paid: 85000,
     pending: 0,
-    dueDate: 'No dues'
+    dueDate: 'All dues clear'
   },
   library: {
-    issued: 0,
+    issued: 2,
     dueSoonCount: 0,
     overdueCount: 0,
     books: []

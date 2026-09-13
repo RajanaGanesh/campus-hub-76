@@ -8,7 +8,6 @@ import {
   LeaveApplication,
   AttendanceSummary,
   initialAttendanceSummary,
-  subjectAttendanceData,
   initialLeaveApplications
 } from '../../data/attendanceData';
 import {
@@ -22,14 +21,67 @@ export const StudentAttendance: React.FC = () => {
   const effectiveProfile = useEffectiveUserProfile();
   const studentRoll = (effectiveProfile as any).rollNumber || '236F1A0551';
 
-  // Core Data States
+  // -------------------------------------------------------------
+  // 1. OVERALL ATTENDANCE SUMMARY METRICS
+  // -------------------------------------------------------------
   const [summary] = useState<AttendanceSummary>(initialAttendanceSummary);
-  
-  // Sent Shortage Notices & Emails State
+
+  // -------------------------------------------------------------
+  // 2. INTERACTIVE "WHAT-IF" ATTENDANCE CALCULATOR STATE (OVERALL & LAB)
+  // -------------------------------------------------------------
+  const [calcMode, setCalcMode] = useState<'overall' | 'lab'>('overall');
+  const [calcTargetGoal, setCalcTargetGoal] = useState<number>(75); // Target percentage
+  const [calcUpcomingAttend, setCalcUpcomingAttend] = useState<number>(5);
+  const [calcUpcomingMiss, setCalcUpcomingMiss] = useState<number>(0);
+  const [calcLabAttend, setCalcLabAttend] = useState<number>(2);
+  const [calcLabMiss, setCalcLabMiss] = useState<number>(0);
+
+  // Dynamic simulation math for overall aggregate attendance and laboratory attendance
+  const simulationResult = useMemo(() => {
+    const isLab = calcMode === 'lab';
+    const currentAttended = isLab ? (summary.labAttended || 32) : summary.totalAttended;
+    const currentHeld = isLab ? (summary.labHeld || 36) : summary.totalHeld;
+    const upcomingAttend = isLab ? calcLabAttend : calcUpcomingAttend;
+    const upcomingMiss = isLab ? calcLabMiss : calcUpcomingMiss;
+
+    const currentPct = currentHeld > 0 ? (currentAttended / currentHeld) * 100 : 0;
+    const projectedAttended = currentAttended + upcomingAttend;
+    const projectedHeld = currentHeld + upcomingAttend + upcomingMiss;
+    const projectedPct = projectedHeld > 0 ? Number(((projectedAttended / projectedHeld) * 100).toFixed(1)) : 0;
+
+    // Required consecutive classes/labs to reach target goal:
+    const targetRatio = calcTargetGoal / 100;
+    let classesNeededToTarget = 0;
+    if (currentPct < calcTargetGoal) {
+      if (targetRatio < 1) {
+        classesNeededToTarget = Math.max(0, Math.ceil((targetRatio * currentHeld - currentAttended) / (1 - targetRatio)));
+      }
+    }
+
+    // Safe bunks / classes that can be missed before dropping below target goal:
+    let safeBunksAvailable = 0;
+    if (currentPct >= calcTargetGoal && targetRatio > 0) {
+      safeBunksAvailable = Math.max(0, Math.floor(currentAttended / targetRatio - currentHeld));
+    }
+
+    return {
+      isLab,
+      currentPct: Number(currentPct.toFixed(1)),
+      projectedPct,
+      classesNeededToTarget,
+      safeBunksAvailable,
+      delta: Number((projectedPct - currentPct).toFixed(1)),
+      upcomingAttend,
+      upcomingMiss
+    };
+  }, [summary, calcMode, calcUpcomingAttend, calcUpcomingMiss, calcLabAttend, calcLabMiss, calcTargetGoal]);
+
+  // -------------------------------------------------------------
+  // 4. SENT SHORTAGE NOTICES & REAL-TIME EMAILS STATE
+  // -------------------------------------------------------------
   const [shortageEmails, setShortageEmails] = useState<AttendanceShortageEmailRecord[]>(() => getAttendanceShortageEmails());
   const [selectedNoticeEmail, setSelectedNoticeEmail] = useState<AttendanceShortageEmailRecord | null>(null);
 
-  // Subscribe to real-time email dispatch events
   useEffect(() => {
     const handleSync = () => {
       setShortageEmails(getAttendanceShortageEmails());
@@ -44,7 +96,6 @@ export const StudentAttendance: React.FC = () => {
     };
   }, []);
 
-  // Filter notices for this student (matching email, roll number, or student name, or general attendance shortage)
   const studentShortageNotices = useMemo(() => {
     const cleanEmail = (effectiveProfile.email || '').toLowerCase().trim();
     const cleanRoll = studentRoll.toLowerCase().trim();
@@ -67,7 +118,9 @@ export const StudentAttendance: React.FC = () => {
     return matched.length > 0 ? matched : shortageEmails;
   }, [shortageEmails, effectiveProfile, studentRoll]);
 
-  // Leaves state seeded with storage or initial mock
+  // -------------------------------------------------------------
+  // 5. LEAVES & ON-DUTY (OD) APPLICATIONS STATE
+  // -------------------------------------------------------------
   const [leaves, setLeaves] = useState<LeaveApplication[]>(() => {
     try {
       const stored = localStorage.getItem(LEAVES_STORAGE_KEY);
@@ -78,10 +131,7 @@ export const StudentAttendance: React.FC = () => {
     return initialLeaveApplications;
   });
 
-  // Leave Filter State
   const [leaveStatusFilter, setLeaveStatusFilter] = useState<'All' | 'Approved' | 'Pending Advisor Review' | 'Medical' | 'On-Duty'>('All');
-
-  // Leave Modal State
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [leaveType, setLeaveType] = useState<'Medical Leave' | 'On-Duty (OD) Academic' | 'On-Duty (OD) Sports' | 'Casual Leave'>('Medical Leave');
   const [leaveFrom, setLeaveFrom] = useState('');
@@ -98,7 +148,6 @@ export const StudentAttendance: React.FC = () => {
     setTimeout(() => setToastMsg(null), 3500);
   };
 
-  // Filtered Leaves List
   const filteredLeaves = leaves.filter((item) => {
     if (leaveStatusFilter === 'All') return true;
     if (leaveStatusFilter === 'Approved') return item.status === 'Approved';
@@ -108,7 +157,6 @@ export const StudentAttendance: React.FC = () => {
     return true;
   });
 
-  // Handle Submit Leave Request
   const handleApplyLeave = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -155,7 +203,7 @@ export const StudentAttendance: React.FC = () => {
     showToast(`Leave application #${newApp.id} submitted for faculty approval!`, 'success');
   };
 
-  // Download official attendance report
+  // Download official attendance transcript
   const handleDownloadReport = () => {
     downloadAttendanceReport({
       studentName: effectiveProfile.name,
@@ -165,19 +213,16 @@ export const StudentAttendance: React.FC = () => {
       overallPercentage: summary.overallPercentage,
       totalHeld: summary.totalHeld,
       totalAttended: summary.totalAttended,
-      subjects: subjectAttendanceData.map((s) => ({
-        code: s.code,
-        name: s.name,
-        conducted: s.totalConducted,
-        attended: s.totalAttended,
-        percentage: s.percentage,
-        status: s.status === 'Safe' ? 'SAFE (>=75%)' : s.status === 'Warning' ? 'WARNING (<80%)' : 'CRITICAL (<75%)'
-      }))
+      labHeld: summary.labHeld,
+      labAttended: summary.labAttended,
+      labPercentage: summary.labPercentage,
+      theoryHeld: summary.theoryHeld,
+      theoryAttended: summary.theoryAttended,
+      theoryPercentage: summary.theoryPercentage
     });
     showToast(`Consolidated Attendance Transcript for "${effectiveProfile.name}" downloaded!`, 'success');
   };
 
-  // SVG Gauge calculations
   const gaugeRadius = 46;
 
   return (
@@ -288,8 +333,8 @@ export const StudentAttendance: React.FC = () => {
               <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>
                 Attendance & Leave Registry
               </h1>
-              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0, maxWidth: '640px', lineHeight: 1.5 }}>
-                Track overall attendance standing, review official attendance shortage warning emails, submit On-Duty (OD) / Medical leave applications, and view faculty advisor approvals.
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0, maxWidth: '680px', lineHeight: 1.5 }}>
+                Track overall attendance standing, simulate safe bunks with the interactive attendance planner, review official attendance shortage warning communications, and submit On-Duty (OD) / Medical leave applications.
               </p>
             </div>
 
@@ -319,12 +364,12 @@ export const StudentAttendance: React.FC = () => {
         </div>
 
         {/* =========================================================================
-            2. KEY METRIC STAT CARDS & GAUGE
+            2. KEY METRIC STAT CARDS & GAUGE (INCLUDING DEDICATED LAB ATTENDANCE)
             ========================================================================= */}
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
             gap: '16px',
             marginBottom: '24px'
           }}
@@ -369,25 +414,25 @@ export const StudentAttendance: React.FC = () => {
             </div>
 
             {/* Circular Gauge */}
-            <div style={{ position: 'relative', width: '84px', height: '84px', flexShrink: 0 }}>
-              <svg style={{ width: '84px', height: '84px', transform: 'rotate(-90deg)' }}>
+            <div style={{ position: 'relative', width: '80px', height: '80px', flexShrink: 0 }}>
+              <svg style={{ width: '80px', height: '80px', transform: 'rotate(-90deg)' }}>
                 <circle
-                  cx="42"
-                  cy="42"
-                  r={gaugeRadius - 12}
+                  cx="40"
+                  cy="40"
+                  r={gaugeRadius - 14}
                   stroke="var(--border-color)"
-                  strokeWidth="8"
+                  strokeWidth="7"
                   fill="transparent"
                 />
                 <circle
-                  cx="42"
-                  cy="42"
-                  r={gaugeRadius - 12}
+                  cx="40"
+                  cy="40"
+                  r={gaugeRadius - 14}
                   stroke={summary.overallPercentage >= 75 ? "#2563eb" : "#ef4444"}
-                  strokeWidth="8"
+                  strokeWidth="7"
                   fill="transparent"
-                  strokeDasharray={2 * Math.PI * (gaugeRadius - 12)}
-                  strokeDashoffset={2 * Math.PI * (gaugeRadius - 12) * (1 - summary.overallPercentage / 100)}
+                  strokeDasharray={2 * Math.PI * (gaugeRadius - 14)}
+                  strokeDashoffset={2 * Math.PI * (gaugeRadius - 14) * (1 - summary.overallPercentage / 100)}
                   strokeLinecap="round"
                   style={{ transition: 'stroke-dashoffset 0.8s ease' }}
                 />
@@ -399,7 +444,7 @@ export const StudentAttendance: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '13px',
+                  fontSize: '12.5px',
                   fontWeight: 800,
                   color: 'var(--text-primary)'
                 }}
@@ -409,39 +454,48 @@ export const StudentAttendance: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 2: Lectures Attended vs Conducted */}
-          <div className="c1-card" style={{ padding: '20px', borderRadius: '14px' }}>
+          {/* Card 2: Dedicated LAB ATTENDANCE COUNT */}
+          <div
+            className="c1-card"
+            style={{
+              padding: '20px',
+              borderRadius: '14px',
+              background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(59, 130, 246, 0.05) 100%)',
+              border: '1px solid rgba(6, 182, 212, 0.3)'
+            }}
+          >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>LECTURES ATTENDED</span>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(37, 99, 235, 0.12)', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <i className="fa-solid fa-user-check"></i>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#0284c7' }}>LAB ATTENDANCE</span>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(6, 182, 212, 0.15)', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <i className="fa-solid fa-flask-vial"></i>
               </div>
             </div>
             <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>
-              {summary.totalAttended} <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)' }}>/ {summary.totalHeld} Held</span>
+              {summary.labAttended} <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)' }}>/ {summary.labHeld} Labs ({summary.labPercentage}%)</span>
             </div>
-            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: '6px 0 0 0' }}>
-              8 Enrolled Courses (6 Theory • 2 Labs)
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  color: '#059669'
+                }}
+              >
+                <i className="fa-solid fa-circle-check"></i>
+                Lab Safe ({summary.labAbsent} missed • {summary.labHoursCompleted}/{summary.labTotalHours} hrs)
+              </span>
+            </div>
           </div>
 
-          {/* Card 3: Missed Classes & OD Credit */}
-          <div className="c1-card" style={{ padding: '20px', borderRadius: '14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>MISSED & ON-DUTY (OD)</span>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <i className="fa-solid fa-calendar-xmark"></i>
-              </div>
-            </div>
-            <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>
-              {summary.totalAbsent} <span style={{ fontSize: '13px', fontWeight: 600, color: '#0284c7' }}>+ {summary.totalOnDuty} ODs Excused</span>
-            </div>
-            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: '6px 0 0 0' }}>
-              {summary.consecutivePresentStreak} days continuous attendance streak
-            </p>
-          </div>
 
-          {/* Card 4: Examination Hall Ticket Status */}
+
+          {/* Card 5: Examination Hall Ticket Status */}
           <div className="c1-card" style={{ padding: '20px', borderRadius: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
               <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>EXAM ELIGIBILITY</span>
@@ -453,13 +507,410 @@ export const StudentAttendance: React.FC = () => {
               {summary.examEligibility}
             </div>
             <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: '6px 0 0 0' }}>
-              Hall Ticket Clear for End-Semester Exams
+              Theory & Practical Hall Tickets Active
             </p>
           </div>
         </div>
 
         {/* =========================================================================
-            OFFICIAL ATTENDANCE NOTICES & SENT EMAILS LOG
+            DEDICATED LABORATORY & PRACTICAL ATTENDANCE SUMMARY CARD
+            ========================================================================= */}
+        <div
+          className="c1-card"
+          style={{
+            padding: '22px 26px',
+            borderRadius: '16px',
+            marginBottom: '24px',
+            background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(14, 165, 233, 0.04) 100%)',
+            border: '1px solid rgba(6, 182, 212, 0.25)'
+          }}
+        >
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div
+                style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '10px',
+                  background: 'rgba(6, 182, 212, 0.15)',
+                  color: '#0284c7',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '20px'
+                }}
+              >
+                <i className="fa-solid fa-flask-vial"></i>
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h3 style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                    Laboratory & Practical Attendance Register
+                  </h3>
+                  <span className="c1-badge c1-badge-success" style={{ fontSize: '11px', fontWeight: 700 }}>
+                    Practical Cleared (88.9%)
+                  </span>
+                </div>
+                <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
+                  Mandatory University Practical Attendance Benchmark: Minimum 75.0% lab presence required for semester-end practical examinations.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block' }}>Practical Lab Standing</span>
+                <strong style={{ fontSize: '18px', color: '#0284c7', fontWeight: 800 }}>{summary.labAttended} / {summary.labHeld} Sessions</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* 4 Lab Metric Pills */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginTop: '14px' }}>
+            <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Lab Sessions Attended</span>
+              <div style={{ fontSize: '18px', fontWeight: 800, color: '#10b981' }}>{summary.labAttended} <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)' }}>of {summary.labHeld}</span></div>
+              <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>88.9% Lab Attendance Rate</span>
+            </div>
+
+            <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Practical Lab Hours</span>
+              <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--accent-blue)' }}>{summary.labHoursCompleted} <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)' }}>/ {summary.labTotalHours} Hours</span></div>
+              <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Hands-on computing & capstone</span>
+            </div>
+
+            <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Safe Lab Bunks Available</span>
+              <div style={{ fontSize: '18px', fontWeight: 800, color: '#059669' }}>2 Labs</div>
+              <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Without dropping below 75% cutoff</span>
+            </div>
+
+            <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Lab Practical Hall Ticket</span>
+              <div style={{ fontSize: '18px', fontWeight: 800, color: '#10b981' }}>APPROVED</div>
+              <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Workbooks & viva record clear</span>
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div style={{ marginTop: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
+              <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Laboratory Practical Attendance Progress</span>
+              <strong style={{ color: '#0284c7' }}>{summary.labPercentage}% (Target: 75.0% Min.)</strong>
+            </div>
+            <div style={{ width: '100%', height: '8px', background: 'var(--bg-primary)', borderRadius: '6px', overflow: 'hidden', position: 'relative' }}>
+              <div
+                style={{
+                  width: `${summary.labPercentage}%`,
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #06b6d4, #3b82f6)',
+                  borderRadius: '6px',
+                  transition: 'width 0.8s ease'
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* =========================================================================
+            3. INTERACTIVE "WHAT-IF" ATTENDANCE CALCULATOR & BUNK SIMULATOR (OVERALL & LAB)
+            ========================================================================= */}
+        <div
+          className="c1-card"
+          style={{
+            padding: '24px 28px',
+            borderRadius: '16px',
+            marginBottom: '24px',
+            background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.04) 0%, rgba(99, 102, 241, 0.02) 100%)',
+            border: '1px solid var(--border-color)'
+          }}
+        >
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '14px', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: calcMode === 'lab' ? 'rgba(6, 182, 212, 0.15)' : 'rgba(37, 99, 235, 0.12)', color: calcMode === 'lab' ? '#0284c7' : 'var(--accent-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+                <i className={calcMode === 'lab' ? 'fa-solid fa-flask-vial' : 'fa-solid fa-calculator'}></i>
+              </div>
+              <div>
+                <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                  Interactive Attendance "What-If" Calculator & Simulator
+                </h2>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
+                  Simulate future lecture attendances, laboratory practicals, or safe bunks to project your expected percentage and ensure exam eligibility.
+                </p>
+              </div>
+            </div>
+
+            {/* Simulation Mode Switcher: Overall vs Lab */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg-secondary)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+              <button
+                type="button"
+                onClick={() => setCalcMode('overall')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: calcMode === 'overall' ? 'var(--accent-blue)' : 'transparent',
+                  color: calcMode === 'overall' ? '#ffffff' : 'var(--text-secondary)',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <i className="fa-solid fa-chart-pie"></i>
+                <span>Overall Lectures</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCalcMode('lab')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: calcMode === 'lab' ? '#0284c7' : 'transparent',
+                  color: calcMode === 'lab' ? '#ffffff' : 'var(--text-secondary)',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <i className="fa-solid fa-flask-vial"></i>
+                <span>Lab & Practicals</span>
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginTop: '10px' }}>
+            {/* Input Controls */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--bg-secondary)', padding: '20px', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
+              {/* Target Goal Threshold */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    Target {calcMode === 'lab' ? 'Laboratory' : 'Overall'} Goal: <strong style={{ color: calcMode === 'lab' ? '#0284c7' : 'var(--accent-blue)' }}>{calcTargetGoal}%</strong>
+                  </label>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Min. 75% for {calcMode === 'lab' ? 'Practical Exam' : 'Hall Ticket'}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {[75, 80, 85, 90].map((goalVal) => (
+                    <button
+                      key={goalVal}
+                      type="button"
+                      onClick={() => setCalcTargetGoal(goalVal)}
+                      style={{
+                        flex: 1,
+                        padding: '8px 0',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border-color)',
+                        background: calcTargetGoal === goalVal ? (calcMode === 'lab' ? '#0284c7' : 'var(--accent-blue)') : 'var(--bg-card)',
+                        color: calcTargetGoal === goalVal ? '#ffffff' : 'var(--text-primary)',
+                        fontSize: '12.5px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      {goalVal}%
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Upcoming Classes / Labs Simulation Inputs */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#10b981', marginBottom: '6px' }}>
+                    + {calcMode === 'lab' ? 'Lab Sessions' : 'Classes'} to Attend
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={50}
+                    value={calcMode === 'lab' ? calcLabAttend : calcUpcomingAttend}
+                    onChange={(e) => {
+                      const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+                      if (calcMode === 'lab') setCalcLabAttend(val);
+                      else setCalcUpcomingAttend(val);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border-color)',
+                      background: 'var(--bg-card)',
+                      color: 'var(--text-primary)',
+                      fontSize: '13px',
+                      fontWeight: 600
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#ef4444', marginBottom: '6px' }}>
+                    - {calcMode === 'lab' ? 'Lab Sessions' : 'Classes'} to Miss
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={50}
+                    value={calcMode === 'lab' ? calcLabMiss : calcUpcomingMiss}
+                    onChange={(e) => {
+                      const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+                      if (calcMode === 'lab') setCalcLabMiss(val);
+                      else setCalcUpcomingMiss(val);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border-color)',
+                      background: 'var(--bg-card)',
+                      color: 'var(--text-primary)',
+                      fontSize: '13px',
+                      fontWeight: 600
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Quick Preset Buttons */}
+              <div>
+                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Quick Scenario Presets:</span>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {calcMode === 'lab' ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => { setCalcLabAttend(1); setCalcLabMiss(0); }}
+                        style={{ padding: '6px 12px', fontSize: '11.5px', fontWeight: 600, borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-card)', color: 'var(--text-primary)', cursor: 'pointer' }}
+                      >
+                        +1 Lab
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setCalcLabAttend(2); setCalcLabMiss(0); }}
+                        style={{ padding: '6px 12px', fontSize: '11.5px', fontWeight: 600, borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-card)', color: 'var(--text-primary)', cursor: 'pointer' }}
+                      >
+                        +2 Labs
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setCalcLabAttend(0); setCalcLabMiss(1); }}
+                        style={{ padding: '6px 12px', fontSize: '11.5px', fontWeight: 600, borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-card)', color: 'var(--text-primary)', cursor: 'pointer' }}
+                      >
+                        -1 Lab Missed
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setCalcLabAttend(0); setCalcLabMiss(2); }}
+                        style={{ padding: '6px 12px', fontSize: '11.5px', fontWeight: 600, borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-card)', color: 'var(--text-primary)', cursor: 'pointer' }}
+                      >
+                        -2 Labs Missed
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => { setCalcUpcomingAttend(5); setCalcUpcomingMiss(0); }}
+                        style={{ padding: '6px 12px', fontSize: '11.5px', fontWeight: 600, borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-card)', color: 'var(--text-primary)', cursor: 'pointer' }}
+                      >
+                        +5 Present
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setCalcUpcomingAttend(10); setCalcUpcomingMiss(0); }}
+                        style={{ padding: '6px 12px', fontSize: '11.5px', fontWeight: 600, borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-card)', color: 'var(--text-primary)', cursor: 'pointer' }}
+                      >
+                        +10 Present
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setCalcUpcomingAttend(0); setCalcUpcomingMiss(2); }}
+                        style={{ padding: '6px 12px', fontSize: '11.5px', fontWeight: 600, borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-card)', color: 'var(--text-primary)', cursor: 'pointer' }}
+                      >
+                        -2 Missed
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setCalcUpcomingAttend(0); setCalcUpcomingMiss(5); }}
+                        style={{ padding: '6px 12px', fontSize: '11.5px', fontWeight: 600, borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-card)', color: 'var(--text-primary)', cursor: 'pointer' }}
+                      >
+                        -5 Missed
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Simulation Forecast Result Box */}
+            <div style={{ background: 'var(--bg-secondary)', padding: '20px', borderRadius: '14px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                    {calcMode === 'lab' ? 'Laboratory Practical Projection' : 'Overall Simulation Projection'}
+                  </span>
+                  <span className={`c1-badge ${simulationResult.projectedPct >= 75 ? 'c1-badge-success' : 'c1-badge-error'}`} style={{ fontSize: '11px', fontWeight: 700 }}>
+                    {simulationResult.projectedPct >= 75 ? (calcMode === 'lab' ? 'Practical Exam Cleared' : 'Hall Ticket Eligible') : (calcMode === 'lab' ? 'Lab Detention Risk' : 'Detention Risk')}
+                  </span>
+                </div>
+
+                {/* Big Rate Comparison */}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '14px' }}>
+                  <span style={{ fontSize: '34px', fontWeight: 800, color: simulationResult.projectedPct >= 75 ? (calcMode === 'lab' ? '#0284c7' : '#10b981') : '#ef4444' }}>
+                    {simulationResult.projectedPct}%
+                  </span>
+                  <span style={{ fontSize: '13.5px', color: 'var(--text-secondary)' }}>
+                    from <strong>{simulationResult.currentPct}%</strong> ({simulationResult.delta >= 0 ? `+${simulationResult.delta}%` : `${simulationResult.delta}%`})
+                  </span>
+                </div>
+
+                {/* Insights and Advice */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12.5px', lineHeight: 1.5 }}>
+                  {simulationResult.safeBunksAvailable > 0 ? (
+                    <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)', color: '#059669', fontWeight: 500 }}>
+                      <i className="fa-solid fa-circle-check" style={{ marginRight: '6px' }}></i>
+                      You can safely miss up to <strong>{simulationResult.safeBunksAvailable} more {calcMode === 'lab' ? 'lab practicals' : 'classes'}</strong> without dropping below {calcTargetGoal}%.
+                    </div>
+                  ) : simulationResult.classesNeededToTarget > 0 ? (
+                    <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#dc2626', fontWeight: 500 }}>
+                      <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '6px' }}></i>
+                      You need to attend next <strong>{simulationResult.classesNeededToTarget} consecutive {calcMode === 'lab' ? 'lab sessions' : 'classes'}</strong> to reach {calcTargetGoal}%.
+                    </div>
+                  ) : (
+                    <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.25)', color: '#0284c7', fontWeight: 500 }}>
+                      <i className="fa-solid fa-circle-info" style={{ marginRight: '6px' }}></i>
+                      Your {calcMode === 'lab' ? 'lab' : 'overall'} attendance is currently exactly at the {calcTargetGoal}% cutoff.
+                    </div>
+                  )}
+
+                  <div style={{ color: 'var(--text-secondary)', marginTop: '4px', fontSize: '12px' }}>
+                    Simulating <strong>{simulationResult.upcomingAttend} attended</strong> and <strong>{simulationResult.upcomingMiss} missed</strong> upcoming {calcMode === 'lab' ? 'laboratory practical sessions' : 'sessions for aggregate institutional records'}.
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ paddingTop: '14px', borderTop: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                <span>University Guideline: 75.0% Mandatory Cutoff</span>
+                <span style={{ color: calcMode === 'lab' ? '#0284c7' : 'var(--accent-blue)', fontWeight: 600 }}>{calcMode === 'lab' ? 'Lab Workstation Verified' : 'Biometric Gateway Synced'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+
+        {/* =========================================================================
+            5. OFFICIAL ATTENDANCE NOTICES & SENT EMAILS LOG
             ========================================================================= */}
         <div className="c1-card" style={{ padding: '24px', borderRadius: '16px', marginBottom: '24px' }}>
           <div
@@ -568,7 +1019,7 @@ export const StudentAttendance: React.FC = () => {
         </div>
 
         {/* =========================================================================
-            3. LEAVE & ON-DUTY (OD) APPLICATIONS SECTION
+            6. LEAVE & ON-DUTY (OD) APPLICATIONS SECTION
             ========================================================================= */}
         <div className="c1-card" style={{ padding: '24px', borderRadius: '16px' }}>
           <div

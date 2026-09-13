@@ -49,6 +49,19 @@ export interface AttendanceSummary {
   totalAttended: number;
   totalAbsent: number;
   totalOnDuty: number;
+  // Dedicated Laboratory Attendance metrics
+  labHeld: number;
+  labAttended: number;
+  labAbsent: number;
+  labPercentage: number;
+  labRequiredPercentage: number;
+  labHoursCompleted: number;
+  labTotalHours: number;
+  // Dedicated Theory Attendance metrics
+  theoryHeld: number;
+  theoryAttended: number;
+  theoryAbsent: number;
+  theoryPercentage: number;
   minRequiredPercentage: number;
   examEligibility: 'Eligible' | 'Conditional' | 'Detained';
   consecutivePresentStreak: number;
@@ -61,6 +74,17 @@ export const initialAttendanceSummary: AttendanceSummary = {
   totalAttended: 216,
   totalAbsent: 28,
   totalOnDuty: 6,
+  labHeld: 36,
+  labAttended: 32,
+  labAbsent: 4,
+  labPercentage: 88.9,
+  labRequiredPercentage: 75.0,
+  labHoursCompleted: 72,
+  labTotalHours: 80,
+  theoryHeld: 214,
+  theoryAttended: 184,
+  theoryAbsent: 24,
+  theoryPercentage: 86.0,
   minRequiredPercentage: 75.0,
   examEligibility: 'Eligible',
   consecutivePresentStreak: 12,

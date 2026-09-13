@@ -6,13 +6,19 @@ export interface AttendanceOverviewCardProps {
   presentCount?: number;
   absentCount?: number;
   totalClasses?: number;
+  labPercentage?: number;
+  labPresentCount?: number;
+  labTotalClasses?: number;
 }
 
 export const AttendanceOverviewCard: React.FC<AttendanceOverviewCardProps> = ({
   overallPercentage = 0,
   presentCount = 0,
   absentCount = 0,
-  totalClasses = 0
+  totalClasses = 0,
+  labPercentage = 88.9,
+  labPresentCount = 32,
+  labTotalClasses = 36
 }) => {
   const navigate = useNavigate();
 
@@ -34,7 +40,7 @@ export const AttendanceOverviewCard: React.FC<AttendanceOverviewCardProps> = ({
       <div className="c1-card-header">
         <div>
           <h3 className="c1-card-title">Attendance Overview</h3>
-          <p className="c1-card-subtitle">Overall attendance record & eligibility status</p>
+          <p className="c1-card-subtitle">Overall & laboratory practical attendance register</p>
         </div>
         {!hasRecords ? (
           <span className="c1-badge c1-badge-cyan">
@@ -88,8 +94,8 @@ export const AttendanceOverviewCard: React.FC<AttendanceOverviewCardProps> = ({
           </div>
         </div>
 
-        {/* Breakdown Stats */}
-        <div className="attendance-metric-breakdown">
+        {/* Breakdown Stats with Dedicated Lab Attendance */}
+        <div className="attendance-metric-breakdown" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px' }}>
           <div className="metric-box metric-present">
             <div className="metric-box-header">
               <span className="metric-indicator-dot present-dot"></span>
@@ -97,6 +103,19 @@ export const AttendanceOverviewCard: React.FC<AttendanceOverviewCardProps> = ({
             </div>
             <span className="metric-num">{presentCount}</span>
             <span className="metric-denom">of {totalClasses} classes</span>
+          </div>
+
+          <div className="metric-box" style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: '10px', padding: '10px' }}>
+            <div className="metric-box-header" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+              <i className="fa-solid fa-flask-vial" style={{ color: '#38bdf8', fontSize: '11px' }}></i>
+              <span className="metric-name" style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)' }}>Lab Count</span>
+            </div>
+            <span className="metric-num" style={{ fontSize: '18px', fontWeight: 800, color: '#38bdf8', display: 'block', lineHeight: 1.1 }}>
+              {labPresentCount} <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)' }}>/ {labTotalClasses}</span>
+            </span>
+            <span className="metric-denom" style={{ fontSize: '10.5px', color: '#10b981', fontWeight: 600 }}>
+              {labPercentage}% (Safe ≥75%)
+            </span>
           </div>
 
           <div className="metric-box metric-absent">

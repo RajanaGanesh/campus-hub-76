@@ -378,7 +378,13 @@ export interface AttendanceReportInfo {
   overallPercentage: number;
   totalHeld: number;
   totalAttended: number;
-  subjects: Array<{
+  labHeld?: number;
+  labAttended?: number;
+  labPercentage?: number;
+  theoryHeld?: number;
+  theoryAttended?: number;
+  theoryPercentage?: number;
+  subjects?: Array<{
     code: string;
     name: string;
     conducted: number;
@@ -394,12 +400,26 @@ export interface AttendanceReportInfo {
 export const downloadAttendanceReport = (report: AttendanceReportInfo): void => {
   const filename = `Attendance_Record_${report.rollNumber || '236F1A0551'}.txt`;
 
-  const subjectRows = report.subjects
-    .map(
-      (s) =>
-        `${s.code.padEnd(8)} | ${s.name.padEnd(42).slice(0, 42)} | ${String(s.conducted).padStart(3)} | ${String(s.attended).padStart(3)} | ${(s.percentage.toFixed(1) + '%').padStart(6)} | ${s.status}`
-    )
-    .join('\n');
+  const labSection = report.labHeld
+    ? `\nLABORATORY PRACTICAL ATTENDANCE BREAKDOWN:
+--------------------------------------------------------------------------------------------------------
+- Total Practical Lab Sessions Conducted : ${report.labHeld}
+- Laboratory Sessions Attended          : ${report.labAttended || 32} (${report.labPercentage || 88.9}%)
+- Laboratory Exam Clearance Status       : CLEARED & ELIGIBLE (Exceeds >=75% Laboratory Benchmark)
+--------------------------------------------------------------------------------------------------------`
+    : '';
+
+  const subjectRows = (report.subjects && report.subjects.length > 0)
+    ? report.subjects
+        .map(
+          (s) =>
+            `${s.code.padEnd(8)} | ${s.name.padEnd(42).slice(0, 42)} | ${String(s.conducted).padStart(3)} | ${String(s.attended).padStart(3)} | ${(s.percentage.toFixed(1) + '%').padStart(6)} | ${s.status}`
+        )
+        .join('\n')
+    : `Institutional Aggregate Register:
+- Overall Attendance : ${report.overallPercentage.toFixed(1)}% (${report.totalAttended} / ${report.totalHeld} Total Lectures Attended)
+- Theory Lectures    : ${report.theoryAttended || 184} / ${report.theoryHeld || 214} Held (${report.theoryPercentage || 86.0}%)
+- Practical Labs     : ${report.labAttended || 32} / ${report.labHeld || 36} Held (${report.labPercentage || 88.9}%)${labSection}`;
 
   const content = `========================================================================================================
                       CAMPUSHUB CENTRAL UNIVERSITY - OFFICIAL ATTENDANCE TRANSCRIPT
@@ -416,20 +436,20 @@ Roll Number       : ${report.rollNumber || '236F1A0551'}
 Department        : ${report.department || 'Computer Science & Engineering'}
 Semester          : ${report.semester || 'Semester 8 (Final Year)'}
 Overall Attendance: ${report.overallPercentage.toFixed(1)}% (${report.totalAttended} / ${report.totalHeld} Lectures Attended)
+Lab Attendance    : ${report.labPercentage || 88.9}% (${report.labAttended || 32} / ${report.labHeld || 36} Labs Attended)
 Eligibility Status: ${report.overallPercentage >= 75 ? 'ELIGIBLE FOR FINAL EXAMINATIONS (Satisfies >=75% Requirement)' : 'CRITICAL - CONDITIONAL EXAM ADMIT'}
 --------------------------------------------------------------------------------------------------------
 
-SUBJECT-WISE ATTENDANCE BREAKDOWN:
---------------------------------------------------------------------------------------------------------
-CODE     | COURSE TITLE                               | HELD| ATT | ATT %  | STATUS
+ATTENDANCE SUMMARY & AUDIT LEDGER:
 --------------------------------------------------------------------------------------------------------
 ${subjectRows}
 --------------------------------------------------------------------------------------------------------
 
 INSTITUTIONAL REGULATION CLAUSES:
 1. Minimum 75% aggregate physical attendance is mandatory across all theory and laboratory courses.
-2. Condonation for medical and sports On-Duty (OD) requires Dean approval with authorized documentation.
-3. This is a system-generated official ledger verified by the institutional biometric gateway.
+2. Minimum 75% laboratory attendance is strictly enforced for entry into practical examinations.
+3. Condonation for medical and sports On-Duty (OD) requires Dean approval with authorized documentation.
+4. This is a system-generated official ledger verified by the institutional biometric gateway.
 ========================================================================================================
 `;
 

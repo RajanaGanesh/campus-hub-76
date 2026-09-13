@@ -1,14 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AppLayout } from '../../components/AppLayout';
-import { getManagementData, saveManagementData, CourseRecord } from '../../data/managementData';
+import { getManagementData, saveManagementData, saveLabRecord, deleteLabRecord, CourseRecord, LabRecord } from '../../data/managementData';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 
 export const AdminCourses: React.FC = () => {
   const mgmt = getManagementData();
 
-  // Courses state loaded from persistent storage
+  // Courses & Labs state loaded from persistent storage
   const [courses, setCourses] = useState<CourseRecord[]>(() => mgmt.courses);
+  const [labs, setLabs] = useState<LabRecord[]>(() => mgmt.labs || []);
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -21,7 +22,11 @@ export const AdminCourses: React.FC = () => {
   const [editingCourse, setEditingCourse] = useState<CourseRecord | null>(null);
   const [deletingCourse, setDeletingCourse] = useState<CourseRecord | null>(null);
 
-  // Add Form State
+  // Lab modal state
+  const [addingLabForCourse, setAddingLabForCourse] = useState<CourseRecord | null>(null);
+  const [managingLabsCourse, setManagingLabsCourse] = useState<CourseRecord | null>(null);
+
+  // Add Course Form State
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [dept, setDept] = useState('Computer Science & Engineering');
@@ -29,6 +34,16 @@ export const AdminCourses: React.FC = () => {
   const [facultyId, setFacultyId] = useState('FAC-101');
   const [studentsCount, setStudentsCount] = useState<number>(60);
   const [nextClass, setNextClass] = useState('Mon, Wed 09:00 AM');
+
+  // Add Lab Form State
+  const [labCode, setLabCode] = useState('');
+  const [labName, setLabName] = useState('');
+  const [labRoom, setLabRoom] = useState('CS Lab 2 (Cloud Systems Hub)');
+  const [labFacultyId, setLabFacultyId] = useState('FAC-101');
+  const [labBatch, setLabBatch] = useState('Batch A (Roll 1-30)');
+  const [labScheduleDay, setLabScheduleDay] = useState('Tuesday');
+  const [labScheduleTime, setLabScheduleTime] = useState('02:00 PM - 04:30 PM');
+  const [labStudentsCount, setLabStudentsCount] = useState<number>(30);
 
   // Assign Form
   const [selectedFacId, setSelectedFacId] = useState('FAC-101');
@@ -39,6 +54,88 @@ export const AdminCourses: React.FC = () => {
   const showToast = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
     setToastMsg({ message, type });
     setTimeout(() => setToastMsg(null), 3500);
+  };
+
+  // Sync state on updates
+  useEffect(() => {
+    const handleSync = () => {
+      const fresh = getManagementData();
+      setCourses(fresh.courses);
+      setLabs(fresh.labs || []);
+    };
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('campushub_management_updated', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('campushub_management_updated', handleSync);
+    };
+  }, []);
+
+  // Open Add Lab Modal for a Course
+  const handleOpenAddLab = (course: CourseRecord) => {
+    setAddingLabForCourse(course);
+    setLabCode(`${course.code}L`);
+    setLabName(`${course.name} Lab`);
+    setLabRoom('CS Lab 2 (Cloud Systems Hub)');
+    setLabFacultyId(course.facultyId || 'FAC-101');
+    setLabBatch('Batch A (Roll 1-30)');
+    setLabScheduleDay('Tuesday');
+    setLabScheduleTime('02:00 PM - 04:30 PM');
+    setLabStudentsCount(30);
+  };
+
+  // Save Lab Handler
+  const handleSaveLab = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addingLabForCourse) return;
+
+    const cleanCode = labCode.trim().toUpperCase();
+    const cleanName = labName.trim();
+
+    if (!cleanCode || !cleanName) {
+      showToast('Please fill out all required lab details.', 'error');
+      return;
+    }
+
+    const currentMgmt = getManagementData();
+    const fac = currentMgmt.faculty.find((f) => f.id === labFacultyId);
+
+    const newLab: LabRecord = {
+      id: `LAB-${Date.now()}`,
+      code: cleanCode,
+      name: cleanName,
+      courseCode: addingLabForCourse.code,
+      courseName: addingLabForCourse.name,
+      department: addingLabForCourse.department,
+      semester: addingLabForCourse.semester,
+      facultyId: labFacultyId,
+      facultyName: fac ? fac.name : addingLabForCourse.facultyName,
+      labRoom: labRoom.trim() || 'CS Main Lab 1',
+      batch: labBatch,
+      scheduleDay: labScheduleDay,
+      scheduleTime: labScheduleTime.trim() || '02:00 PM - 04:30 PM',
+      studentsCount: Number(labStudentsCount) || 30,
+      status: 'Active'
+    };
+
+    saveLabRecord(newLab);
+    const updatedMgmt = getManagementData();
+    setLabs(updatedMgmt.labs || []);
+
+    setAddingLabForCourse(null);
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('campushub_management_updated'));
+    showToast(`Lab Practical "${newLab.name}" (${newLab.code}) successfully linked to ${addingLabForCourse.code}!`, 'success');
+  };
+
+  // Delete Lab Handler
+  const handleDeleteLab = (labId: string, labTitle: string) => {
+    deleteLabRecord(labId);
+    const updatedMgmt = getManagementData();
+    setLabs(updatedMgmt.labs || []);
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('campushub_management_updated'));
+    showToast(`Lab "${labTitle}" removed.`, 'info');
   };
 
   // Add Course Handler
@@ -347,85 +444,130 @@ export const AdminCourses: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredCourses.map((c) => (
-                    <tr key={c.code}>
-                      <td>
-                        <span className="course-code-tag">{c.code}</span>
-                      </td>
-                      <td>
-                        <strong style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>{c.name}</strong>
-                      </td>
-                      <td>
-                        <div>
-                          <span className="c1-badge c1-badge-primary" style={{ marginRight: '6px' }}>
-                            {c.department}
+                  {filteredCourses.map((c) => {
+                    const courseLabs = labs.filter((l) => (l.courseCode || '').toUpperCase() === c.code.toUpperCase());
+                    return (
+                      <tr key={c.code}>
+                        <td>
+                          <span className="course-code-tag">{c.code}</span>
+                        </td>
+                        <td>
+                          <strong style={{ color: 'var(--text-primary)', fontSize: '0.9rem', display: 'block' }}>{c.name}</strong>
+                          {courseLabs.length > 0 && (
+                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '6px' }}>
+                              {courseLabs.map((lab) => (
+                                <span
+                                  key={lab.id}
+                                  className="c1-badge"
+                                  style={{
+                                    background: 'rgba(168, 85, 247, 0.12)',
+                                    color: '#c084fc',
+                                    border: '1px solid rgba(168, 85, 247, 0.25)',
+                                    fontSize: '0.7rem',
+                                    padding: '2px 8px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    cursor: 'pointer'
+                                  }}
+                                  onClick={() => setManagingLabsCourse(c)}
+                                  title={`Click to manage labs for ${c.code}`}
+                                >
+                                  <i className="fa-solid fa-flask-vial"></i>
+                                  <span>{lab.code}: {lab.scheduleDay} {lab.scheduleTime} ({lab.batch})</span>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          <div>
+                            <span className="c1-badge c1-badge-primary" style={{ marginRight: '6px' }}>
+                              {c.department}
+                            </span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              {c.semester}
+                            </span>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <i className="fa-solid fa-user-tie" style={{ color: 'var(--accent-blue)', fontSize: '0.8rem' }}></i>
+                            <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{c.facultyName}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <strong>{c.studentsCount}</strong> Students
+                        </td>
+                        <td>
+                          <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                            {c.nextClass || 'TBD'}
                           </span>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                            {c.semester}
+                        </td>
+                        <td>
+                          <span
+                            className={`c1-badge ${
+                              c.status === 'Active' ? 'c1-badge-success' : 'c1-badge-warning'
+                            }`}
+                          >
+                            {c.status}
                           </span>
-                        </div>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <i className="fa-solid fa-user-tie" style={{ color: 'var(--accent-blue)', fontSize: '0.8rem' }}></i>
-                          <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{c.facultyName}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <strong>{c.studentsCount}</strong> Students
-                      </td>
-                      <td>
-                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-                          {c.nextClass || 'TBD'}
-                        </span>
-                      </td>
-                      <td>
-                        <span
-                          className={`c1-badge ${
-                            c.status === 'Active' ? 'c1-badge-success' : 'c1-badge-warning'
-                          }`}
-                        >
-                          {c.status}
-                        </span>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                          <button
-                            type="button"
-                            className="c1-btn c1-btn-secondary"
-                            style={{ padding: '6px 10px', fontSize: '0.75rem' }}
-                            onClick={() => {
-                              setAssigningCourse(c);
-                              setSelectedFacId(c.facultyId);
-                            }}
-                            title="Reassign Instructor"
-                          >
-                            <i className="fa-solid fa-user-pen"></i>
-                            <span>Reassign</span>
-                          </button>
-                          <button
-                            type="button"
-                            className="c1-btn c1-btn-secondary"
-                            style={{ padding: '6px 10px', fontSize: '0.75rem', color: 'var(--accent-blue)' }}
-                            onClick={() => setEditingCourse({ ...c })}
-                            title="Edit Course Details"
-                          >
-                            <i className="fa-solid fa-pen-to-square"></i>
-                            <span>Edit</span>
-                          </button>
-                          <button
-                            type="button"
-                            className="c1-btn c1-btn-secondary btn-icon-only"
-                            style={{ width: '32px', height: '32px', padding: 0, color: 'var(--color-error)' }}
-                            onClick={() => setDeletingCourse(c)}
-                            title="Delete Course"
-                          >
-                            <i className="fa-solid fa-trash-can"></i>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                            <button
+                              type="button"
+                              className="c1-btn c1-btn-secondary"
+                              style={{
+                                padding: '6px 10px',
+                                fontSize: '0.75rem',
+                                color: '#c084fc',
+                                borderColor: 'rgba(168, 85, 247, 0.35)',
+                                background: 'rgba(168, 85, 247, 0.08)'
+                              }}
+                              onClick={() => handleOpenAddLab(c)}
+                              title={`Add Practical Lab for ${c.code}`}
+                            >
+                              <i className="fa-solid fa-flask-vial"></i>
+                              <span>Add Lab</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="c1-btn c1-btn-secondary"
+                              style={{ padding: '6px 10px', fontSize: '0.75rem' }}
+                              onClick={() => {
+                                setAssigningCourse(c);
+                                setSelectedFacId(c.facultyId);
+                              }}
+                              title="Reassign Instructor"
+                            >
+                              <i className="fa-solid fa-user-pen"></i>
+                              <span>Reassign</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="c1-btn c1-btn-secondary"
+                              style={{ padding: '6px 10px', fontSize: '0.75rem', color: 'var(--accent-blue)' }}
+                              onClick={() => setEditingCourse({ ...c })}
+                              title="Edit Course Details"
+                            >
+                              <i className="fa-solid fa-pen-to-square"></i>
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="c1-btn c1-btn-secondary btn-icon-only"
+                              style={{ width: '32px', height: '32px', padding: 0, color: 'var(--color-error)' }}
+                              onClick={() => setDeletingCourse(c)}
+                              title="Delete Course"
+                            >
+                              <i className="fa-solid fa-trash-can"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             ) : (
@@ -892,6 +1034,282 @@ export const AdminCourses: React.FC = () => {
                 </button>
               </div>
             </form>
+          </Modal>
+        )}
+
+        {/* ============================================================
+            MODAL 5: ADD PRACTICAL LAB MODAL
+            ============================================================ */}
+        {addingLabForCourse && (
+          <Modal
+            isOpen={true}
+            onClose={() => setAddingLabForCourse(null)}
+            title={`Add Practical Lab: ${addingLabForCourse.code}`}
+            maxWidth="md"
+          >
+            <form onSubmit={handleSaveLab} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="c1-alert c1-alert-info">
+                <i className="fa-solid fa-flask-vial" style={{ color: '#c084fc' }}></i>
+                <div>
+                  Linking new lab session to parent course <strong>{addingLabForCourse.name} ({addingLabForCourse.code})</strong> • {addingLabForCourse.department}.
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Lab Course Code *
+                  </label>
+                  <input
+                    type="text"
+                    className="c1-input"
+                    placeholder="e.g. CSE-301L"
+                    value={labCode}
+                    onChange={(e) => setLabCode(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Lab Practical Name *
+                  </label>
+                  <input
+                    type="text"
+                    className="c1-input"
+                    placeholder="e.g. Distributed Systems Practical Lab"
+                    value={labName}
+                    onChange={(e) => setLabName(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Assigned Faculty Instructor
+                  </label>
+                  <select
+                    className="c1-select"
+                    value={labFacultyId}
+                    onChange={(e) => setLabFacultyId(e.target.value)}
+                  >
+                    {mgmt.faculty.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name} ({f.department})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Lab Facility / Room
+                  </label>
+                  <input
+                    type="text"
+                    className="c1-input"
+                    placeholder="e.g. CS Lab 2 (Cloud Systems Hub)"
+                    value={labRoom}
+                    onChange={(e) => setLabRoom(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Target Student Batch / Cohort
+                  </label>
+                  <select
+                    className="c1-select"
+                    value={labBatch}
+                    onChange={(e) => setLabBatch(e.target.value)}
+                  >
+                    <option value="Batch A (Roll 1-30)">Batch A (Roll 1-30)</option>
+                    <option value="Batch B (Roll 31-60)">Batch B (Roll 31-60)</option>
+                    <option value="All Batches">All Batches (Full Cohort)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Student Capacity
+                  </label>
+                  <input
+                    type="number"
+                    className="c1-input"
+                    min="10"
+                    max="120"
+                    value={labStudentsCount}
+                    onChange={(e) => setLabStudentsCount(Number(e.target.value))}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Scheduled Day of Week
+                  </label>
+                  <select
+                    className="c1-select"
+                    value={labScheduleDay}
+                    onChange={(e) => setLabScheduleDay(e.target.value)}
+                  >
+                    <option value="Monday">Monday</option>
+                    <option value="Tuesday">Tuesday</option>
+                    <option value="Wednesday">Wednesday</option>
+                    <option value="Thursday">Thursday</option>
+                    <option value="Friday">Friday</option>
+                    <option value="Saturday">Saturday</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                    Scheduled Time Slot
+                  </label>
+                  <input
+                    type="text"
+                    className="c1-input"
+                    placeholder="e.g. 02:00 PM - 04:30 PM"
+                    value={labScheduleTime}
+                    onChange={(e) => setLabScheduleTime(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setAddingLabForCourse(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="c1-btn c1-btn-gradient"
+                  style={{ background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)' }}
+                >
+                  <i className="fa-solid fa-flask-vial"></i>
+                  <span>Save Lab Practical</span>
+                </button>
+              </div>
+            </form>
+          </Modal>
+        )}
+
+        {/* ============================================================
+            MODAL 6: MANAGE COURSE LABS MODAL
+            ============================================================ */}
+        {managingLabsCourse && (
+          <Modal
+            isOpen={true}
+            onClose={() => setManagingLabsCourse(null)}
+            title={`Practical Labs for ${managingLabsCourse.code}`}
+            maxWidth="md"
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h4 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '0.95rem' }}>
+                    {managingLabsCourse.name}
+                  </h4>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    {managingLabsCourse.department} • {managingLabsCourse.semester}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  style={{ fontSize: '0.75rem', color: '#c084fc' }}
+                  onClick={() => {
+                    const c = managingLabsCourse;
+                    setManagingLabsCourse(null);
+                    handleOpenAddLab(c);
+                  }}
+                >
+                  <i className="fa-solid fa-plus"></i>
+                  <span>Add Another Lab</span>
+                </button>
+              </div>
+
+              {(() => {
+                const courseLabs = labs.filter((l) => (l.courseCode || '').toUpperCase() === managingLabsCourse.code.toUpperCase());
+                if (courseLabs.length === 0) {
+                  return (
+                    <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                      <i className="fa-solid fa-flask-vial" style={{ fontSize: '2rem', marginBottom: '8px', opacity: 0.5, display: 'block' }}></i>
+                      <p>No practical lab sessions configured for this course yet.</p>
+                    </div>
+                  );
+                }
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {courseLabs.map((l) => (
+                      <div
+                        key={l.id}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '12px 14px',
+                          background: 'rgba(255, 255, 255, 0.03)',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: '8px'
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span className="course-code-tag" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc' }}>
+                              {l.code}
+                            </span>
+                            <strong style={{ color: 'var(--text-primary)', fontSize: '0.875rem' }}>{l.name}</strong>
+                          </div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                            <span style={{ marginRight: '10px' }}>
+                              <i className="fa-solid fa-calendar-day" style={{ marginRight: '4px', color: 'var(--accent-blue)' }}></i>
+                              {l.scheduleDay}, {l.scheduleTime}
+                            </span>
+                            <span style={{ marginRight: '10px' }}>
+                              <i className="fa-solid fa-location-dot" style={{ marginRight: '4px', color: '#f59e0b' }}></i>
+                              {l.labRoom}
+                            </span>
+                            <span>
+                              <i className="fa-solid fa-users" style={{ marginRight: '4px', color: '#10b981' }}></i>
+                              {l.batch} ({l.studentsCount} Capacity)
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="c1-btn c1-btn-secondary btn-icon-only"
+                          style={{ width: '32px', height: '32px', padding: 0, color: 'var(--color-error)' }}
+                          onClick={() => handleDeleteLab(l.id, l.name)}
+                          title="Delete Lab"
+                        >
+                          <i className="fa-solid fa-trash-can"></i>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setManagingLabsCourse(null)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </Modal>
         )}
 

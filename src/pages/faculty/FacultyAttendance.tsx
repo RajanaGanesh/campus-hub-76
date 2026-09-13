@@ -1,7 +1,18 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { useAuth } from '../../context/AuthContext';
-import { getManagementData, saveManagementData, getFacultyAssignedCourses, CourseRecord, StudentRecord } from '../../data/managementData';
+import {
+  getManagementData,
+  saveManagementData,
+  getFacultyAssignedCourses,
+  getFacultyAssignedLabs,
+  getLabSessions,
+  saveLabSession,
+  CourseRecord,
+  StudentRecord,
+  LabRecord,
+  LabSessionRecord
+} from '../../data/managementData';
 import { dbService } from '../../services/dbService';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
@@ -119,8 +130,24 @@ export const FacultyAttendance: React.FC = () => {
   const { user } = useAuth();
   const [mgmt, setMgmt] = useState(() => getManagementData());
 
-  // Dynamic courses assigned to logged in faculty
+  // Dynamic courses and practical labs assigned to logged in faculty
   const [courses, setCourses] = useState<CourseRecord[]>(() => getFacultyAssignedCourses(user));
+  const [facultyLabs, setFacultyLabs] = useState<LabRecord[]>(() => getFacultyAssignedLabs(user));
+
+  // Active view tab: Theory Matrix vs Scheduled Lab Practical vs Session History vs Email Audits
+  const [activeTab, setActiveTab] = useState<'matrix' | 'labs' | 'history' | 'emails'>('matrix');
+
+  // Scheduled Lab Attendance State
+  const [selectedLabId, setSelectedLabId] = useState<string>(() => {
+    const assignedLabs = getFacultyAssignedLabs(user);
+    return assignedLabs.length > 0 ? assignedLabs[0].id : 'LAB-101';
+  });
+
+  const [selectedLabDate, setSelectedLabDate] = useState<string>('2026-09-13');
+  const [experimentTitle, setExperimentTitle] = useState<string>('Exp 4: RPC & Distributed Shared Memory implementation');
+  const [labVerificationMode, setLabVerificationMode] = useState<'Workstation Biometric Terminal' | 'Manual Roll-Call' | 'Continuous Viva Assessment'>('Workstation Biometric Terminal');
+  const [labSessionsList, setLabSessionsList] = useState<LabSessionRecord[]>(() => getLabSessions());
+  const [previewLabSession, setPreviewLabSession] = useState<LabSessionRecord | null>(null);
 
   useEffect(() => {
     const handleSync = async () => {
@@ -136,15 +163,19 @@ export const FacultyAttendance: React.FC = () => {
       }
       setMgmt(freshMgmt);
       setCourses(getFacultyAssignedCourses(user));
+      setFacultyLabs(getFacultyAssignedLabs(user));
+      setLabSessionsList(getLabSessions());
     };
 
     handleSync();
 
     window.addEventListener('storage', handleSync);
     window.addEventListener('campushub_management_updated', handleSync);
+    window.addEventListener('campushub_lab_session_saved', handleSync);
     return () => {
       window.removeEventListener('storage', handleSync);
       window.removeEventListener('campushub_management_updated', handleSync);
+      window.removeEventListener('campushub_lab_session_saved', handleSync);
     };
   }, [user]);
 
@@ -160,6 +191,12 @@ export const FacultyAttendance: React.FC = () => {
     }
   }, [courses, selectedCourseCode]);
 
+  useEffect(() => {
+    if (facultyLabs.length > 0 && !facultyLabs.some((l) => l.id === selectedLabId)) {
+      setSelectedLabId(facultyLabs[0].id);
+    }
+  }, [facultyLabs, selectedLabId]);
+
   const [selectedSection, setSelectedSection] = useState<string>('A');
   const [selectedMonth, setSelectedMonth] = useState<string>('2026-09');
   const [searchQuery, setSearchQuery] = useState('');
@@ -167,9 +204,6 @@ export const FacultyAttendance: React.FC = () => {
 
   // Current Date Cutoff (Attendance recorded up to this date; future days appear empty white boxes)
   const [currentCutoffDate, setCurrentCutoffDate] = useState<string>('2026-09-13');
-
-  // Active view tab
-  const [activeTab, setActiveTab] = useState<'matrix' | 'history' | 'emails'>('matrix');
 
   // Storage keys for persistent matrix per month, course & section
   const datesStorageKey = `campushub_faculty_att_dates_${selectedMonth}_${selectedCourseCode}_${selectedSection}`;
@@ -419,6 +453,195 @@ export const FacultyAttendance: React.FC = () => {
       setIsEmailModalOpen(false);
       showToast(`Shortage warning emails successfully dispatched to ${payloads.length} student(s) in real-time!`, 'success');
     }, 600);
+  };
+
+  // -------------------------------------------------------------
+  // SCHEDULED LAB PRACTICAL STATE & HANDLERS
+  // -------------------------------------------------------------
+  const selectedLab = useMemo(() => {
+    return facultyLabs.find((l) => l.id === selectedLabId) || facultyLabs[0];
+  }, [facultyLabs, selectedLabId]);
+
+  // Students eligible for the selected practical lab based on batch
+  const eligibleLabStudents = useMemo(() => {
+    if (!selectedLab) return displayedStudents;
+    const b = (selectedLab.batch || '').toLowerCase();
+    return mgmt.students.filter((stu) => {
+      const stuName = (stu.name || '').toLowerCase().trim();
+      const stuEmail = (stu.email || '').toLowerCase().trim();
+      const stuId = (stu.id || '').toLowerCase().trim();
+      if (
+        stuName === 'admin' ||
+        stuName.includes('admincampushub') ||
+        stuName.includes('system admin') ||
+        stuEmail.startsWith('admin@') ||
+        stuEmail.startsWith('faculty@') ||
+        stuId.startsWith('adm') ||
+        stuId.startsWith('fac')
+      ) {
+        return false;
+      }
+      const rollNum = parseInt(stu.id.replace(/\D/g, '') || '0', 10);
+      if (b.includes('batch a') && rollNum % 2 === 0) return false;
+      if (b.includes('batch b') && rollNum % 2 !== 0) return false;
+      return true;
+    });
+  }, [mgmt.students, displayedStudents, selectedLab]);
+
+  // Workstation attendance roster map
+  const [labAttendanceRoster, setLabAttendanceRoster] = useState<
+    Record<string, { workstationNo: string; status: 'Present' | 'Absent' | 'Late' | 'On-Duty'; marks: number; remarks: string }>
+  >({});
+
+  // Initialize or re-sync roster on lab change
+  useEffect(() => {
+    if (!selectedLab) return;
+    const initial: Record<string, { workstationNo: string; status: 'Present' | 'Absent' | 'Late' | 'On-Duty'; marks: number; remarks: string }> = {};
+    eligibleLabStudents.forEach((stu, idx) => {
+      const wsNum = `WS-${String(idx + 1).padStart(2, '0')}`;
+      const isPresent = (stu.attendancePercent || 85) >= 70;
+      initial[stu.id] = {
+        workstationNo: wsNum,
+        status: isPresent ? 'Present' : 'Absent',
+        marks: isPresent ? 9 : 0,
+        remarks: isPresent ? 'Workstation verified' : 'Absent from lab session'
+      };
+    });
+    setLabAttendanceRoster(initial);
+  }, [selectedLab?.id, eligibleLabStudents.length]);
+
+  const handleToggleLabStudentStatus = (studentId: string, nextStatus: 'Present' | 'Absent' | 'Late' | 'On-Duty') => {
+    setLabAttendanceRoster((prev) => {
+      const current = prev[studentId] || {
+        workstationNo: 'WS-01',
+        status: 'Present',
+        marks: 9,
+        remarks: ''
+      };
+      return {
+        ...prev,
+        [studentId]: {
+          ...current,
+          status: nextStatus,
+          marks: nextStatus === 'Present' ? (current.marks || 9) : nextStatus === 'Late' ? 7 : nextStatus === 'On-Duty' ? 8 : 0,
+          remarks: nextStatus === 'Present' ? 'Practical verified' : nextStatus === 'Late' ? 'Late check-in' : nextStatus === 'On-Duty' ? 'Authorized On-Duty' : 'Absent'
+        }
+      };
+    });
+  };
+
+  const handleUpdateLabMarks = (studentId: string, marks: number) => {
+    setLabAttendanceRoster((prev) => {
+      const current = prev[studentId] || {
+        workstationNo: 'WS-01',
+        status: 'Present',
+        marks: 0,
+        remarks: ''
+      };
+      return {
+        ...prev,
+        [studentId]: {
+          ...current,
+          marks: Math.max(0, Math.min(20, marks))
+        }
+      };
+    });
+  };
+
+  const handleUpdateLabRemarks = (studentId: string, remarks: string) => {
+    setLabAttendanceRoster((prev) => {
+      const current = prev[studentId] || {
+        workstationNo: 'WS-01',
+        status: 'Present',
+        marks: 9,
+        remarks: ''
+      };
+      return {
+        ...prev,
+        [studentId]: {
+          ...current,
+          remarks
+        }
+      };
+    });
+  };
+
+  const handleMarkAllLab = (status: 'Present' | 'Absent') => {
+    setLabAttendanceRoster((prev) => {
+      const updated = { ...prev };
+      eligibleLabStudents.forEach((stu, idx) => {
+        const wsNum = `WS-${String(idx + 1).padStart(2, '0')}`;
+        updated[stu.id] = {
+          workstationNo: wsNum,
+          status,
+          marks: status === 'Present' ? 9 : 0,
+          remarks: status === 'Present' ? 'All workstations checked in' : 'Absent'
+        };
+      });
+      return updated;
+    });
+    showToast(`All student workstations marked as ${status}.`, 'info');
+  };
+
+  const handleSubmitLabSession = () => {
+    if (!selectedLab) {
+      showToast('Please select a valid scheduled practical lab.', 'error');
+      return;
+    }
+
+    const records = eligibleLabStudents.map((stu, idx) => {
+      const entry = labAttendanceRoster[stu.id] || {
+        workstationNo: `WS-${String(idx + 1).padStart(2, '0')}`,
+        status: 'Present' as const,
+        marks: 9,
+        remarks: ''
+      };
+      return {
+        studentId: stu.id,
+        studentName: stu.name,
+        workstationNo: entry.workstationNo,
+        status: entry.status,
+        marks: entry.marks,
+        remarks: entry.remarks
+      };
+    });
+
+    const presentCount = records.filter((r) => r.status === 'Present' || r.status === 'Late' || r.status === 'On-Duty').length;
+    const actualPresents = records.filter((r) => r.status === 'Present').length;
+    const absentCount = records.filter((r) => r.status === 'Absent').length;
+    const totalStudents = records.length;
+    const attendancePct = totalStudents > 0 ? Math.round((presentCount / totalStudents) * 100) : 100;
+
+    const dayName = formatDisplayDay(selectedLabDate) || selectedLab.scheduleDay;
+
+    const sessionRecord: LabSessionRecord = {
+      id: `LAB-SESS-${Date.now()}`,
+      labId: selectedLab.id,
+      labCode: selectedLab.code,
+      labName: selectedLab.name,
+      courseCode: selectedLab.courseCode,
+      facultyId: (user as any)?.id || selectedLab.facultyId,
+      facultyName: user?.name || selectedLab.facultyName,
+      date: selectedLabDate,
+      day: dayName,
+      batch: selectedLab.batch,
+      labRoom: selectedLab.labRoom,
+      experimentTitle: experimentTitle.trim() || 'Scheduled Practical Experiment',
+      totalStudents,
+      presentCount: actualPresents,
+      absentCount,
+      attendancePct,
+      records,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    saveLabSession(sessionRecord);
+    setLabSessionsList(getLabSessions());
+
+    showToast(
+      `Lab practical attendance locked & recorded for ${selectedLab.code} (${actualPresents}/${totalStudents} Present)!`,
+      'success'
+    );
   };
 
   // -------------------------------------------------------------
@@ -989,11 +1212,25 @@ export const FacultyAttendance: React.FC = () => {
           </button>
           <button
             type="button"
+            className={`section-tab-btn ${activeTab === 'labs' ? 'active' : ''}`}
+            onClick={() => setActiveTab('labs')}
+            style={activeTab === 'labs' ? { borderBottomColor: '#a855f7', color: '#c084fc' } : {}}
+          >
+            <i className="fa-solid fa-flask-vial" style={{ color: '#c084fc' }}></i>
+            <span>Scheduled Lab Attendance</span>
+            {facultyLabs.length > 0 && (
+              <span className="c1-badge" style={{ marginLeft: '6px', background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc', fontSize: '0.7rem', padding: '1px 6px' }}>
+                {facultyLabs.length} Labs
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
             className={`section-tab-btn ${activeTab === 'history' ? 'active' : ''}`}
             onClick={() => setActiveTab('history')}
           >
             <i className="fa-solid fa-clock-rotate-left"></i>
-            <span>Session Logs ({history.length})</span>
+            <span>Session Logs ({history.length + labSessionsList.length})</span>
           </button>
           <button
             type="button"
@@ -1525,7 +1762,485 @@ export const FacultyAttendance: React.FC = () => {
         )}
 
         {/* ============================================================
-            TAB 2: ATTENDANCE HISTORY
+            TAB 2: SCHEDULED LAB PRACTICAL ATTENDANCE
+            ============================================================ */}
+        {activeTab === 'labs' && (
+          <div className="scheduled-lab-attendance-view" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Lab Session Selector & Parameters Card */}
+            <div className="c1-card academic-filters-card" style={{ padding: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                <div>
+                  <h3 className="c1-card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <i className="fa-solid fa-flask-vial" style={{ color: '#a855f7' }}></i>
+                    <span>Mark Today's Scheduled Lab Session</span>
+                  </h3>
+                  <p className="c1-card-subtitle">
+                    Select your scheduled practical lab course, verify workstation roll-call, and lock student continuous attendance.
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    className="c1-btn c1-btn-secondary"
+                    style={{ fontSize: '0.8rem', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }}
+                    onClick={() => handleMarkAllLab('Present')}
+                  >
+                    <i className="fa-solid fa-check-double"></i>
+                    <span>Mark All Present</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="c1-btn c1-btn-secondary"
+                    style={{ fontSize: '0.8rem', color: '#f43f5e', borderColor: 'rgba(244, 63, 94, 0.3)' }}
+                    onClick={() => handleMarkAllLab('Absent')}
+                  >
+                    <i className="fa-solid fa-xmark"></i>
+                    <span>Mark All Absent</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="c1-btn c1-btn-gradient"
+                    style={{ background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)' }}
+                    onClick={handleSubmitLabSession}
+                  >
+                    <i className="fa-solid fa-lock"></i>
+                    <span>Submit & Lock Lab Attendance</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Lab Selection Controls Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+                {/* Lab Practical Selector */}
+                <div className="filter-select-item">
+                  <label htmlFor="select-faculty-lab" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <i className="fa-solid fa-microchip" style={{ color: '#c084fc', fontSize: '11px' }}></i>
+                    <span>Assigned Lab Course</span>
+                  </label>
+                  <select
+                    id="select-faculty-lab"
+                    className="c1-select"
+                    value={selectedLabId}
+                    onChange={(e) => setSelectedLabId(e.target.value)}
+                  >
+                    {facultyLabs.map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.code}: {l.name} ({l.scheduleDay})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Session Date Picker */}
+                <div className="filter-select-item">
+                  <label htmlFor="select-lab-date" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <i className="fa-solid fa-calendar-day" style={{ color: 'var(--accent-blue)', fontSize: '11px' }}></i>
+                    <span>Practical Session Date</span>
+                  </label>
+                  <input
+                    id="select-lab-date"
+                    type="date"
+                    className="c1-input"
+                    value={selectedLabDate}
+                    onChange={(e) => setSelectedLabDate(e.target.value)}
+                  />
+                </div>
+
+                {/* Verification Mode */}
+                <div className="filter-select-item">
+                  <label htmlFor="select-lab-mode" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <i className="fa-solid fa-fingerprint" style={{ color: '#10b981', fontSize: '11px' }}></i>
+                    <span>Verification Mode</span>
+                  </label>
+                  <select
+                    id="select-lab-mode"
+                    className="c1-select"
+                    value={labVerificationMode}
+                    onChange={(e) => setLabVerificationMode(e.target.value as any)}
+                  >
+                    <option value="Workstation Biometric Terminal">Workstation Biometric Terminal</option>
+                    <option value="Manual Roll-Call">Manual Roll-Call</option>
+                    <option value="Continuous Viva Assessment">Continuous Viva Assessment</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Experiment Title & Topic Input */}
+              <div style={{ marginTop: '14px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '280px' }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                    Experiment / Practical Syllabus Topic
+                  </label>
+                  <input
+                    type="text"
+                    className="c1-input"
+                    placeholder="e.g. Experiment 4: Implementation of RPC & Socket Programming"
+                    value={experimentTitle}
+                    onChange={(e) => setExperimentTitle(e.target.value)}
+                  />
+                </div>
+
+                {selectedLab && (
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-end', paddingTop: '18px' }}>
+                    <span className="c1-badge" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', padding: '6px 10px' }}>
+                      <i className="fa-solid fa-clock" style={{ marginRight: '5px' }}></i>
+                      {selectedLab.scheduleDay}, {selectedLab.scheduleTime}
+                    </span>
+                    <span className="c1-badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', padding: '6px 10px' }}>
+                      <i className="fa-solid fa-location-dot" style={{ marginRight: '5px' }}></i>
+                      {selectedLab.labRoom}
+                    </span>
+                    <span className="c1-badge" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', padding: '6px 10px' }}>
+                      <i className="fa-solid fa-users" style={{ marginRight: '5px' }}></i>
+                      {selectedLab.batch}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Live Lab Session Statistics Card */}
+            {(() => {
+              const records = eligibleLabStudents.map((stu) => labAttendanceRoster[stu.id] || { status: 'Present', marks: 9 });
+              const presents = records.filter((r) => r.status === 'Present').length;
+              const absents = records.filter((r) => r.status === 'Absent').length;
+              const lates = records.filter((r) => r.status === 'Late').length;
+              const ods = records.filter((r) => r.status === 'On-Duty').length;
+              const total = eligibleLabStudents.length || 1;
+              const rate = Math.round(((presents + lates + ods) / total) * 100);
+              const avgScore = (records.reduce((sum, r) => sum + (r.marks || 0), 0) / (total || 1)).toFixed(1);
+
+              return (
+                <div className="academic-stats-grid">
+                  <div className="c1-card academic-stat-card">
+                    <div className="stat-card-icon-wrap" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc' }}>
+                      <i className="fa-solid fa-desktop"></i>
+                    </div>
+                    <div className="stat-card-data">
+                      <span className="stat-num">{eligibleLabStudents.length}</span>
+                      <span className="stat-label">Active Workstations</span>
+                    </div>
+                  </div>
+
+                  <div className="c1-card academic-stat-card">
+                    <div className="stat-card-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
+                      <i className="fa-solid fa-user-check"></i>
+                    </div>
+                    <div className="stat-card-data">
+                      <span className="stat-num" style={{ color: '#34d399' }}>{presents} Present</span>
+                      <span className="stat-label">{lates} Late • {ods} On-Duty</span>
+                    </div>
+                  </div>
+
+                  <div className="c1-card academic-stat-card">
+                    <div className="stat-card-icon-wrap" style={{ background: 'rgba(244, 63, 94, 0.15)', color: '#fb7185' }}>
+                      <i className="fa-solid fa-user-xmark"></i>
+                    </div>
+                    <div className="stat-card-data">
+                      <span className="stat-num" style={{ color: '#fb7185' }}>{absents} Absent</span>
+                      <span className="stat-label">Unoccupied Terminals</span>
+                    </div>
+                  </div>
+
+                  <div className="c1-card academic-stat-card">
+                    <div className="stat-card-icon-wrap" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
+                      <i className="fa-solid fa-chart-line"></i>
+                    </div>
+                    <div className="stat-card-data">
+                      <span className="stat-num" style={{ color: '#38bdf8' }}>{rate}% ({avgScore}/10)</span>
+                      <span className="stat-label">Session Rate & Avg Score</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Workstation Roll-Call Roster Table */}
+            <div className="c1-card student-roster-card">
+              <div className="c1-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 className="c1-card-title">
+                    Workstation Seat Allocation & Attendance Roll-Call ({eligibleLabStudents.length} Students)
+                  </h3>
+                  <p className="c1-card-subtitle">
+                    Assigned terminals for {selectedLab?.code} ({selectedLab?.name}) • {selectedLab?.labRoom}
+                  </p>
+                </div>
+                <span className="c1-badge c1-badge-cyan">
+                  <i className="fa-solid fa-wifi" style={{ marginRight: '4px' }}></i>
+                  Terminal Gateway Connected
+                </span>
+              </div>
+
+              <div className="student-roster-table-wrap">
+                <table className="c1-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '130px' }}>Workstation</th>
+                      <th>Roll Number</th>
+                      <th>Student Name</th>
+                      <th style={{ textAlign: 'center' }}>Attendance Status</th>
+                      <th style={{ width: '120px' }}>Viva Marks (/10)</th>
+                      <th>Practical Notes & Execution Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {eligibleLabStudents.map((stu, idx) => {
+                      const entry = labAttendanceRoster[stu.id] || {
+                        workstationNo: `WS-${String(idx + 1).padStart(2, '0')}`,
+                        status: 'Present' as const,
+                        marks: 9,
+                        remarks: 'Workstation verified'
+                      };
+
+                      return (
+                        <tr key={stu.id}>
+                          <td>
+                            <span
+                              className="c1-badge"
+                              style={{
+                                background: 'rgba(99, 102, 241, 0.12)',
+                                color: '#818cf8',
+                                border: '1px solid rgba(99, 102, 241, 0.25)',
+                                fontWeight: 700,
+                                fontSize: '0.8rem',
+                                padding: '4px 8px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                              }}
+                            >
+                              <i className="fa-solid fa-desktop"></i>
+                              {entry.workstationNo}
+                            </span>
+                          </td>
+                          <td>
+                            <strong style={{ color: 'var(--text-primary)', fontFamily: 'monospace', fontSize: '0.875rem' }}>
+                              {stu.id}
+                            </strong>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div
+                                style={{
+                                  width: '28px',
+                                  height: '28px',
+                                  borderRadius: '50%',
+                                  background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                                  color: '#fff',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700
+                                }}
+                              >
+                                {stu.name.charAt(0)}
+                              </div>
+                              <div>
+                                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{stu.name}</span>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{stu.department}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                              <button
+                                type="button"
+                                className="c1-btn"
+                                style={{
+                                  padding: '4px 10px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  background: entry.status === 'Present' ? '#10b981' : 'rgba(255, 255, 255, 0.05)',
+                                  color: entry.status === 'Present' ? '#ffffff' : 'var(--text-secondary)',
+                                  border: entry.status === 'Present' ? '1px solid #10b981' : '1px solid var(--border-color)',
+                                  borderRadius: '6px'
+                                }}
+                                onClick={() => handleToggleLabStudentStatus(stu.id, 'Present')}
+                                title="Mark Present"
+                              >
+                                P (Present)
+                              </button>
+
+                              <button
+                                type="button"
+                                className="c1-btn"
+                                style={{
+                                  padding: '4px 10px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  background: entry.status === 'Absent' ? '#f43f5e' : 'rgba(255, 255, 255, 0.05)',
+                                  color: entry.status === 'Absent' ? '#ffffff' : 'var(--text-secondary)',
+                                  border: entry.status === 'Absent' ? '1px solid #f43f5e' : '1px solid var(--border-color)',
+                                  borderRadius: '6px'
+                                }}
+                                onClick={() => handleToggleLabStudentStatus(stu.id, 'Absent')}
+                                title="Mark Absent"
+                              >
+                                X (Absent)
+                              </button>
+
+                              <button
+                                type="button"
+                                className="c1-btn"
+                                style={{
+                                  padding: '4px 10px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  background: entry.status === 'Late' ? '#f59e0b' : 'rgba(255, 255, 255, 0.05)',
+                                  color: entry.status === 'Late' ? '#ffffff' : 'var(--text-secondary)',
+                                  border: entry.status === 'Late' ? '1px solid #f59e0b' : '1px solid var(--border-color)',
+                                  borderRadius: '6px'
+                                }}
+                                onClick={() => handleToggleLabStudentStatus(stu.id, 'Late')}
+                                title="Mark Late Check-in"
+                              >
+                                L (Late)
+                              </button>
+
+                              <button
+                                type="button"
+                                className="c1-btn"
+                                style={{
+                                  padding: '4px 10px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  background: entry.status === 'On-Duty' ? '#38bdf8' : 'rgba(255, 255, 255, 0.05)',
+                                  color: entry.status === 'On-Duty' ? '#ffffff' : 'var(--text-secondary)',
+                                  border: entry.status === 'On-Duty' ? '1px solid #38bdf8' : '1px solid var(--border-color)',
+                                  borderRadius: '6px'
+                                }}
+                                onClick={() => handleToggleLabStudentStatus(stu.id, 'On-Duty')}
+                                title="Mark Authorized On-Duty"
+                              >
+                                OD
+                              </button>
+                            </div>
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              min="0"
+                              max="10"
+                              className="c1-input"
+                              style={{ width: '80px', padding: '4px 8px', textAlign: 'center', fontWeight: 700 }}
+                              value={entry.marks}
+                              onChange={(e) => handleUpdateLabMarks(stu.id, Number(e.target.value))}
+                              disabled={entry.status === 'Absent'}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              className="c1-input"
+                              style={{ width: '100%', padding: '4px 8px', fontSize: '0.8125rem' }}
+                              value={entry.remarks}
+                              placeholder="Notes / code execution status..."
+                              onChange={(e) => handleUpdateLabRemarks(stu.id, e.target.value)}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Bottom Submit Action Row */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderTop: '1px solid var(--border-color)', background: 'rgba(255, 255, 255, 0.01)' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  Showing {eligibleLabStudents.length} assigned workstations for {selectedLab?.name}.
+                </span>
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-gradient"
+                  style={{ background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)', padding: '10px 24px', fontSize: '0.9rem' }}
+                  onClick={handleSubmitLabSession}
+                >
+                  <i className="fa-solid fa-cloud-arrow-up"></i>
+                  <span>Submit & Lock Lab Attendance</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Previous Conducted Lab Sessions History */}
+            {labSessionsList.length > 0 && (
+              <div className="c1-card attendance-history-card">
+                <div className="c1-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h3 className="c1-card-title">Conducted Practical Lab Sessions History</h3>
+                    <p className="c1-card-subtitle">Saved practical roll-calls, experiment titles, and workstation logs</p>
+                  </div>
+                  <span className="c1-badge c1-badge-cyan">{labSessionsList.length} Practical Sessions Recorded</span>
+                </div>
+
+                <div className="history-table-wrap">
+                  <table className="c1-table">
+                    <thead>
+                      <tr>
+                        <th>Date & Time</th>
+                        <th>Lab Course</th>
+                        <th>Experiment Syllabus Topic</th>
+                        <th>Batch & Room</th>
+                        <th>Present</th>
+                        <th>Absent</th>
+                        <th>Attendance %</th>
+                        <th style={{ textAlign: 'right' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {labSessionsList.map((sess) => (
+                        <tr key={sess.id}>
+                          <td>
+                            <strong>{sess.date}</strong>
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{sess.day} • {sess.timestamp}</div>
+                          </td>
+                          <td>
+                            <span className="course-code-cell" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc' }}>
+                              {sess.labCode}
+                            </span>
+                          </td>
+                          <td>
+                            <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{sess.experimentTitle}</span>
+                          </td>
+                          <td>
+                            <div>{sess.batch}</div>
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{sess.labRoom}</div>
+                          </td>
+                          <td>
+                            <span style={{ color: 'var(--color-success)', fontWeight: 700 }}>{sess.presentCount} Students</span>
+                          </td>
+                          <td>
+                            <span style={{ color: 'var(--color-error)', fontWeight: 700 }}>{sess.absentCount} Students</span>
+                          </td>
+                          <td>
+                            <span className="matrix-pct-badge safe">{sess.attendancePct}%</span>
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <button
+                              type="button"
+                              className="c1-btn c1-btn-secondary"
+                              style={{ padding: '4px 10px', fontSize: '0.75rem', color: '#c084fc' }}
+                              onClick={() => setPreviewLabSession(sess)}
+                            >
+                              <i className="fa-solid fa-eye"></i>
+                              <span>View Roster</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ============================================================
+            TAB 3: ATTENDANCE HISTORY
             ============================================================ */}
         {activeTab === 'history' && (
           <div className="c1-card attendance-history-card">
@@ -1967,6 +2682,81 @@ export const FacultyAttendance: React.FC = () => {
                 >
                   <i className="fa-solid fa-check"></i>
                   <span>Confirm & Save</span>
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
+
+        {/* ============================================================
+            MODAL 5: PREVIEW LAB SESSION ROSTER DETAILS
+            ============================================================ */}
+        {previewLabSession && (
+          <Modal
+            isOpen={true}
+            onClose={() => setPreviewLabSession(null)}
+            title={`Practical Lab Session: ${previewLabSession.labCode}`}
+            maxWidth="md"
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="c1-alert c1-alert-info">
+                <i className="fa-solid fa-flask-vial" style={{ color: '#c084fc' }}></i>
+                <div>
+                  <strong>{previewLabSession.labName}</strong> • {previewLabSession.experimentTitle}
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                    Conducted on {previewLabSession.date} ({previewLabSession.day}) • {previewLabSession.labRoom} • {previewLabSession.batch}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <span className="c1-badge c1-badge-success">{previewLabSession.presentCount} Present</span>
+                <span className="c1-badge c1-badge-error">{previewLabSession.absentCount} Absent</span>
+                <span className="c1-badge c1-badge-cyan">{previewLabSession.attendancePct}% Attendance Rate</span>
+              </div>
+
+              <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
+                <table className="c1-table">
+                  <thead>
+                    <tr>
+                      <th>Terminal</th>
+                      <th>Roll Number</th>
+                      <th>Student Name</th>
+                      <th>Status</th>
+                      <th>Viva Marks</th>
+                      <th>Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewLabSession.records.map((r) => (
+                      <tr key={r.studentId}>
+                        <td>
+                          <span className="c1-badge" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', fontSize: '0.75rem' }}>
+                            {r.workstationNo}
+                          </span>
+                        </td>
+                        <td><strong>{r.studentId}</strong></td>
+                        <td>{r.studentName}</td>
+                        <td>
+                          <span className={`c1-badge ${r.status === 'Present' ? 'c1-badge-success' : r.status === 'Absent' ? 'c1-badge-error' : 'c1-badge-warning'}`}>
+                            {r.status}
+                          </span>
+                        </td>
+                        <td><strong>{r.marks !== undefined ? `${r.marks}/10` : '—'}</strong></td>
+                        <td><span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{r.remarks || '—'}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="modal-dialog-footer">
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setPreviewLabSession(null)}
+                >
+                  Close
                 </button>
               </div>
             </div>

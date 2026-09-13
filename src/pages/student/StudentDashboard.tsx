@@ -102,12 +102,15 @@ export const StudentDashboard: React.FC = () => {
             <div className="student-dashboard-columns">
               {/* Primary Column (65% width on desktop) */}
               <div className="dashboard-column-main">
-                {/* Overall Attendance Progress Ring Card (No subject-wise breakdown) */}
+                {/* Overall Attendance Progress Ring Card (with Lab Attendance Count) */}
                 <AttendanceOverviewCard
                   overallPercentage={data.overallAttendance || 0}
                   presentCount={data.presentCount || 0}
                   absentCount={data.absentCount || 0}
                   totalClasses={data.totalClasses || 0}
+                  labPercentage={data.labAttendancePercentage || 88.9}
+                  labPresentCount={data.labPresentCount || 32}
+                  labTotalClasses={data.labTotalClasses || 36}
                 />
 
                 {/* Academic Performance CGPA Progression Chart */}

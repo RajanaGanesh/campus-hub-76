@@ -766,8 +766,42 @@ export const dbService = {
     }
   },
   async getStudentDashboardData(email: string): Promise<StudentDashboardData> {
+    const mgmt = getManagementData();
+    const cleanEmail = (email || '').toLowerCase().trim();
+    const localStu = (mgmt.students || []).find(
+      s => (s.email || '').toLowerCase().trim() === cleanEmail || (s.id || '').toLowerCase().trim() === cleanEmail
+    ) || (mgmt.students || [])[0];
+
+    const studentAttPercent = localStu?.attendancePercent || 86.4;
+    const computedPresent = Math.round((studentAttPercent / 100) * 250);
+    const computedAbsent = 250 - computedPresent;
+
+    const fallbackData: StudentDashboardData = {
+      ...studentDashboardData,
+      profile: {
+        ...studentDashboardData.profile,
+        studentId: localStu?.id || '236F1A0551',
+        department: localStu?.department || 'Computer Science & Engineering',
+        yearSection: localStu ? `${localStu.year} • Sec ${localStu.section}` : 'IV Year • CSE-A',
+        email: localStu?.email || email || 'student@campushub.edu',
+        avatarInitials: localStu?.name ? localStu.name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : 'AV'
+      },
+      overallAttendance: studentAttPercent,
+      presentCount: computedPresent,
+      absentCount: computedAbsent,
+      totalClasses: 250,
+      stats: [
+        { icon: 'fa-user-check', title: 'Attendance', value: `${studentAttPercent}%`, description: 'Overall Attendance', status: studentAttPercent >= 75 ? 'Safe' : 'Warning', statusType: studentAttPercent >= 75 ? 'good' : 'due', progress: studentAttPercent, colorVariant: studentAttPercent >= 75 ? 'primary' : 'red' },
+        { icon: 'fa-award', title: 'CGPA', value: localStu?.cgpa ? localStu.cgpa.toFixed(2) : '8.65', description: 'Current CGPA', status: (localStu?.cgpa || 8.65) >= 8.0 ? 'Excellent' : 'Good', statusType: 'excellent', colorVariant: 'cyan' },
+        { icon: 'fa-file-invoice', title: 'Assignments', value: String(localStu?.assignmentsCompleted || 3), description: 'Completed Tasks', status: 'Active', statusType: 'good', colorVariant: 'green' },
+        { icon: 'fa-receipt', title: 'Exams', value: '2', description: 'Upcoming Exams', status: 'Prepare', statusType: 'active', colorVariant: 'red' },
+        { icon: 'fa-wallet', title: 'Pending Fees', value: '₹0', description: 'Pending Tuition', status: 'Paid', statusType: 'good', colorVariant: 'green' },
+        { icon: 'fa-book-open', title: 'Library Books', value: '2', description: 'Books Issued', status: 'Active', statusType: 'active', colorVariant: 'cyan' }
+      ]
+    };
+
     if (!supabase) {
-      return studentDashboardData;
+      return fallbackData;
     }
 
     try {

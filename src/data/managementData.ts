@@ -96,10 +96,57 @@ export interface AdminStats {
   pendingRequests: number;
 }
 
+export interface LabRecord {
+  id: string; // e.g. LAB-101
+  code: string; // e.g. CSE-301L
+  name: string; // e.g. Distributed Systems & Cloud Lab
+  courseCode: string; // parent course e.g. CSE-301
+  courseName: string;
+  department: string;
+  semester: string;
+  facultyId: string;
+  facultyName: string;
+  labRoom: string; // e.g. CS Lab 2 (Cloud Systems Hub)
+  batch: string; // e.g. 'Batch A (Roll 1-30)', 'Batch B (Roll 31-60)', 'All Batches'
+  scheduleDay: string; // e.g. 'Tuesday'
+  scheduleTime: string; // e.g. '02:00 PM - 04:30 PM'
+  studentsCount: number;
+  status: 'Active' | 'Inactive';
+}
+
+export interface LabSessionRecord {
+  id: string;
+  labId: string;
+  labCode: string;
+  labName: string;
+  courseCode: string;
+  facultyId: string;
+  facultyName: string;
+  date: string; // '2026-09-13'
+  day: string; // 'Tuesday'
+  batch: string;
+  labRoom: string;
+  experimentTitle: string;
+  totalStudents: number;
+  presentCount: number;
+  absentCount: number;
+  attendancePct: number;
+  records: {
+    studentId: string;
+    studentName: string;
+    workstationNo: string;
+    status: 'Present' | 'Absent' | 'Late' | 'On-Duty';
+    marks?: number;
+    remarks?: string;
+  }[];
+  timestamp: string;
+}
+
 export interface ManagementData {
   students: StudentRecord[];
   faculty: FacultyRecord[];
   courses: CourseRecord[];
+  labs?: LabRecord[];
   assignments: ManagementAssignment[];
   submissions: AssignmentSubmission[];
   examMarks: ExamMarkRecord[];
@@ -390,6 +437,76 @@ export const initialManagementData: ManagementData = {
       nextClass: 'Wed, Fri 02:00 PM'
     }
   ],
+  labs: [
+    {
+      id: 'LAB-101',
+      code: 'CSE-301L',
+      name: 'Distributed Systems & Cloud Computing Lab',
+      courseCode: 'CSE-301',
+      courseName: 'Distributed Systems & Cloud Architecture',
+      department: 'Computer Science & Engineering',
+      semester: '5th Semester',
+      facultyId: 'FAC-101',
+      facultyName: 'Dr. Sandeep Kumar',
+      labRoom: 'CS Lab 2 (Cloud & Network Systems)',
+      batch: 'Batch A (Roll 1-30)',
+      scheduleDay: 'Tuesday',
+      scheduleTime: '02:00 PM - 04:30 PM',
+      studentsCount: 30,
+      status: 'Active'
+    },
+    {
+      id: 'LAB-102',
+      code: 'CSE-302L',
+      name: 'Neural Networks & Deep Learning Lab',
+      courseCode: 'CSE-302',
+      courseName: 'Machine Learning & Neural Networks',
+      department: 'Computer Science & Engineering',
+      semester: '5th Semester',
+      facultyId: 'FAC-103',
+      facultyName: 'Prof. Ananya Sen',
+      labRoom: 'AI & Data Science Lab 1',
+      batch: 'Batch B (Roll 31-60)',
+      scheduleDay: 'Thursday',
+      scheduleTime: '02:00 PM - 04:30 PM',
+      studentsCount: 30,
+      status: 'Active'
+    },
+    {
+      id: 'LAB-103',
+      code: 'CSE-304L',
+      name: 'Full Stack Cloud Native Practical Lab',
+      courseCode: 'CSE-304',
+      courseName: 'Full Stack Cloud Native Development',
+      department: 'Computer Science & Engineering',
+      semester: '5th Semester',
+      facultyId: 'FAC-101',
+      facultyName: 'Dr. Sandeep Kumar',
+      labRoom: 'Web Development & Cloud Lab 4',
+      batch: 'Batch A (Roll 1-30)',
+      scheduleDay: 'Wednesday',
+      scheduleTime: '02:00 PM - 04:30 PM',
+      studentsCount: 30,
+      status: 'Active'
+    },
+    {
+      id: 'LAB-104',
+      code: 'CSE-303L',
+      name: 'Network Security & Cryptography Lab',
+      courseCode: 'CSE-303',
+      courseName: 'Information & Network Security',
+      department: 'Computer Science & Engineering',
+      semester: '5th Semester',
+      facultyId: 'FAC-105',
+      facultyName: 'Dr. Suresh Kumar',
+      labRoom: 'Cybersecurity Research Center',
+      batch: 'All Batches',
+      scheduleDay: 'Friday',
+      scheduleTime: '02:00 PM - 04:30 PM',
+      studentsCount: 60,
+      status: 'Active'
+    }
+  ],
   assignments: [],
   submissions: [],
   examMarks: [],
@@ -506,10 +623,13 @@ export const getManagementData = (): ManagementData => {
     const rawAnnouncements: ManagementAnnouncement[] = Array.isArray(parsed.announcements) ? parsed.announcements : [];
     const mergedAnnouncements = rawAnnouncements;
 
+    const rawLabs: LabRecord[] = Array.isArray(parsed.labs) && parsed.labs.length > 0 ? parsed.labs : (initialManagementData.labs || []);
+
     return {
       students: mergedStudents,
       faculty: syncedFaculty,
       courses: syncedCourses,
+      labs: rawLabs,
       assignments: mergedAssignments,
       submissions: mergedSubmissions,
       examMarks: mergedExamMarks,
@@ -571,7 +691,8 @@ export const saveManagementData = (data: ManagementData) => {
     const normalizedData: ManagementData = {
       ...data,
       faculty: facultyCopy,
-      courses: coursesCopy
+      courses: coursesCopy,
+      labs: data.labs || []
     };
 
     localStorage.setItem('campushub_management_data', JSON.stringify(normalizedData));
@@ -655,5 +776,121 @@ export const getFacultyAssignedCourses = (authUser?: any): CourseRecord[] => {
 
   return matched;
 };
+
+/**
+ * Returns all configured labs belonging to a specific parent course code.
+ */
+export const getCourseLabs = (courseCode: string): LabRecord[] => {
+  const mgmt = getManagementData();
+  const cleanCode = (courseCode || '').toUpperCase().trim();
+  return (mgmt.labs || []).filter((l) => (l.courseCode || '').toUpperCase().trim() === cleanCode);
+};
+
+/**
+ * Returns all labs assigned to a given faculty user or their courses.
+ */
+export const getFacultyAssignedLabs = (authUser?: any): LabRecord[] => {
+  const mgmt = getManagementData();
+  const assignedCourses = getFacultyAssignedCourses(authUser);
+  const courseCodes = new Set(assignedCourses.map((c) => c.code.toUpperCase()));
+
+  let activeFaculty: FacultyRecord | undefined;
+  if (authUser) {
+    const uId = (authUser.id || '').toLowerCase().trim();
+    const uEmail = (authUser.email || '').toLowerCase().trim();
+    const uName = (authUser.name || '').toLowerCase().trim();
+
+    activeFaculty = mgmt.faculty.find(
+      (f) =>
+        (uId && f.id.toLowerCase() === uId) ||
+        (uEmail && f.email.toLowerCase() === uEmail) ||
+        (uName && f.name.toLowerCase() === uName)
+    );
+  }
+
+  const facId = (activeFaculty?.id || '').toLowerCase();
+  const facName = (activeFaculty?.name || '').toLowerCase();
+
+  const matchedLabs = (mgmt.labs || []).filter((lab) => {
+    const lFacId = (lab.facultyId || '').toLowerCase();
+    const lFacName = (lab.facultyName || '').toLowerCase();
+    const lCourseCode = (lab.courseCode || '').toUpperCase();
+
+    return (
+      (facId && lFacId === facId) ||
+      (facName && lFacName === facName) ||
+      courseCodes.has(lCourseCode)
+    );
+  });
+
+  if (matchedLabs.length === 0 && (mgmt.labs || []).length > 0) {
+    return mgmt.labs || [];
+  }
+
+  return matchedLabs;
+};
+
+/**
+ * Persists a new or updated lab record in management data.
+ */
+export const saveLabRecord = (lab: LabRecord): void => {
+  const mgmt = getManagementData();
+  const labsList = [...(mgmt.labs || [])];
+  const existingIdx = labsList.findIndex((l) => l.id === lab.id || l.code.toUpperCase() === lab.code.toUpperCase());
+
+  if (existingIdx >= 0) {
+    labsList[existingIdx] = lab;
+  } else {
+    labsList.unshift(lab);
+  }
+
+  saveManagementData({
+    ...mgmt,
+    labs: labsList
+  });
+};
+
+/**
+ * Deletes a lab record by ID.
+ */
+export const deleteLabRecord = (labId: string): void => {
+  const mgmt = getManagementData();
+  const updated = (mgmt.labs || []).filter((l) => l.id !== labId);
+  saveManagementData({
+    ...mgmt,
+    labs: updated
+  });
+};
+
+const LAB_SESSIONS_STORAGE_KEY = 'campushub_faculty_lab_sessions';
+
+/**
+ * Gets recorded lab attendance sessions from localStorage.
+ */
+export const getLabSessions = (): LabSessionRecord[] => {
+  try {
+    const raw = localStorage.getItem(LAB_SESSIONS_STORAGE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Persists a newly conducted/marked lab attendance session record.
+ */
+export const saveLabSession = (session: LabSessionRecord): void => {
+  try {
+    const existing = getLabSessions();
+    const updated = [session, ...existing.filter((s) => s.id !== session.id)];
+    localStorage.setItem(LAB_SESSIONS_STORAGE_KEY, JSON.stringify(updated));
+    window.dispatchEvent(new Event('campushub_lab_session_saved'));
+    window.dispatchEvent(new Event('storage'));
+  } catch (err) {
+    console.warn('Error saving lab session:', err);
+  }
+};
+
 
 

@@ -10,7 +10,11 @@ export function safeGetStorage<T>(key: string, defaultValue: T): T {
   try {
     const item = localStorage.getItem(key);
     if (item === null) return defaultValue;
-    return JSON.parse(item) as T;
+    const parsed = JSON.parse(item) as T;
+    if (Array.isArray(defaultValue) && Array.isArray(parsed) && parsed.length === 0 && (defaultValue as any[]).length > 0) {
+      return defaultValue;
+    }
+    return parsed;
   } catch (err) {
     console.warn(`Error reading ${key} from storage:`, err);
     return defaultValue;

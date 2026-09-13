@@ -507,10 +507,155 @@ export const initialManagementData: ManagementData = {
       status: 'Active'
     }
   ],
-  assignments: [],
-  submissions: [],
-  examMarks: [],
-  announcements: []
+  assignments: [
+    {
+      id: 'asg-101',
+      title: 'Distributed Cloud Architecture & gRPC Microservices',
+      courseCode: 'CSE-301',
+      courseName: 'Distributed Systems & Cloud Architecture',
+      facultyName: 'Dr. Sandeep Kumar',
+      dueDate: '2026-09-24',
+      createdDate: '10 Sep 2026',
+      maxMarks: 100,
+      priority: 'High',
+      submissionsCount: 42,
+      description: 'Design and deploy high-throughput distributed microservices using gRPC, Protocol Buffers, and Docker Compose with circuit breaking and client-side load balancing.',
+      instructions: 'Submit a PDF report detailing service architecture, protobuf schemas, benchmarking latency graphs, and GitHub repository link.'
+    },
+    {
+      id: 'asg-102',
+      title: 'Deep Neural Network Architecture & MNIST Classifier',
+      courseCode: 'CSE-302',
+      courseName: 'Machine Learning & Neural Networks',
+      facultyName: 'Prof. Ananya Sen',
+      dueDate: '2026-09-28',
+      createdDate: '12 Sep 2026',
+      maxMarks: 100,
+      priority: 'High',
+      submissionsCount: 38,
+      description: 'Implement a multi-layer perceptron from scratch in Python/NumPy with custom forward pass, backpropagation, and cross-entropy loss functions on the MNIST dataset.',
+      instructions: 'Upload a Jupyter Notebook (.ipynb) containing mathematical derivations, convergence loss curves, confusion matrix, and accuracy analysis.'
+    },
+    {
+      id: 'asg-103',
+      title: 'Cryptographic Protocols & Public Key Infrastructure Audit',
+      courseCode: 'CSE-303',
+      courseName: 'Information & Network Security',
+      facultyName: 'Dr. Suresh Kumar',
+      dueDate: '2026-10-04',
+      createdDate: '08 Sep 2026',
+      maxMarks: 100,
+      priority: 'Medium',
+      submissionsCount: 51,
+      description: 'Perform a comprehensive security audit of asymmetric RSA-2048 key exchange, SHA-256 integrity checks, and TLS 1.3 certificate validation handshakes.',
+      instructions: 'Submit Wireshark packet capture analysis (.pcapng) along with a vulnerability assessment documentation in PDF format.'
+    },
+    {
+      id: 'asg-104',
+      title: 'Full Stack Cloud Native Application with Kubernetes Deployment',
+      courseCode: 'CSE-304',
+      courseName: 'Full Stack Cloud Native Development',
+      facultyName: 'Dr. Sandeep Kumar',
+      dueDate: '2026-10-10',
+      createdDate: '05 Sep 2026',
+      maxMarks: 100,
+      priority: 'Medium',
+      submissionsCount: 48,
+      description: 'Construct a multi-tier web application using React, Node.js, and PostgreSQL. Containerize all layers and write Kubernetes manifests with Ingress controllers and autoscaling.',
+      instructions: 'Submit Kubernetes YAML manifest files, deployment screenshots, and live application access endpoints.'
+    },
+    {
+      id: 'asg-105',
+      title: 'Transformer Attention Mechanism & BERT Sentiment Fine-Tuning',
+      courseCode: 'CSE-305',
+      courseName: 'Natural Language Processing & LLMs',
+      facultyName: 'Dr. Priya Murthy',
+      dueDate: '2026-10-18',
+      createdDate: '14 Sep 2026',
+      maxMarks: 100,
+      priority: 'Low',
+      submissionsCount: 29,
+      description: 'Implement scaled dot-product multi-head attention and fine-tune a pre-trained BERT/DistilBERT model for multi-class domain sentiment classification.',
+      instructions: 'Submit Python source code with training loss logs, hyperparameter tuning tables, and validation F1-score report.'
+    }
+  ],
+  submissions: [
+    {
+      id: 'sub-101',
+      assignmentId: 'asg-101',
+      studentId: '236F1A0551',
+      studentName: 'Alex Vance',
+      submittedDate: '2026-09-11',
+      status: 'Graded',
+      marks: 95,
+      fileName: 'Distributed_Systems_gRPC_Report_AlexVance.pdf',
+      comments: 'All 4 microservices deployed and verified with load balancing.',
+      feedback: 'Outstanding architectural design, clean protocol buffer definitions, and comprehensive latency benchmarking graphs.'
+    },
+    {
+      id: 'sub-102',
+      assignmentId: 'asg-102',
+      studentId: '236F1A0551',
+      studentName: 'Alex Vance',
+      submittedDate: '2026-09-13',
+      status: 'Submitted',
+      marks: null,
+      fileName: 'Neural_Network_MNIST_Scratch_AlexVance.ipynb',
+      comments: 'Backpropagation implemented from scratch. Achieved 98.2% test accuracy.',
+      feedback: 'Submission received successfully. Evaluation in progress.'
+    },
+    {
+      id: 'sub-104',
+      assignmentId: 'asg-104',
+      studentId: '236F1A0551',
+      studentName: 'Alex Vance',
+      submittedDate: '2026-09-09',
+      status: 'Graded',
+      marks: 92,
+      fileName: 'K8s_FullStack_Deployment_AlexVance.zip',
+      comments: 'Minikube cluster deployment with Ingress NGINX controller and PVC.',
+      feedback: 'Great work! Manifests follow best practices with proper readiness and liveness probes.'
+    }
+  ],
+  examMarks: [
+    { studentId: '236F1A0551', studentName: 'Alex Vance', courseCode: 'CSE-301', examName: 'Midterm 1', internalMarks: 28, externalMarks: 64 },
+    { studentId: '236F1A0551', studentName: 'Alex Vance', courseCode: 'CSE-302', examName: 'Midterm 1', internalMarks: 29, externalMarks: 66 },
+    { studentId: '236F1A0551', studentName: 'Alex Vance', courseCode: 'CSE-303', examName: 'Midterm 1', internalMarks: 27, externalMarks: 59 },
+    { studentId: '236F1A0551', studentName: 'Alex Vance', courseCode: 'CSE-304', examName: 'Midterm 1', internalMarks: 28, externalMarks: 65 },
+    { studentId: '236F1A0551', studentName: 'Alex Vance', courseCode: 'CSE-305', examName: 'Midterm 1', internalMarks: 26, externalMarks: 61 }
+  ],
+  announcements: [
+    {
+      id: 'ann-1',
+      title: 'End Semester Examination Schedule & Admit Card Distribution',
+      message: 'Admit cards for Winter 2026 End Semester Theory and Practical Examinations are now available for download. Please verify your registered course codes and examination hall allocations.',
+      publishedBy: 'Controller of Examinations',
+      audience: 'All Students',
+      priority: 'High',
+      publishDate: '12 Sep 2026',
+      status: 'Published'
+    },
+    {
+      id: 'ann-2',
+      title: 'Campus Placement Recruitment Drive: Tier-1 Technology Cohort',
+      message: 'Phase 1 Campus Recruitment Drives for Google, Microsoft, Amazon, and Cisco commence next week. All eligible students with CGPA >= 7.5 are requested to verify their placement portal profiles.',
+      publishedBy: 'Career Placement & Training Cell',
+      audience: 'All Students',
+      priority: 'High',
+      publishDate: '10 Sep 2026',
+      status: 'Published'
+    },
+    {
+      id: 'ann-3',
+      title: 'National Hackathon 2026: Cloud Native & GenAI Challenge',
+      message: 'Registrations are open for the 48-Hour Inter-College Hackathon. Teams can register up to 4 members. Total prize pool ₹3,00,000 with industry mentorship from top tech leaders.',
+      publishedBy: 'Department of Computer Science',
+      audience: 'All Students',
+      priority: 'Medium',
+      publishDate: '08 Sep 2026',
+      status: 'Published'
+    }
+  ]
 };
 
 export const getManagementData = (): ManagementData => {
@@ -524,10 +669,14 @@ export const getManagementData = (): ManagementData => {
     }
     const parsed = JSON.parse(stored);
 
-    const rawAssignments: ManagementAssignment[] = Array.isArray(parsed.assignments) ? parsed.assignments : [];
+    const rawAssignments: ManagementAssignment[] = Array.isArray(parsed.assignments) && parsed.assignments.length > 0
+      ? parsed.assignments
+      : initialManagementData.assignments;
     const mergedAssignments = rawAssignments;
 
-    const rawSubmissions: AssignmentSubmission[] = Array.isArray(parsed.submissions) ? parsed.submissions : [];
+    const rawSubmissions: AssignmentSubmission[] = Array.isArray(parsed.submissions) && parsed.submissions.length > 0
+      ? parsed.submissions
+      : initialManagementData.submissions;
     const mergedSubmissions = rawSubmissions;
 
     const rawStudents: StudentRecord[] = Array.isArray(parsed.students) && parsed.students.length > 0 ? parsed.students : initialManagementData.students;
@@ -617,10 +766,14 @@ export const getManagementData = (): ManagementData => {
       };
     });
 
-    const rawExamMarks: ExamMarkRecord[] = Array.isArray(parsed.examMarks) ? parsed.examMarks : [];
+    const rawExamMarks: ExamMarkRecord[] = Array.isArray(parsed.examMarks) && parsed.examMarks.length > 0
+      ? parsed.examMarks
+      : initialManagementData.examMarks;
     const mergedExamMarks = rawExamMarks;
 
-    const rawAnnouncements: ManagementAnnouncement[] = Array.isArray(parsed.announcements) ? parsed.announcements : [];
+    const rawAnnouncements: ManagementAnnouncement[] = Array.isArray(parsed.announcements) && parsed.announcements.length > 0
+      ? parsed.announcements
+      : initialManagementData.announcements;
     const mergedAnnouncements = rawAnnouncements;
 
     const rawLabs: LabRecord[] = Array.isArray(parsed.labs) && parsed.labs.length > 0 ? parsed.labs : (initialManagementData.labs || []);

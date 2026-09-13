@@ -6,13 +6,19 @@ export interface PlacementSummaryCardProps {
   applicationsCount?: number;
   shortlistedCount?: number;
   upcomingDrivesCount?: number;
+  featuredRole?: string;
+  featuredCompany?: string;
+  featuredMeta?: string;
 }
 
 export const PlacementSummaryCard: React.FC<PlacementSummaryCardProps> = ({
-  availableJobsCount = 12,
-  applicationsCount = 3,
-  shortlistedCount = 1,
-  upcomingDrivesCount = 2
+  availableJobsCount = 0,
+  applicationsCount = 0,
+  shortlistedCount = 0,
+  upcomingDrivesCount = 0,
+  featuredRole,
+  featuredCompany,
+  featuredMeta
 }) => {
   const navigate = useNavigate();
 
@@ -47,14 +53,29 @@ export const PlacementSummaryCard: React.FC<PlacementSummaryCardProps> = ({
         </div>
       </div>
 
-      {/* Featured Company Drive */}
-      <div className="featured-drive-banner">
-        <div className="drive-logo-chip">TN</div>
-        <div className="drive-info">
-          <div className="drive-role">Software Developer (Full Stack)</div>
-          <div className="drive-meta">TechNova Systems • ₹8.0 LPA • Deadline: 30 Aug</div>
+      {/* Featured Company Drive or Empty State */}
+      {availableJobsCount > 0 && featuredRole ? (
+        <div className="featured-drive-banner">
+          <div className="drive-logo-chip">{(featuredCompany || 'CP').slice(0, 2).toUpperCase()}</div>
+          <div className="drive-info">
+            <div className="drive-role">{featuredRole}</div>
+            <div className="drive-meta">{featuredMeta || featuredCompany}</div>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div style={{
+          textAlign: 'center',
+          padding: '14px 10px',
+          background: 'rgba(255, 255, 255, 0.02)',
+          borderRadius: '8px',
+          border: '1px dashed var(--border-subtle)',
+          margin: '12px 0 4px',
+          color: 'var(--text-muted)',
+          fontSize: '0.8rem'
+        }}>
+          No active recruitment drives scheduled
+        </div>
+      )}
 
       <button
         type="button"

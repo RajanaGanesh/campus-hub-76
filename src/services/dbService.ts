@@ -1,5 +1,15 @@
 import { supabase } from '../lib/supabase';
-import { studentDashboardData, StudentDashboardData } from '../data/studentDashboardData';
+import {
+  studentDashboardData,
+  StudentDashboardData,
+  AttendanceSubject,
+  PendingAssignment,
+  UpcomingExam,
+  ExamResult,
+  LibraryBook,
+  PlacementOpportunity,
+  NotificationItem
+} from '../data/studentDashboardData';
 import {
   StudentRecord,
   FacultyRecord,
@@ -68,7 +78,7 @@ export const dbService = {
 
       const studentsData = studentsRes.data || [];
       if (studentsData.length === 0) {
-        return localStudents;
+        return [];
       }
 
       const profilesMap = new Map<string, any>();
@@ -77,14 +87,48 @@ export const dbService = {
         if (p.email) profilesMap.set(p.email.toLowerCase(), p);
       });
 
-      return studentsData.map((row: any) => {
+      // Filter out admin, faculty, and system accounts that might be in students table
+      const validStudentsData = studentsData.filter((row: any) => {
+        const profile = profilesMap.get(row.id) || profilesMap.get((row.email || '').toLowerCase()) || {};
+        
+        // Exclude users with non-student role in profile
+        if (profile.role && profile.role !== 'student') return false;
+
+        const stuId = (row.student_id || row.id || '').toLowerCase();
+        const stuName = (profile.name || row.name || '').toLowerCase().trim();
+        const stuEmail = (profile.email || row.email || '').toLowerCase().trim();
+
+        // Exclude admin or faculty accounts
+        if (
+          stuName === 'admin' ||
+          stuName.includes('admincampushub') ||
+          stuName.includes('system admin') ||
+          stuName.includes('administrator') ||
+          stuEmail.startsWith('admin@') ||
+          stuEmail.includes('admincampushub') ||
+          stuEmail.startsWith('faculty@') ||
+          stuId.startsWith('adm') ||
+          stuId.startsWith('fac')
+        ) {
+          return false;
+        }
+
+        return true;
+      });
+
+      return validStudentsData.map((row: any) => {
         const profile = profilesMap.get(row.id) || {};
-        const yearSectionParts = (row.year_section || '4 - A').split('-');
-        const yearVal = yearSectionParts[0]?.trim() || '4';
+        const yearSectionParts = (row.year_section || '1 - A').split('-');
+        const yearVal = yearSectionParts[0]?.trim() || '1';
         const sectionVal = yearSectionParts[1]?.trim() || 'A';
         const stuId = row.student_id || row.id;
-        const stuName = profile.name || row.name || 'Student Candidate';
-        const stuEmail = profile.email || `${(row.student_id || row.id).toLowerCase()}@campushub.edu`;
+        let stuName = profile.name || row.name;
+        const stuEmail = profile.email || `${stuId.toLowerCase()}@campushub.edu`;
+
+        if (!stuName || stuName === 'New User' || stuName === 'Campus User') {
+          const emailPrefix = stuEmail.split('@')[0].replace(/[._0-9-]+/g, ' ').trim();
+          stuName = emailPrefix.replace(/\b\w/g, (c: string) => c.toUpperCase()) || stuId;
+        }
 
         const localStu = localStudentsMap.get((stuId || '').toUpperCase());
 
@@ -113,11 +157,11 @@ export const dbService = {
           name: stuName,
           email: stuEmail,
           phone: profile.phone || localStu?.phone || '+91 9876543210',
-          department: row.department || localStu?.department || 'CSE',
+          department: row.department || localStu?.department || 'Computer Science & Engineering',
           year: yearVal.includes('Year') ? yearVal : `${yearVal} Year`,
           section: sectionVal.replace(/^Sec\s*/i, ''),
-          cgpa: Number(row.cgpa) || localStu?.cgpa || 8.0,
-          attendancePercent: localStu?.attendancePercent || 88,
+          cgpa: Number(row.cgpa) || 8.0,
+          attendancePercent: Number(row.attendance_percent) || 0,
           assignmentsCompleted: assignmentsCount,
           performance: (Number(row.cgpa) >= 8.5 ? 'Excellent' : Number(row.cgpa) >= 7.5 ? 'Good' : 'Average') as any,
           status: 'Active'
@@ -125,7 +169,7 @@ export const dbService = {
       });
     } catch (err) {
       console.warn('Supabase getStudents failed:', err);
-      return localStudents;
+      return [];
     }
   },
 
@@ -311,24 +355,33 @@ export const dbService = {
    * Fetch all faculty members from Supabase database
    */
   async getFaculty(): Promise<FacultyRecord[]> {
+    const mgmt = getManagementData();
+    const localFaculty = mgmt.faculty || [];
+    const localFacultyMap = new Map<string, FacultyRecord>();
+    localFaculty.forEach((f) => {
+      if (f.id) localFacultyMap.set(f.id.toUpperCase(), f);
+      if (f.email) localFacultyMap.set(f.email.toLowerCase(), f);
+    });
+
     if (!supabase) {
-      return getManagementData().faculty;
+      return localFaculty;
     }
 
     try {
-      const [facultyRes, profilesRes] = await Promise.all([
+      const [facultyRes, profilesRes, coursesRes] = await Promise.all([
         supabase.from('faculty').select('*'),
-        supabase.from('profiles').select('*')
+        supabase.from('profiles').select('*'),
+        supabase.from('courses').select('*')
       ]);
 
       if (facultyRes.error) {
         console.warn('Could not query faculty from Supabase:', facultyRes.error);
-        return getManagementData().faculty;
+        return localFaculty;
       }
 
       const facultyData = facultyRes.data || [];
       if (facultyData.length === 0) {
-        return getManagementData().faculty;
+        return localFaculty;
       }
 
       const profilesMap = new Map<string, any>();
@@ -337,26 +390,151 @@ export const dbService = {
         if (p.email) profilesMap.set(p.email.toLowerCase(), p);
       });
 
+      const coursesData = coursesRes.data || [];
+
       return facultyData.map((row: any) => {
         const profile = profilesMap.get(row.id) || {};
+        const facId = row.faculty_id || row.id;
+        let facName = profile.name || row.name;
+        if (!facName || facName === 'New User' || facName === 'Campus User') {
+          const emailPrefix = (profile.email || `${facId}@campushub.edu`).split('@')[0].replace(/[._0-9-]+/g, ' ').trim();
+          facName = emailPrefix.replace(/\b\w/g, (c: string) => c.toUpperCase()) || facId;
+        }
+
+        const localRecord = localFacultyMap.get(facId.toUpperCase()) || (profile.email ? localFacultyMap.get(profile.email.toLowerCase()) : null);
+
+        // 1. Check assigned courses from database courses table
+        const assignedFromDB = coursesData
+          .filter((c: any) => c.faculty_id === row.id || c.faculty_id === facId)
+          .map((c: any) => c.code);
+
+        // 2. Combine with local recorded courses
+        const combinedCourses = Array.from(new Set([
+          ...assignedFromDB,
+          ...(localRecord?.courses || [])
+        ]));
+
+        // 3. Fallback default department course if none assigned
+        const defaultDeptCourses = row.department === 'ECE' ? ['ECE-304'] : row.department === 'MECH' ? ['ME-201'] : ['CSE-301'];
+        const finalCourses = combinedCourses.length > 0 ? combinedCourses : defaultDeptCourses;
+
         return {
-          id: row.faculty_id || row.id,
-          name: profile.name || row.name || 'Faculty Member',
-          email: profile.email || `${(row.faculty_id || row.id).toLowerCase()}@campushub.edu`,
-          department: row.department || 'CSE',
-          designation: row.designation || 'Assistant Professor',
-          courses: ['CSE-301', 'CSE-302'],
+          id: facId,
+          name: facName || 'Faculty Member',
+          email: profile.email || localRecord?.email || `${facId.toLowerCase()}@campushub.edu`,
+          department: row.department || localRecord?.department || 'Computer Science & Engineering',
+          designation: row.designation || localRecord?.designation || 'Assistant Professor',
+          courses: finalCourses,
           status: 'Active'
         };
       });
     } catch (err) {
       console.warn('Supabase getFaculty failed:', err);
-      return getManagementData().faculty;
+      return localFaculty;
     }
   },
 
   /**
-   * Add a new faculty member to Supabase (Auth + profiles + faculty tables)
+   * Fetch all courses from Supabase database
+   */
+  async getCourses(): Promise<any[]> {
+    if (!supabase) {
+      return getManagementData().courses;
+    }
+
+    try {
+      const [coursesRes, facultyRes, profilesRes] = await Promise.all([
+        supabase.from('courses').select('*'),
+        supabase.from('faculty').select('*'),
+        supabase.from('profiles').select('*')
+      ]);
+
+      if (coursesRes.error) {
+        console.warn('Could not query courses from Supabase:', coursesRes.error);
+        return [];
+      }
+
+      const coursesData = coursesRes.data || [];
+      if (coursesData.length === 0) return [];
+
+      const facultyMap = new Map<string, any>();
+      const profilesMap = new Map<string, any>();
+      (profilesRes.data || []).forEach((p: any) => {
+        if (p.id) profilesMap.set(p.id, p);
+      });
+      (facultyRes.data || []).forEach((f: any) => {
+        const prof = profilesMap.get(f.id) || {};
+        let fName = prof.name || f.name;
+        if (!fName || fName === 'New User') {
+          const prefix = (prof.email || '').split('@')[0].replace(/[._0-9-]+/g, ' ').trim();
+          fName = prefix.replace(/\b\w/g, (c: string) => c.toUpperCase()) || f.faculty_id;
+        }
+        facultyMap.set(f.id, { ...f, name: fName });
+        if (f.faculty_id) facultyMap.set(f.faculty_id, { ...f, name: fName });
+      });
+
+      return coursesData.map((row: any) => {
+        const fac = row.faculty_id ? facultyMap.get(row.faculty_id) : null;
+        return {
+          code: row.code,
+          name: row.name,
+          department: row.department || 'Computer Science & Engineering',
+          semester: row.semester ? `${row.semester}th Semester` : '5th Semester',
+          facultyId: row.faculty_id || '',
+          facultyName: fac?.name || 'Department Faculty',
+          studentsCount: 60,
+          status: 'Active',
+          progress: 0,
+          nextClass: 'Schedule Active'
+        };
+      });
+    } catch (err) {
+      console.warn('Supabase getCourses failed:', err);
+      return [];
+    }
+  },
+
+  /**
+   * Fetch all assignments from Supabase database
+   */
+  async getAssignments(): Promise<any[]> {
+    if (!supabase) {
+      return getManagementData().assignments;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('assignments')
+        .select('*, courses(name, code)');
+
+      if (error) {
+        console.warn('Could not query assignments from Supabase:', error);
+        return [];
+      }
+
+      return (data || []).map((row: any) => {
+        const course = row.courses || {};
+        return {
+          id: row.id,
+          title: row.title,
+          courseCode: course.code || 'CS',
+          courseName: course.name || 'General',
+          description: row.description || '',
+          dueDate: row.due_date ? new Date(row.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Flexible',
+          maxMarks: row.max_marks || 100,
+          submissionsCount: 0,
+          createdDate: row.created_at ? new Date(row.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : new Date().toLocaleDateString('en-IN'),
+          priority: 'Medium'
+        };
+      });
+    } catch (err) {
+      console.warn('Supabase getAssignments failed:', err);
+      return [];
+    }
+  },
+
+  /**
+   * Add a new faculty member to Supabase (Auth + profiles + faculty tables + course linkage)
    */
   async addFaculty(faculty: FacultyRecord): Promise<{ success: boolean; error?: string }> {
     if (!supabase) {
@@ -432,6 +610,7 @@ export const dbService = {
       } else {
         // Fallback direct insert if profiles allows standalone UUIDs
         const generatedId = generateUUID();
+        userId = generatedId;
         await supabase.from('profiles').insert({
           id: generatedId,
           email,
@@ -445,6 +624,38 @@ export const dbService = {
           department: faculty.department || 'Computer Science & Engineering',
           designation: faculty.designation || 'Assistant Professor'
         } as any);
+      }
+
+      // 5. Link assigned courses in Supabase courses table
+      if (faculty.courses && faculty.courses.length > 0 && userId) {
+        for (const code of faculty.courses) {
+          const cleanCode = code.toUpperCase().trim();
+          try {
+            const { data: existingCourse } = await supabase
+              .from('courses')
+              .select('id')
+              .ilike('code', cleanCode)
+              .maybeSingle();
+
+            if (existingCourse?.id) {
+              await supabase
+                .from('courses')
+                .update({ faculty_id: userId } as any)
+                .eq('id', existingCourse.id);
+            } else {
+              await supabase.from('courses').insert({
+                code: cleanCode,
+                name: `${cleanCode} Course`,
+                department: faculty.department || 'Computer Science & Engineering',
+                faculty_id: userId,
+                type: 'Theory',
+                credits: 3
+              } as any);
+            }
+          } catch (courseErr) {
+            console.warn(`Course assignment sync error for ${cleanCode}:`, courseErr);
+          }
+        }
       }
 
       return { success: true };
@@ -489,6 +700,34 @@ export const dbService = {
             designation: faculty.designation
           } as any)
           .eq('id', facRecord.id);
+
+        // Update assigned courses linkage in Supabase
+        if (faculty.courses && faculty.courses.length > 0) {
+          for (const code of faculty.courses) {
+            const cleanCode = code.toUpperCase().trim();
+            const { data: existingCourse } = await supabase
+              .from('courses')
+              .select('id')
+              .ilike('code', cleanCode)
+              .maybeSingle();
+
+            if (existingCourse?.id) {
+              await supabase
+                .from('courses')
+                .update({ faculty_id: facRecord.id } as any)
+                .eq('id', existingCourse.id);
+            } else {
+              await supabase.from('courses').insert({
+                code: cleanCode,
+                name: `${cleanCode} Course`,
+                department: faculty.department || 'Computer Science & Engineering',
+                faculty_id: facRecord.id,
+                type: 'Theory',
+                credits: 3
+              } as any);
+            }
+          }
+        }
       } else {
         return await this.addFaculty(faculty);
       }
@@ -556,8 +795,13 @@ export const dbService = {
         .select('*, courses(name)')
         .eq('student_id', profileData.id);
 
-      let attendanceSubjects = studentDashboardData.attendanceSubjects;
+      let attendanceSubjects: AttendanceSubject[] = [];
+      let presentCount = 0;
+      let absentCount = 0;
+      let totalClasses = 0;
+
       if (attendanceData && attendanceData.length > 0) {
+        totalClasses = attendanceData.length;
         const coursesMap: Record<string, { present: number; total: number }> = {};
         attendanceData.forEach((att: any) => {
           const courseName = att.courses?.name || 'Unspecified';
@@ -567,6 +811,9 @@ export const dbService = {
           coursesMap[courseName].total += 1;
           if (att.status === 'Present' || att.status === 'Late') {
             coursesMap[courseName].present += 1;
+            presentCount += 1;
+          } else {
+            absentCount += 1;
           }
         });
 
@@ -578,9 +825,11 @@ export const dbService = {
         });
       }
 
-      const overallAttendance = attendanceSubjects.length > 0
-        ? Math.round(attendanceSubjects.reduce((acc, s) => acc + s.percentage, 0) / attendanceSubjects.length)
-        : 86;
+      const overallAttendance = totalClasses > 0
+        ? Math.round((presentCount / totalClasses) * 100)
+        : (attendanceSubjects.length > 0
+          ? Math.round(attendanceSubjects.reduce((acc, s) => acc + s.percentage, 0) / attendanceSubjects.length)
+          : (Number(studentData.attendance_percent) || 0));
 
       // 4. Fetch assignments
       const { data: assignmentsData } = await supabase
@@ -588,7 +837,7 @@ export const dbService = {
         .select('*, assignments(*, courses(name))')
         .eq('student_id', profileData.id);
 
-      let assignmentsList = studentDashboardData.assignments;
+      let assignmentsList: PendingAssignment[] = [];
       if (assignmentsData && assignmentsData.length > 0) {
         assignmentsList = assignmentsData.map((sub: any) => {
           const assignment = sub.assignments || {};
@@ -611,7 +860,7 @@ export const dbService = {
         .order('date', { ascending: true })
         .limit(5);
 
-      let examsList = studentDashboardData.exams;
+      let examsList: UpcomingExam[] = [];
       if (examsData && examsData.length > 0) {
         examsList = examsData.map((ex: any) => {
           const daysLeft = Math.ceil((new Date(ex.date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
@@ -631,7 +880,7 @@ export const dbService = {
         .select('*, courses(name)')
         .eq('student_id', profileData.id);
 
-      let resultsList = studentDashboardData.results;
+      let resultsList: ExamResult[] = [];
       if (resultsData && resultsData.length > 0) {
         resultsList = resultsData.map((res: any) => ({
           subject: res.courses?.name || 'Subject',
@@ -648,7 +897,12 @@ export const dbService = {
         .select('*')
         .eq('student_id', profileData.id);
 
-      let feesSummary = studentDashboardData.fees;
+      let feesSummary = {
+        total: 0,
+        paid: 0,
+        pending: 0,
+        dueDate: 'No dues'
+      };
       if (feesData && feesData.length > 0) {
         const total = feesData.reduce((acc: number, f: any) => acc + Number(f.amount), 0);
         const paid = feesData.filter((f: any) => f.status === 'Paid').reduce((acc: number, f: any) => acc + Number(f.amount), 0);
@@ -669,7 +923,12 @@ export const dbService = {
         .eq('student_id', profileData.id)
         .is('return_date', null);
 
-      let librarySummary = studentDashboardData.library;
+      let librarySummary = {
+        issued: 0,
+        dueSoonCount: 0,
+        overdueCount: 0,
+        books: [] as LibraryBook[]
+      };
       if (libraryData && libraryData.length > 0) {
         const books = libraryData.map((borrow: any) => {
           const book = borrow.library_books || {};
@@ -701,7 +960,7 @@ export const dbService = {
         .order('deadline', { ascending: true })
         .limit(5);
 
-      let placementsList = studentDashboardData.placements;
+      let placementsList: PlacementOpportunity[] = [];
       if (placementsData && placementsData.length > 0) {
         placementsList = placementsData.map((job: any) => ({
           role: job.role,
@@ -720,7 +979,7 @@ export const dbService = {
         .order('created_at', { ascending: false })
         .limit(10);
 
-      let notificationsList = studentDashboardData.notifications;
+      let notificationsList: NotificationItem[] = [];
       if (notificationsData && notificationsData.length > 0) {
         notificationsList = notificationsData.map((not: any) => ({
           id: not.id,
@@ -731,39 +990,44 @@ export const dbService = {
         }));
       }
 
+      const cgpaDisplay = studentData.cgpa ? Number(studentData.cgpa).toFixed(1) : '0.0';
+
       return {
         profile: {
           studentId: studentData.student_id,
-          department: studentData.department,
-          yearSection: studentData.year_section,
-          semester: '8th Semester',
+          department: studentData.department || 'Computer Science & Engineering',
+          yearSection: studentData.year_section || '1st Year • Sec A',
+          semester: studentData.semester ? `${studentData.semester}th Semester` : '1st Semester',
           email: profileData.email,
-          avatarInitials: profileData.name ? profileData.name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : 'US'
+          avatarInitials: profileData.name ? profileData.name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : 'ST'
         },
         stats: [
-          { icon: 'fa-user-check', title: 'Attendance', value: `${overallAttendance}%`, description: 'Overall Attendance', status: overallAttendance >= 75 ? 'Good' : 'Critical', statusType: overallAttendance >= 85 ? 'good' : 'due', progress: overallAttendance, colorVariant: overallAttendance >= 75 ? 'primary' : 'red' },
-          { icon: 'fa-award', title: 'CGPA', value: studentData.cgpa ? studentData.cgpa.toString() : '8.6', description: 'Current CGPA', status: 'Excellent', statusType: 'excellent', colorVariant: 'cyan' },
-          { icon: 'fa-file-invoice', title: 'Assignments', value: assignmentsList.filter(a => a.status === 'Pending').length.toString(), description: 'Pending Assignments', status: 'Due Soon', statusType: 'due', colorVariant: 'green' },
-          { icon: 'fa-receipt', title: 'Exams', value: examsList.length.toString(), description: 'Upcoming Exams', status: 'Prepare', statusType: 'active', colorVariant: 'red' },
+          { icon: 'fa-user-check', title: 'Attendance', value: `${overallAttendance}%`, description: 'Overall Attendance', status: overallAttendance >= 75 ? 'Good' : overallAttendance > 0 ? 'Critical' : 'No Data', statusType: overallAttendance >= 75 ? 'good' : 'due', progress: overallAttendance, colorVariant: overallAttendance >= 75 ? 'primary' : 'red' },
+          { icon: 'fa-award', title: 'CGPA', value: cgpaDisplay, description: 'Current CGPA', status: Number(cgpaDisplay) >= 8.0 ? 'Excellent' : Number(cgpaDisplay) >= 6.5 ? 'Good' : 'Active', statusType: 'excellent', colorVariant: 'cyan' },
+          { icon: 'fa-file-invoice', title: 'Assignments', value: assignmentsList.filter(a => a.status === 'Pending' || a.status === 'Due Soon').length.toString(), description: 'Pending Assignments', status: assignmentsList.length > 0 ? 'Active' : 'None', statusType: 'due', colorVariant: 'green' },
+          { icon: 'fa-receipt', title: 'Exams', value: examsList.length.toString(), description: 'Upcoming Exams', status: examsList.length > 0 ? 'Prepare' : 'None', statusType: 'active', colorVariant: 'red' },
           { icon: 'fa-wallet', title: 'Pending Fees', value: `₹${feesSummary.pending.toLocaleString('en-IN')}`, description: 'Pending Tuition', status: feesSummary.pending > 0 ? 'Due Soon' : 'Paid', statusType: feesSummary.pending > 0 ? 'due' : 'good', colorVariant: feesSummary.pending > 0 ? 'red' : 'green' },
-          { icon: 'fa-book-open', title: 'Library Books', value: librarySummary.issued.toString(), description: 'Books Issued', status: 'Active', statusType: 'active', colorVariant: 'cyan' }
+          { icon: 'fa-book-open', title: 'Library Books', value: librarySummary.issued.toString(), description: 'Books Issued', status: librarySummary.issued > 0 ? 'Active' : 'None', statusType: 'active', colorVariant: 'cyan' }
         ],
         overallAttendance,
+        presentCount,
+        absentCount,
+        totalClasses,
         attendanceSubjects,
-        performanceHistory: studentDashboardData.performanceHistory,
-        timetable: studentDashboardData.timetable,
+        performanceHistory: [],
+        timetable: [],
         assignments: assignmentsList,
         exams: examsList,
         results: resultsList,
         fees: feesSummary,
         library: librarySummary,
         placements: placementsList,
-        announcements: studentDashboardData.announcements,
+        announcements: [],
         notifications: notificationsList,
-        activities: studentDashboardData.activities
+        activities: []
       };
     } catch (err) {
-      console.warn('Supabase query failed, using local fallback state:', err);
+      console.warn('Supabase query failed, using empty default state:', err);
       return studentDashboardData;
     }
   },
@@ -988,6 +1252,138 @@ export const dbService = {
     }
 
     return { success: true };
+  },
+
+  /**
+   * Sync a batch of marked attendance records to Supabase public.attendance table
+   */
+  async syncAttendanceBatch(params: {
+    courseCode: string;
+    date: string; // YYYY-MM-DD
+    records: Array<{
+      studentId: string; // roll number or UUID
+      status: 'Present' | 'Absent' | 'Late' | 'Excused';
+      remarks?: string;
+    }>;
+    facultyId?: string;
+  }): Promise<{ success: boolean; insertedCount?: number; error?: string }> {
+    if (!supabase) {
+      return { success: true, insertedCount: 0 };
+    }
+
+    try {
+      const { courseCode, date, records, facultyId } = params;
+      if (!records || records.length === 0) return { success: true, insertedCount: 0 };
+
+      // 1. Resolve Course UUID
+      let resolvedCourseId: string | null = null;
+      const { data: courseRow } = await supabase
+        .from('courses')
+        .select('id')
+        .or(`code.eq.${courseCode},id.eq.${courseCode}`)
+        .maybeSingle();
+
+      if (courseRow?.id) {
+        resolvedCourseId = courseRow.id;
+      } else {
+        // Fallback: pick first available course
+        const { data: firstCourse } = await supabase.from('courses').select('id').limit(1).maybeSingle();
+        if (firstCourse?.id) resolvedCourseId = firstCourse.id;
+      }
+
+      if (!resolvedCourseId) {
+        return { success: false, error: 'No matching course found in database.' };
+      }
+
+      // 2. Resolve Student UUIDs
+      const { data: studentsList } = await supabase
+        .from('students')
+        .select('id, student_id');
+
+      const studentIdMap = new Map<string, string>();
+      (studentsList || []).forEach((s) => {
+        if (s.id) studentIdMap.set(s.id.toLowerCase(), s.id);
+        if (s.student_id) studentIdMap.set(s.student_id.toLowerCase(), s.id);
+      });
+
+      // 3. Construct rows for upsert
+      const rowsToUpsert = records
+        .map((r) => {
+          const studentUUID =
+            studentIdMap.get(r.studentId.toLowerCase()) ||
+            (studentsList && studentsList.length > 0 ? studentsList[0].id : null);
+
+          if (!studentUUID) return null;
+
+          return {
+            student_id: studentUUID,
+            course_id: resolvedCourseId,
+            date: date,
+            status: r.status,
+            marked_by: facultyId || null,
+            remarks: r.remarks || null
+          };
+        })
+        .filter(Boolean);
+
+      if (rowsToUpsert.length === 0) {
+        return { success: true, insertedCount: 0 };
+      }
+
+      const { error: upsertError } = await supabase
+        .from('attendance')
+        .upsert(rowsToUpsert as any, { onConflict: 'student_id,course_id,date' });
+
+      if (upsertError) {
+        console.warn('Supabase attendance upsert notice:', upsertError);
+        return { success: false, error: upsertError.message };
+      }
+
+      return { success: true, insertedCount: rowsToUpsert.length };
+    } catch (err: any) {
+      console.warn('Exception syncing attendance to Supabase:', err);
+      return { success: false, error: err?.message || 'Database error' };
+    }
+  },
+
+  /**
+   * Fetch attendance records for a specific course or student from Supabase
+   */
+  async getAttendanceRecords(params?: {
+    courseId?: string;
+    studentId?: string;
+    date?: string;
+  }): Promise<any[]> {
+    if (!supabase) return [];
+
+    try {
+      let query = supabase.from('attendance').select(`
+        id,
+        date,
+        status,
+        remarks,
+        created_at,
+        student_id,
+        course_id,
+        students (student_id, department, year_section),
+        courses (code, name)
+      `);
+
+      if (params?.courseId) query = query.eq('course_id', params.courseId);
+      if (params?.studentId) query = query.eq('student_id', params.studentId);
+      if (params?.date) query = query.eq('date', params.date);
+
+      const { data, error } = await query;
+      if (error) {
+        console.warn('Error fetching attendance from Supabase:', error);
+        return [];
+      }
+      return data || [];
+    } catch (err) {
+      console.warn('Exception getting attendance:', err);
+      return [];
+    }
   }
 };
+
 

@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 import { useEffectiveUserProfile } from '../../utils/userProfile';
-import { downloadAttendanceReport } from '../../utils/fileDownloader';
+import { downloadAttendanceReport, downloadNoticeAttachment } from '../../utils/fileDownloader';
 import {
   LeaveApplication,
   AttendanceSummary,
@@ -11,15 +11,62 @@ import {
   subjectAttendanceData,
   initialLeaveApplications
 } from '../../data/attendanceData';
+import {
+  getAttendanceShortageEmails,
+  AttendanceShortageEmailRecord
+} from '../../services/emailService';
 
 const LEAVES_STORAGE_KEY = 'campushub_student_leaves';
 
 export const StudentAttendance: React.FC = () => {
   const effectiveProfile = useEffectiveUserProfile();
+  const studentRoll = (effectiveProfile as any).rollNumber || '236F1A0551';
 
   // Core Data States
   const [summary] = useState<AttendanceSummary>(initialAttendanceSummary);
   
+  // Sent Shortage Notices & Emails State
+  const [shortageEmails, setShortageEmails] = useState<AttendanceShortageEmailRecord[]>(() => getAttendanceShortageEmails());
+  const [selectedNoticeEmail, setSelectedNoticeEmail] = useState<AttendanceShortageEmailRecord | null>(null);
+
+  // Subscribe to real-time email dispatch events
+  useEffect(() => {
+    const handleSync = () => {
+      setShortageEmails(getAttendanceShortageEmails());
+    };
+    window.addEventListener('campushub_shortage_email_sent', handleSync);
+    window.addEventListener('campushub_student_notifications_updated', handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener('campushub_shortage_email_sent', handleSync);
+      window.removeEventListener('campushub_student_notifications_updated', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
+  }, []);
+
+  // Filter notices for this student (matching email, roll number, or student name, or general attendance shortage)
+  const studentShortageNotices = useMemo(() => {
+    const cleanEmail = (effectiveProfile.email || '').toLowerCase().trim();
+    const cleanRoll = studentRoll.toLowerCase().trim();
+    const cleanName = (effectiveProfile.name || '').toLowerCase().trim();
+
+    const matched = shortageEmails.filter((eml) => {
+      const emlEmail = eml.studentEmail.toLowerCase().trim();
+      const emlId = eml.studentId.toLowerCase().trim();
+      const emlName = eml.studentName.toLowerCase().trim();
+
+      return (
+        (cleanEmail && emlEmail === cleanEmail) ||
+        (cleanRoll && emlId === cleanRoll) ||
+        (cleanName && emlName === cleanName) ||
+        emlEmail.includes(cleanRoll) ||
+        cleanEmail.includes(emlId)
+      );
+    });
+
+    return matched.length > 0 ? matched : shortageEmails;
+  }, [shortageEmails, effectiveProfile, studentRoll]);
+
   // Leaves state seeded with storage or initial mock
   const [leaves, setLeaves] = useState<LeaveApplication[]>(() => {
     try {
@@ -112,7 +159,7 @@ export const StudentAttendance: React.FC = () => {
   const handleDownloadReport = () => {
     downloadAttendanceReport({
       studentName: effectiveProfile.name,
-      rollNumber: '236F1A0551',
+      rollNumber: studentRoll,
       department: 'Computer Science & Engineering',
       semester: 'Semester 8 (Final Year)',
       overallPercentage: summary.overallPercentage,
@@ -138,6 +185,72 @@ export const StudentAttendance: React.FC = () => {
       <div className="attendance-page-container" style={{ paddingBottom: '60px' }}>
         {/* Toast Alerts */}
         {toastMsg && <Toast message={toastMsg.message} type={toastMsg.type} onClose={() => setToastMsg(null)} />}
+
+        {/* =========================================================================
+            URGENT ATTENDANCE SHORTAGE NOTICE BANNER (If notices received)
+            ========================================================================= */}
+        {studentShortageNotices.length > 0 && (
+          <div
+            className="c1-card"
+            style={{
+              background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(244, 63, 94, 0.08) 100%)',
+              border: '1px solid rgba(239, 68, 68, 0.35)',
+              borderRadius: '16px',
+              padding: '20px 24px',
+              marginBottom: '24px',
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '16px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '12px',
+                  background: 'rgba(239, 68, 68, 0.2)',
+                  color: '#ef4444',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '22px',
+                  flexShrink: 0
+                }}
+              >
+                <i className="fa-solid fa-triangle-exclamation"></i>
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <span className="c1-badge c1-badge-error" style={{ fontSize: '11px', fontWeight: 700 }}>
+                    Official Attendance Warning Issued
+                  </span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                    Transmitted to student email & guardian contact
+                  </span>
+                </div>
+                <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>
+                  Academic Shortage Notice Delivered ({studentShortageNotices[0].courseCode} • {studentShortageNotices[0].attendancePercentage}%)
+                </h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
+                  An official notice was dispatched to <strong>{studentShortageNotices[0].studentEmail}</strong> regarding course attendance falling below 75%.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="c1-btn c1-btn-gradient"
+              onClick={() => setSelectedNoticeEmail(studentShortageNotices[0])}
+              style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)', border: 'none', padding: '10px 18px', fontSize: '13px' }}
+            >
+              <i className="fa-solid fa-envelope-open-text"></i>
+              <span>View Notice Transcript</span>
+            </button>
+          </div>
+        )}
 
         {/* =========================================================================
             1. HERO ATTENDANCE HEADER BANNER
@@ -176,7 +289,7 @@ export const StudentAttendance: React.FC = () => {
                 Attendance & Leave Registry
               </h1>
               <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0, maxWidth: '640px', lineHeight: 1.5 }}>
-                Track overall attendance standing, submit On-Duty (OD) / Medical leave applications, and view faculty advisor approval status.
+                Track overall attendance standing, review official attendance shortage warning emails, submit On-Duty (OD) / Medical leave applications, and view faculty advisor approvals.
               </p>
             </div>
 
@@ -245,11 +358,12 @@ export const StudentAttendance: React.FC = () => {
                     fontWeight: 700,
                     padding: '2px 8px',
                     borderRadius: '12px',
-                    background: 'rgba(16, 185, 129, 0.15)',
-                    color: '#059669'
+                    background: summary.overallPercentage >= 75 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                    color: summary.overallPercentage >= 75 ? '#059669' : '#dc2626'
                   }}
                 >
-                  <i className="fa-solid fa-circle-check"></i> Safe (≥75% Req.)
+                  <i className={summary.overallPercentage >= 75 ? "fa-solid fa-circle-check" : "fa-solid fa-triangle-exclamation"}></i>
+                  {summary.overallPercentage >= 75 ? 'Safe (≥75% Req.)' : 'Shortage (<75%)'}
                 </span>
               </div>
             </div>
@@ -269,7 +383,7 @@ export const StudentAttendance: React.FC = () => {
                   cx="42"
                   cy="42"
                   r={gaugeRadius - 12}
-                  stroke="#2563eb"
+                  stroke={summary.overallPercentage >= 75 ? "#2563eb" : "#ef4444"}
                   strokeWidth="8"
                   fill="transparent"
                   strokeDasharray={2 * Math.PI * (gaugeRadius - 12)}
@@ -342,6 +456,115 @@ export const StudentAttendance: React.FC = () => {
               Hall Ticket Clear for End-Semester Exams
             </p>
           </div>
+        </div>
+
+        {/* =========================================================================
+            OFFICIAL ATTENDANCE NOTICES & SENT EMAILS LOG
+            ========================================================================= */}
+        <div className="c1-card" style={{ padding: '24px', borderRadius: '16px', marginBottom: '24px' }}>
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '14px',
+              marginBottom: '16px'
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                  Official Attendance Notices & Email Communications
+                </h2>
+                <span className="c1-badge c1-badge-cyan" style={{ fontSize: '11px' }}>
+                  {studentShortageNotices.length} Notice{studentShortageNotices.length === 1 ? '' : 's'}
+                </span>
+              </div>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
+                Formal notifications regarding attendance shortages, exam eligibility alerts, and guardian SMS/email broadcasts.
+              </p>
+            </div>
+          </div>
+
+          {studentShortageNotices.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--text-muted)' }}>
+              <i className="fa-solid fa-shield-halved" style={{ fontSize: '2.5rem', color: '#10b981', marginBottom: '12px', display: 'block', opacity: 0.8 }}></i>
+              <h4 style={{ margin: '0 0 4px', color: 'var(--text-primary)', fontWeight: 600 }}>No Attendance Shortage Warnings</h4>
+              <p style={{ margin: 0, fontSize: '0.85rem' }}>Your attendance is in good standing across all enrolled subjects.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '16px' }}>
+              {studentShortageNotices.map((eml) => (
+                <div
+                  key={eml.id}
+                  style={{
+                    padding: '18px',
+                    borderRadius: '12px',
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-color)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    gap: '12px'
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span className="c1-badge c1-badge-error" style={{ fontSize: '10.5px', fontWeight: 700 }}>
+                        <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '4px' }}></i>
+                        {eml.attendancePercentage}% Attendance Shortage
+                      </span>
+                      <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                        {eml.sentAt}
+                      </span>
+                    </div>
+
+                    <h4 style={{ fontSize: '14.5px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>
+                      {eml.subject}
+                    </h4>
+
+                    <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '8px', lineHeight: 1.4 }}>
+                      <div><strong>Course:</strong> {eml.courseCode} ({eml.courseName})</div>
+                      <div><strong>Delivered To:</strong> <span style={{ color: 'var(--accent-blue)' }}>{eml.studentEmail}</span></div>
+                      <div><strong>Conducted / Attended:</strong> {eml.conductedClasses} Held • {eml.presentClasses} Attended • {eml.absentClasses} Missed</div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
+                    <button
+                      type="button"
+                      className="c1-btn c1-btn-primary"
+                      onClick={() => setSelectedNoticeEmail(eml)}
+                      style={{ flex: 1, padding: '7px 12px', fontSize: '12px' }}
+                    >
+                      <i className="fa-solid fa-eye"></i>
+                      <span>Read Full Notice</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="c1-btn c1-btn-secondary"
+                      onClick={() => {
+                        downloadNoticeAttachment({
+                          attachmentName: `Official_Shortage_Notice_${eml.courseCode}.pdf`,
+                          title: eml.subject,
+                          content: eml.messageText,
+                          department: eml.facultyName,
+                          date: eml.sentAt,
+                          priority: 'High'
+                        });
+                        showToast('Official Shortage Notice PDF downloaded.', 'success');
+                      }}
+                      style={{ padding: '7px 12px', fontSize: '12px' }}
+                      title="Download Official Notice Document"
+                    >
+                      <i className="fa-solid fa-download"></i>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* =========================================================================
@@ -486,6 +709,100 @@ export const StudentAttendance: React.FC = () => {
         </div>
 
         {/* =========================================================================
+            MODAL: VIEW FULL ATTENDANCE SHORTAGE EMAIL & NOTICE
+            ========================================================================= */}
+        {selectedNoticeEmail && (
+          <Modal
+            isOpen={true}
+            onClose={() => setSelectedNoticeEmail(null)}
+            title="Official Attendance Shortage Notice & Email Transcript"
+            maxWidth="lg"
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Header Info */}
+              <div style={{ padding: '14px 18px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)', borderRadius: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', fontSize: '13px' }}>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '11px', textTransform: 'uppercase', marginBottom: '2px' }}>Recipient Student</span>
+                    <strong style={{ color: 'var(--text-primary)' }}>{selectedNoticeEmail.studentName} ({selectedNoticeEmail.studentId})</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '11px', textTransform: 'uppercase', marginBottom: '2px' }}>Recipient Email</span>
+                    <strong style={{ color: 'var(--accent-blue)' }}>{selectedNoticeEmail.studentEmail}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '11px', textTransform: 'uppercase', marginBottom: '2px' }}>Course Code & Section</span>
+                    <strong style={{ color: 'var(--text-primary)' }}>{selectedNoticeEmail.courseCode} ({selectedNoticeEmail.section})</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '11px', textTransform: 'uppercase', marginBottom: '2px' }}>Issued On</span>
+                    <strong style={{ color: 'var(--text-primary)' }}>{selectedNoticeEmail.sentAt}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Subject */}
+              <div>
+                <label className="c1-form-label" style={{ marginBottom: '4px' }}>Subject Line</label>
+                <div style={{ padding: '10px 14px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px', color: '#f87171', fontWeight: 600, fontSize: '13.5px' }}>
+                  {selectedNoticeEmail.subject}
+                </div>
+              </div>
+
+              {/* Message Transcript */}
+              <div>
+                <label className="c1-form-label" style={{ marginBottom: '4px' }}>Notice Transcript & Official Communication</label>
+                <pre style={{
+                  padding: '16px',
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: '10px',
+                  whiteSpace: 'pre-wrap',
+                  fontFamily: 'inherit',
+                  fontSize: '13px',
+                  lineHeight: 1.6,
+                  color: 'var(--text-primary)',
+                  maxHeight: '300px',
+                  overflowY: 'auto'
+                }}>
+                  {selectedNoticeEmail.messageText}
+                </pre>
+              </div>
+
+              {/* Modal footer */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setSelectedNoticeEmail(null)}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-primary"
+                  onClick={() => {
+                    downloadNoticeAttachment({
+                      attachmentName: `Official_Shortage_Notice_${selectedNoticeEmail.courseCode}.pdf`,
+                      title: selectedNoticeEmail.subject,
+                      content: selectedNoticeEmail.messageText,
+                      department: selectedNoticeEmail.facultyName,
+                      date: selectedNoticeEmail.sentAt,
+                      priority: 'High'
+                    });
+                    showToast('Official Shortage Notice PDF downloaded.', 'success');
+                    setSelectedNoticeEmail(null);
+                  }}
+                >
+                  <i className="fa-solid fa-download" style={{ marginRight: '6px' }}></i>
+                  Download Official Notice (PDF)
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
+
+        {/* =========================================================================
             MODAL: APPLY FOR LEAVE / ON-DUTY (OD)
             ========================================================================= */}
         {isLeaveModalOpen && (
@@ -612,7 +929,7 @@ export const StudentAttendance: React.FC = () => {
                   />
                 </div>
 
-                {/* Document Attachment Mock */}
+                {/* Document Attachment */}
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
                     Upload Proof / Supporting Document (PDF, JPG)

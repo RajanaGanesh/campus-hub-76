@@ -1,4 +1,14 @@
-import { safeGetStorage, safeSetStorage, getStudentNotifications, saveStudentNotifications, StudentNotificationItem } from './storageService';
+import {
+  safeGetStorage,
+  safeSetStorage,
+  getStudentNotifications,
+  saveStudentNotifications,
+  getStudentNotices,
+  saveStudentNotices,
+  StudentNotificationItem,
+  NoticeItem
+} from './storageService';
+import { getManagementData } from '../data/managementData';
 
 export interface AttendanceShortageEmailRecord {
   id: string;
@@ -38,10 +48,29 @@ const DEFAULT_SHORTAGE_EMAILS: AttendanceShortageEmailRecord[] = [
     absentClasses: 7,
     attendancePercentage: 61,
     requiredPercentage: 75,
-    sentAt: 'Today at 10:15 AM',
+    sentAt: '12 Sep 2026 at 10:15 AM',
     subject: 'URGENT: Academic Attendance Shortage Notice (61%) - CSE-301',
     status: 'Delivered',
     messageText: 'Dear rohit (236F1A0504),\n\nThis is an automated formal notification from the Faculty Office regarding your attendance in CSE-301 (Data Structures & Algorithms). Your current attendance is 61%, which is below the mandatory university threshold of 75%.\n\nPlease meet Dr. S. Kumar during advisory hours.'
+  },
+  {
+    id: 'EML-ATT-1002',
+    studentId: '236F1A0551',
+    studentName: 'Aditya Sharma',
+    studentEmail: 'aditya.sharma@campushub.edu',
+    courseCode: 'CSE-301',
+    courseName: 'Data Structures & Algorithms',
+    facultyName: 'Dr. Suresh Kumar (Professor & HOD)',
+    section: 'Section A',
+    conductedClasses: 20,
+    presentClasses: 13,
+    absentClasses: 7,
+    attendancePercentage: 65,
+    requiredPercentage: 75,
+    sentAt: '12 Sep 2026 at 11:30 AM',
+    subject: 'URGENT: Academic Attendance Shortage Notice (65%) - CSE-301',
+    status: 'Delivered',
+    messageText: 'Dear Aditya Sharma (236F1A0551),\n\nThis is an automated formal notification from the Faculty Office regarding your attendance in CSE-301 (Data Structures & Algorithms). Your current attendance is 65%, which is below the mandatory university threshold of 75%.\n\nPlease meet Dr. Suresh Kumar during advisory hours.'
   }
 ];
 
@@ -68,22 +97,43 @@ export interface SendShortageEmailParams {
 }
 
 /**
- * Real-time email dispatch for student attendance shortage
+ * Real-time email and in-app notice dispatch for student attendance shortage
  */
 export const sendAttendanceShortageEmail = (params: SendShortageEmailParams): AttendanceShortageEmailRecord => {
   const currentEmails = getAttendanceShortageEmails();
-  const emailAddr = params.studentEmail || `${params.studentName.toLowerCase().replace(/\s+/g, '')}@campushub.edu`;
+  
+  // Intelligently resolve the student's email
+  let emailAddr = (params.studentEmail || '').trim();
+  if (!emailAddr || !emailAddr.includes('@')) {
+    try {
+      const mgmt = getManagementData();
+      const cleanId = (params.studentId || '').toLowerCase().trim();
+      const cleanName = (params.studentName || '').toLowerCase().trim();
+      const matched = mgmt.students.find(
+        (s) => s.id.toLowerCase().trim() === cleanId || s.name.toLowerCase().trim() === cleanName
+      );
+      if (matched && matched.email) {
+        emailAddr = matched.email;
+      } else {
+        emailAddr = `${cleanName.replace(/[^a-z0-9]/g, '.')}@campushub.edu`;
+      }
+    } catch {
+      emailAddr = `${params.studentName.toLowerCase().replace(/[^a-z0-9]/g, '.')}@campushub.edu`;
+    }
+  }
+
   const courseTitle = params.courseName || params.courseCode;
   const now = new Date();
   const timeStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' at ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const dateFormatted = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
   const subject = `URGENT: Academic Attendance Shortage Notice (${params.attendancePercentage}%) - ${params.courseCode}`;
   
   const messageText = `Dear ${params.studentName} (Roll No: ${params.studentId}),
 
-This is an automated formal notice from CampusHub Faculty Portal regarding your academic attendance in ${params.courseCode} (${courseTitle}).
+This is an automated formal notice from CampusHub Academic Portal regarding your attendance in ${params.courseCode} (${courseTitle}).
 
-Attendance Record Summary:
+ATTENDANCE RECORD SUMMARY:
 • Total Conducted Lectures: ${params.conductedClasses}
 • Attended (Present): ${params.presentClasses}
 • Missed (Absent): ${params.absentClasses}
@@ -93,10 +143,12 @@ Attendance Record Summary:
 CRITICAL ACTION REQUIRED:
 Your attendance is currently below the mandatory 75% eligibility threshold. In accordance with university examination regulations, candidates falling short of 75% attendance at the end of the semester risk detention from appearing in semester-end examinations.
 
-Please contact course instructor ${params.facultyName} or your academic advisor immediately to discuss compensatory sessions and academic catch-up.
+A duplicate copy of this attendance shortage alert has also been transmitted to your registered Guardian SMS & Email contact.
+
+Please contact course instructor ${params.facultyName} or your department academic advisor immediately to discuss compensatory sessions and academic catch-up.
 
 Issued by:
-Faculty of Computer Science & Engineering
+Faculty of Computer Science & Engineering / Dean of Academic Affairs
 CampusHub Academic Management Portal`;
 
   const newEmailRecord: AttendanceShortageEmailRecord = {
@@ -122,29 +174,49 @@ CampusHub Academic Management Portal`;
   const updatedEmails = [newEmailRecord, ...currentEmails];
   saveAttendanceShortageEmails(updatedEmails);
 
-  // Cross-dispatch to Student In-App Notifications Feed
+  // 1. Cross-dispatch to Student In-App Notifications Feed
   try {
     const studentNotifs = getStudentNotifications();
     const newStudentNotif: StudentNotificationItem = {
-      id: `NOTIF-ATT-${Date.now()}`,
-      category: 'Academic' as any,
+      id: `NOTIF-ATT-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+      category: 'Academic',
       title: `Attendance Warning: ${params.courseCode} (${params.attendancePercentage}%)`,
-      message: `Official email notice sent to ${emailAddr}. Your attendance in ${params.courseCode} is ${params.attendancePercentage}% (<75%). Contact ${params.facultyName}.`,
+      message: `Official low-attendance warning delivered to ${emailAddr}. Your current attendance is ${params.attendancePercentage}% (<75%). Please meet ${params.facultyName}.`,
       time: 'Just now',
       isUnread: true,
       targetRoute: '/student/attendance',
-      actionLabel: 'View Attendance'
+      actionLabel: 'View Attendance Notice'
     };
-    const updatedNotifs = [newStudentNotif, ...studentNotifs];
-    saveStudentNotifications(updatedNotifs);
+    saveStudentNotifications([newStudentNotif, ...studentNotifs]);
   } catch (err) {
     console.warn('Could not sync student notification:', err);
+  }
+
+  // 2. Cross-dispatch to Official Student Notices Board
+  try {
+    const studentNotices = getStudentNotices();
+    const newStudentNotice: NoticeItem = {
+      id: `NOT-ATT-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+      title: `Urgent Attendance Shortage Notice: ${params.courseCode} (${params.attendancePercentage}%)`,
+      category: 'Academic',
+      publishedDate: dateFormatted,
+      publisher: `${params.facultyName || 'Academic Dean / Attendance Office'}`,
+      priority: 'High',
+      snippet: `Official low attendance alert for ${params.studentName} (${params.studentId}) in ${params.courseCode}. Current rate: ${params.attendancePercentage}%. Mandatory threshold: 75%. Notice sent to ${emailAddr}.`,
+      fullText: messageText,
+      attachmentName: `Attendance_Shortage_Notice_${params.courseCode}.pdf`,
+      isUnread: true
+    };
+    saveStudentNotices([newStudentNotice, ...studentNotices]);
+  } catch (err) {
+    console.warn('Could not sync student notice board:', err);
   }
 
   // Real-time Event broadcast for active tabs / windows
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('campushub_shortage_email_sent', { detail: newEmailRecord }));
     window.dispatchEvent(new Event('campushub_student_notifications_updated'));
+    window.dispatchEvent(new Event('campushub_student_notices_updated'));
     window.dispatchEvent(new Event('storage'));
   }
 

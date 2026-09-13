@@ -78,21 +78,50 @@ export const AdminFaculty: React.FC = () => {
       .map((c) => c.trim().toUpperCase())
       .filter(Boolean);
 
+    const defaultDeptCode = department === 'ECE' ? 'ECE-304' : department === 'MECH' ? 'ME-201' : 'CSE-301';
+    const finalCourses = assignedCourses.length > 0 ? assignedCourses : [defaultDeptCode];
+
     const newFac: FacultyRecord = {
       id: cleanEmpId,
       name: name.trim(),
       department,
       designation,
       email: email.trim().toLowerCase(),
-      courses: assignedCourses.length > 0 ? assignedCourses : ['CSE-301'],
+      courses: finalCourses,
       status: 'Active'
     };
 
-    // 1. Update local state & cache
+    // 1. Update local state & cache (both faculty and courses list)
     const updated = [newFac, ...facultyList];
     setFacultyList(updated);
     const mgmt = getManagementData();
-    saveManagementData({ ...mgmt, faculty: updated });
+
+    const updatedCourses = [...mgmt.courses];
+    finalCourses.forEach((code) => {
+      const idx = updatedCourses.findIndex((c) => c.code.toUpperCase() === code.toUpperCase());
+      if (idx >= 0) {
+        updatedCourses[idx] = {
+          ...updatedCourses[idx],
+          facultyId: newFac.id,
+          facultyName: newFac.name
+        };
+      } else {
+        updatedCourses.push({
+          code: code.toUpperCase(),
+          name: `${code.toUpperCase()} Course`,
+          department: newFac.department,
+          semester: '5th Semester',
+          facultyId: newFac.id,
+          facultyName: newFac.name,
+          studentsCount: 60,
+          status: 'Active',
+          progress: 0,
+          nextClass: 'Mon, Wed 09:00 AM'
+        });
+      }
+    });
+
+    saveManagementData({ ...mgmt, faculty: updated, courses: updatedCourses });
 
     setIsAddModalOpen(false);
     setName('');
@@ -127,16 +156,47 @@ export const AdminFaculty: React.FC = () => {
       return;
     }
 
-    const targetFaculty = {
+    const defaultDeptCode = editingFaculty.department === 'ECE' ? 'ECE-304' : editingFaculty.department === 'MECH' ? 'ME-201' : 'CSE-301';
+    const courses = (editingFaculty.courses && editingFaculty.courses.length > 0) ? editingFaculty.courses : [defaultDeptCode];
+
+    const targetFaculty: FacultyRecord = {
       ...editingFaculty,
       name: cleanName,
-      email: editingFaculty.email.trim().toLowerCase()
+      email: editingFaculty.email.trim().toLowerCase(),
+      courses
     };
 
     const updated = facultyList.map((f) => (f.id === targetFaculty.id ? targetFaculty : f));
     setFacultyList(updated);
     const mgmt = getManagementData();
-    saveManagementData({ ...mgmt, faculty: updated });
+
+    // Update matching courses in mgmt.courses
+    const updatedCourses = [...mgmt.courses];
+    courses.forEach((code) => {
+      const idx = updatedCourses.findIndex((c) => c.code.toUpperCase() === code.toUpperCase());
+      if (idx >= 0) {
+        updatedCourses[idx] = {
+          ...updatedCourses[idx],
+          facultyId: targetFaculty.id,
+          facultyName: targetFaculty.name
+        };
+      } else {
+        updatedCourses.push({
+          code: code.toUpperCase(),
+          name: `${code.toUpperCase()} Course`,
+          department: targetFaculty.department,
+          semester: '5th Semester',
+          facultyId: targetFaculty.id,
+          facultyName: targetFaculty.name,
+          studentsCount: 60,
+          status: 'Active',
+          progress: 0,
+          nextClass: 'Mon, Wed 09:00 AM'
+        });
+      }
+    });
+
+    saveManagementData({ ...mgmt, faculty: updated, courses: updatedCourses });
 
     setEditingFaculty(null);
     window.dispatchEvent(new Event('storage'));
@@ -397,7 +457,7 @@ export const AdminFaculty: React.FC = () => {
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                          {fac.courses.map((code) => (
+                          {(fac.courses && fac.courses.length > 0 ? fac.courses : [fac.department === 'ECE' ? 'ECE-304' : fac.department === 'MECH' ? 'ME-201' : 'CSE-301']).map((code) => (
                             <span key={code} className="course-code-tag">{code}</span>
                           ))}
                         </div>

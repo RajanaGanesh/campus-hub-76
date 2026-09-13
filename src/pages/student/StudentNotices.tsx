@@ -4,106 +4,28 @@ import { AppLayout } from '../../components/AppLayout';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 import { downloadNoticeAttachment } from '../../utils/fileDownloader';
+import { getStudentNotices, saveStudentNotices, NoticeItem } from '../../services/storageService';
 
-export interface NoticeItem {
-  id: string;
-  title: string;
-  category: 'Academic' | 'Examination' | 'Placement' | 'Hostel' | 'Transport' | 'General' | 'Events';
-  publishedDate: string;
-  publisher: string;
-  priority: 'High' | 'Medium' | 'Low';
-  snippet: string;
-  fullText: string;
-  attachmentName?: string;
-  isUnread: boolean;
-}
-
-const INITIAL_NOTICES: NoticeItem[] = [
-  {
-    id: 'NOT-2026-081',
-    title: 'Mid-Semester Examination Hall Allotment & Guidelines',
-    category: 'Examination',
-    publishedDate: '17 Aug 2026',
-    publisher: 'Controller of Examinations',
-    priority: 'High',
-    snippet: 'Mid-semester examinations commence from 25th August 2026. Review your room and desk numbers.',
-    fullText: 'All candidates appearing for the Mid-Semester Theoretical and Practical Examinations (August 2026) are hereby notified that the final seating arrangements and examination schedules are now finalized. Candidates must carry their printed CampusOne Hall Ticket and institutional Smart ID Card. Mobile phones and electronic gadgets are strictly banned inside examination halls.',
-    attachmentName: 'Midterm_Exam_Schedule_Aug2026.pdf',
-    isUnread: true
-  },
-  {
-    id: 'NOT-2026-080',
-    title: 'Google & Microsoft Campus Placement Drive Registration',
-    category: 'Placement',
-    publishedDate: '16 Aug 2026',
-    publisher: 'Training & Placement Cell',
-    priority: 'High',
-    snippet: 'Final registration deadline for upcoming cloud and software engineering recruitment drives.',
-    fullText: 'The Department of Placement & Career Development invites applications from final year B.Tech students (CSE/ECE/IT) with CGPA >= 7.5. Online screening assessments will be conducted on the CampusOne testing portal on Saturday, 29th August 2026. Ensure your resume and portfolio links are updated in the portal.',
-    attachmentName: 'Placement_Drive_Eligibility_Criteria.pdf',
-    isUnread: true
-  },
-  {
-    id: 'NOT-2026-079',
-    title: 'Hostel Maintenance & Water Supply Pipeline Upgrades',
-    category: 'Hostel',
-    publishedDate: '15 Aug 2026',
-    publisher: 'Chief Residential Warden',
-    priority: 'Medium',
-    snippet: 'Scheduled water supply maintenance in Krishna and Godavari hostel blocks this Tuesday.',
-    fullText: 'In order to replace central overhead water valves, water supply will be suspended in Krishna Hostel (Block A & B) on 18th August between 10:00 AM and 01:00 PM. Residents are requested to store adequate water for morning usage.',
-    isUnread: false
-  },
-  {
-    id: 'NOT-2026-078',
-    title: 'Special Evening Bus Schedules During Examination Week',
-    category: 'Transport',
-    publishedDate: '14 Aug 2026',
-    publisher: 'Campus Fleet In-Charge',
-    priority: 'Medium',
-    snippet: 'Additional departure shuttles at 01:30 PM and 05:30 PM for day scholars during exams.',
-    fullText: 'To facilitate seamless commute for students appearing in staggered exam sessions, additional return buses will operate across all routes (Routes 1–6) at 01:30 PM following morning papers, as well as regular 05:30 PM departures.',
-    isUnread: false
-  },
-  {
-    id: 'NOT-2026-077',
-    title: 'Annual TechFest "InnovateX 2026" Call for Hackathon Teams',
-    category: 'Events',
-    publishedDate: '12 Aug 2026',
-    publisher: 'Student Affairs Council',
-    priority: 'Low',
-    snippet: 'Registration is now live for the 36-hour National Student Hackathon with ₹5,00,000 in prizes.',
-    fullText: 'CampusOne is proud to present InnovateX 2026, our flagship inter-collegiate technical festival. Tracks include Artificial Intelligence, Autonomous Systems, Blockchain, and Green Energy. Register teams of 3–4 students before 31st August.',
-    attachmentName: 'InnovateX_Hackathon_Brochure.pdf',
-    isUnread: false
-  },
-  {
-    id: 'NOT-2026-076',
-    title: 'Submission of Elective Course Preferences for Next Term',
-    category: 'Academic',
-    publishedDate: '10 Aug 2026',
-    publisher: 'Dean of Academic Affairs',
-    priority: 'Medium',
-    snippet: 'Online portal open for selecting Open Elective and Professional Elective coursework.',
-    fullText: 'Students entering the upcoming academic semester must lock in their elective course preferences via the LMS course catalog before the cutoff date. Allocation is based on first-come-first-serve and cumulative CGPA ranking.',
-    isUnread: false
-  }
-];
+export type { NoticeItem };
 
 export const StudentNotices: React.FC = () => {
   const navigate = useNavigate();
 
   // Notices state loaded from persistent storage
-  const [notices, setNotices] = useState<NoticeItem[]>(() => {
-    try {
-      const stored = localStorage.getItem('campushub_student_notices');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) return parsed;
-      }
-    } catch {}
-    return INITIAL_NOTICES;
-  });
+  const [notices, setNotices] = useState<NoticeItem[]>(() => getStudentNotices());
+
+  // Real-time listener for notices published by Admin or Faculty
+  React.useEffect(() => {
+    const handleSync = () => {
+      setNotices(getStudentNotices());
+    };
+    window.addEventListener('campushub_student_notices_updated', handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener('campushub_student_notices_updated', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
+  }, []);
 
   // Filters state
   const [searchQuery, setSearchQuery] = useState('');
@@ -161,9 +83,7 @@ export const StudentNotices: React.FC = () => {
     // Mark as read in state and persist
     const updated = notices.map((n) => (n.id === notice.id ? { ...n, isUnread: false } : n));
     setNotices(updated);
-    try {
-      localStorage.setItem('campushub_student_notices', JSON.stringify(updated));
-    } catch {}
+    saveStudentNotices(updated);
   };
 
   const handleDownloadAttachment = (filename: string, notice?: NoticeItem | null) => {

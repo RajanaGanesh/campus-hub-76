@@ -1,11 +1,25 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
 import { getManagementData } from '../../data/managementData';
+import { getLoginHistory, LoginHistoryRecord } from '../../services/storageService';
 
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const mgmt = getManagementData();
+  const [recentLogins, setRecentLogins] = useState<LoginHistoryRecord[]>(() => getLoginHistory().slice(0, 6));
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setRecentLogins(getLoginHistory().slice(0, 6));
+    };
+    window.addEventListener('campushub_login_history_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('campushub_login_history_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
 
   const totalStudents = mgmt.students.length * 20; // 1,240 students campus-wide
   const totalFaculty = mgmt.faculty.length * 14; // 84 faculty
@@ -20,6 +34,40 @@ export const AdminDashboard: React.FC = () => {
     { code: 'MECH', name: 'Mechanical Engineering', students: 120, faculty: 10, percent: 10 },
     { code: 'CIVIL', name: 'Civil Engineering', students: 100, faculty: 6, percent: 7 }
   ];
+
+  const getRoleBadge = (r: 'student' | 'faculty' | 'admin') => {
+    switch (r) {
+      case 'admin':
+        return <span className="c1-badge c1-badge-error">Administrator</span>;
+      case 'faculty':
+        return <span className="c1-badge c1-badge-cyan">Faculty</span>;
+      default:
+        return <span className="c1-badge c1-badge-success">Student</span>;
+    }
+  };
+
+  const getStatusBadge = (status: LoginHistoryRecord['status']) => {
+    switch (status) {
+      case 'Active Session':
+        return (
+          <span
+            className="c1-badge c1-badge-success"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+          >
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></span>
+            Active
+          </span>
+        );
+      case 'Success':
+        return <span className="c1-badge c1-badge-blue">Authenticated</span>;
+      case 'Logged Out':
+        return <span className="c1-badge c1-badge-purple">Logged Out</span>;
+      case 'Terminated by Admin':
+        return <span className="c1-badge c1-badge-error">Revoked</span>;
+      default:
+        return <span className="c1-badge c1-badge-secondary">{status}</span>;
+    }
+  };
 
   return (
     <AppLayout>
@@ -38,7 +86,15 @@ export const AdminDashboard: React.FC = () => {
             </p>
           </div>
 
-          <div className="module-header-meta">
+          <div className="module-header-meta" style={{ display: 'flex', gap: '10px' }}>
+            <button
+              type="button"
+              className="c1-btn c1-btn-secondary"
+              onClick={() => navigate('/admin/users?tab=history')}
+            >
+              <i className="fa-solid fa-clock-rotate-left"></i>
+              <span>Login Audit Logs</span>
+            </button>
             <button
               type="button"
               className="c1-btn c1-btn-gradient"
@@ -122,13 +178,13 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="c1-card academic-stat-card" onClick={() => navigate('/admin/notifications')} style={{ cursor: 'pointer' }}>
+          <div className="c1-card academic-stat-card" onClick={() => navigate('/admin/users?tab=history')} style={{ cursor: 'pointer' }}>
             <div className="stat-card-icon-wrap" style={{ background: 'rgba(244, 63, 94, 0.15)', color: '#fb7185' }}>
-              <i className="fa-solid fa-bell"></i>
+              <i className="fa-solid fa-shield-halved"></i>
             </div>
             <div className="stat-card-data">
-              <span className="stat-num" style={{ color: '#fb7185' }}>14 Alerts</span>
-              <span className="stat-label">Pending Service Requests</span>
+              <span className="stat-num" style={{ color: '#fb7185' }}>{recentLogins.length} Active</span>
+              <span className="stat-label">Student & Faculty Logins</span>
             </div>
           </div>
         </div>
@@ -196,12 +252,12 @@ export const AdminDashboard: React.FC = () => {
               <button
                 type="button"
                 className="shortcut-tile"
-                onClick={() => navigate('/admin/courses')}
+                onClick={() => navigate('/admin/users?tab=history')}
               >
-                <div className="shortcut-icon" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc' }}>
-                  <i className="fa-solid fa-book-medical"></i>
+                <div className="shortcut-icon" style={{ background: 'rgba(244, 63, 94, 0.15)', color: '#fb7185' }}>
+                  <i className="fa-solid fa-clock-rotate-left"></i>
                 </div>
-                <span>Create Course</span>
+                <span>Login History</span>
               </button>
 
               <button
@@ -237,6 +293,75 @@ export const AdminDashboard: React.FC = () => {
                 <span>Add Placement</span>
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Live Recent Student & Faculty Logins Feed */}
+        <div className="c1-card student-roster-card" style={{ marginBottom: '24px' }}>
+          <div className="c1-card-header">
+            <div>
+              <h3 className="c1-card-title">Recent Student & Faculty Logins</h3>
+              <p className="c1-card-subtitle">Live authentication activity stream from institutional portals and campus network</p>
+            </div>
+            <button
+              type="button"
+              className="c1-btn c1-btn-secondary"
+              style={{ fontSize: '0.8rem' }}
+              onClick={() => navigate('/admin/users?tab=history')}
+            >
+              <span>View Full Audit Log</span>
+              <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.75rem', marginLeft: '6px' }}></i>
+            </button>
+          </div>
+
+          <div className="student-roster-table-wrap">
+            <table className="c1-table">
+              <thead>
+                <tr>
+                  <th>User Identity</th>
+                  <th>Role</th>
+                  <th>Login Timestamp</th>
+                  <th>IP & Network</th>
+                  <th>Device / Client</th>
+                  <th>Location</th>
+                  <th style={{ textAlign: 'right' }}>Session Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentLogins.length > 0 ? (
+                  recentLogins.map((item) => (
+                    <tr key={item.id} style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/users?tab=history')}>
+                      <td>
+                        <strong style={{ color: 'var(--text-primary)', display: 'block' }}>{item.userName}</strong>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{item.userId}</span>
+                      </td>
+                      <td>{getRoleBadge(item.role)}</td>
+                      <td>
+                        <span style={{ fontSize: '0.8125rem' }}>{item.timestamp}</span>
+                      </td>
+                      <td>
+                        <span style={{ fontFamily: 'monospace', fontSize: '0.8125rem' }}>{item.ipAddress}</span>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: '0.8125rem' }}>{item.deviceInfo}</span>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: '0.8125rem', color: '#818cf8' }}>{item.loginLocation}</span>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        {getStatusBadge(item.status)}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                      No recent login activity found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 

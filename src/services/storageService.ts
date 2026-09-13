@@ -264,6 +264,97 @@ export const getStudentNotifications = (): StudentNotificationItem[] =>
 export const saveStudentNotifications = (notifs: StudentNotificationItem[]): void =>
   safeSetStorage('campushub_student_notifications', notifs);
 
+export interface NoticeItem {
+  id: string;
+  title: string;
+  category: 'Academic' | 'Examination' | 'Placement' | 'Hostel' | 'Transport' | 'General' | 'Events';
+  publishedDate: string;
+  publisher: string;
+  priority: 'High' | 'Medium' | 'Low';
+  snippet: string;
+  fullText: string;
+  attachmentName?: string;
+  isUnread: boolean;
+}
+
+const DEFAULT_STUDENT_NOTICES: NoticeItem[] = [
+  {
+    id: 'NOT-2026-081',
+    title: 'Mid-Semester Examination Hall Allotment & Guidelines',
+    category: 'Examination',
+    publishedDate: '17 Aug 2026',
+    publisher: 'Controller of Examinations',
+    priority: 'High',
+    snippet: 'Mid-semester examinations commence from 25th August 2026. Review your room and desk numbers.',
+    fullText: 'All candidates appearing for the Mid-Semester Theoretical and Practical Examinations (August 2026) are hereby notified that the final seating arrangements and examination schedules are now finalized. Candidates must carry their printed CampusOne Hall Ticket and institutional Smart ID Card. Mobile phones and electronic gadgets are strictly banned inside examination halls.',
+    attachmentName: 'Midterm_Exam_Schedule_Aug2026.pdf',
+    isUnread: true
+  },
+  {
+    id: 'NOT-2026-080',
+    title: 'Google & Microsoft Campus Placement Drive Registration',
+    category: 'Placement',
+    publishedDate: '16 Aug 2026',
+    publisher: 'Training & Placement Cell',
+    priority: 'High',
+    snippet: 'Final registration deadline for upcoming cloud and software engineering recruitment drives.',
+    fullText: 'The Department of Placement & Career Development invites applications from final year B.Tech students (CSE/ECE/IT) with CGPA >= 7.5. Online screening assessments will be conducted on the CampusOne testing portal on Saturday, 29th August 2026. Ensure your resume and portfolio links are updated in the portal.',
+    attachmentName: 'Placement_Drive_Eligibility_Criteria.pdf',
+    isUnread: true
+  },
+  {
+    id: 'NOT-2026-079',
+    title: 'Hostel Maintenance & Water Supply Pipeline Upgrades',
+    category: 'Hostel',
+    publishedDate: '15 Aug 2026',
+    publisher: 'Chief Residential Warden',
+    priority: 'Medium',
+    snippet: 'Scheduled water supply maintenance in Krishna and Godavari hostel blocks this Tuesday.',
+    fullText: 'In order to replace central overhead water valves, water supply will be suspended in Krishna Hostel (Block A & B) on 18th August between 10:00 AM and 01:00 PM. Residents are requested to store adequate water for morning usage.',
+    isUnread: false
+  },
+  {
+    id: 'NOT-2026-078',
+    title: 'Special Evening Bus Schedules During Examination Week',
+    category: 'Transport',
+    publishedDate: '14 Aug 2026',
+    publisher: 'Campus Fleet In-Charge',
+    priority: 'Medium',
+    snippet: 'Additional departure shuttles at 01:30 PM and 05:30 PM for day scholars during exams.',
+    fullText: 'To facilitate seamless commute for students appearing in staggered exam sessions, additional return buses will operate across all routes (Routes 1–6) at 01:30 PM following morning papers, as well as regular 05:30 PM departures.',
+    isUnread: false
+  },
+  {
+    id: 'NOT-2026-077',
+    title: 'Annual TechFest "InnovateX 2026" Call for Hackathon Teams',
+    category: 'Events',
+    publishedDate: '12 Aug 2026',
+    publisher: 'Student Affairs Council',
+    priority: 'Low',
+    snippet: 'Registration is now live for the 36-hour National Student Hackathon with ₹5,00,000 in prizes.',
+    fullText: 'CampusOne is proud to present InnovateX 2026, our flagship inter-collegiate technical festival. Tracks include Artificial Intelligence, Autonomous Systems, Blockchain, and Green Energy. Register teams of 3–4 students before 31st August.',
+    attachmentName: 'InnovateX_Hackathon_Brochure.pdf',
+    isUnread: false
+  },
+  {
+    id: 'NOT-2026-076',
+    title: 'Submission of Elective Course Preferences for Next Term',
+    category: 'Academic',
+    publishedDate: '10 Aug 2026',
+    publisher: 'Dean of Academic Affairs',
+    priority: 'Medium',
+    snippet: 'Online portal open for selecting Open Elective and Professional Elective coursework.',
+    fullText: 'Students entering the upcoming academic semester must lock in their elective course preferences via the LMS course catalog before the cutoff date. Allocation is based on first-come-first-serve and cumulative CGPA ranking.',
+    isUnread: false
+  }
+];
+
+export const getStudentNotices = (): NoticeItem[] =>
+  safeGetStorage<NoticeItem[]>('campushub_student_notices', DEFAULT_STUDENT_NOTICES);
+
+export const saveStudentNotices = (notices: NoticeItem[]): void =>
+  safeSetStorage('campushub_student_notices', notices);
+
 // ----------------------------------------------------------------------
 // 9. Campus Transport Fleet & Routes
 // ----------------------------------------------------------------------
@@ -341,4 +432,419 @@ export const getTransportRoutes = (): TransportRouteItem[] =>
 
 export const saveTransportRoutes = (routes: TransportRouteItem[]): void =>
   safeSetStorage('campushub_transport_routes', routes);
+
+// ----------------------------------------------------------------------
+// 10. Campus Hostel Residency & Allocations
+// ----------------------------------------------------------------------
+export interface HostelBlockItem {
+  code: string;
+  name: string;
+  rooms: number;
+  occupied: number;
+  vacant: number;
+  maintenance: number;
+  warden: string;
+  phone: string;
+  gender: 'Boys' | 'Girls' | 'Co-ed';
+}
+
+export interface HostelAllocationItem {
+  id: string;
+  studentName: string;
+  rollNo: string;
+  department: string;
+  year: string;
+  phone: string;
+  email: string;
+  block: string;
+  room: string;
+  roomType: 'Single AC' | 'Double AC' | 'Single Non-AC' | 'Double Non-AC' | '3-Sharing Non-AC';
+  bedNumber: string;
+  joined: string;
+  status: 'Active Occupant' | 'Temporary Leave' | 'Under Verification' | 'Vacated';
+  messPlan: string;
+  emergencyContact: string;
+  remarks?: string;
+}
+
+const DEFAULT_HOSTEL_BLOCKS: HostelBlockItem[] = [
+  { code: 'Block A', name: 'Boys Senior Hostel (Block A)', rooms: 100, occupied: 94, vacant: 4, maintenance: 2, warden: 'Mr. K. Sharma', phone: '+91 98765 11111', gender: 'Boys' },
+  { code: 'Block B', name: 'Boys Junior Hostel (Block B)', rooms: 100, occupied: 92, vacant: 6, maintenance: 2, warden: 'Mr. R. Varma', phone: '+91 98765 22222', gender: 'Boys' },
+  { code: 'Block C', name: 'Girls Senior Hostel (Block C)', rooms: 100, occupied: 96, vacant: 2, maintenance: 2, warden: 'Dr. Sunita Rao', phone: '+91 98765 33333', gender: 'Girls' },
+  { code: 'Block D', name: 'Girls Junior Hostel (Block D)', rooms: 100, occupied: 78, vacant: 20, maintenance: 2, warden: 'Ms. Anita Nair', phone: '+91 98765 44444', gender: 'Girls' }
+];
+
+const DEFAULT_HOSTEL_ALLOCATIONS: HostelAllocationItem[] = [
+  {
+    id: 'HOSTEL-ALC-001',
+    studentName: 'Aditya Sharma',
+    rollNo: '236F1A0551',
+    department: 'Computer Science & Engineering',
+    year: '4th Year',
+    phone: '+91 98765 43210',
+    email: 'aditya.sharma@campushub.edu',
+    block: 'Block A',
+    room: 'Room A-204',
+    roomType: 'Double AC',
+    bedNumber: 'Bed 1',
+    joined: '15 Jul 2024',
+    status: 'Active Occupant',
+    messPlan: 'Standard Non-Veg',
+    emergencyContact: '+91 98111 22334',
+    remarks: 'Hostel representative for 2nd floor'
+  },
+  {
+    id: 'HOSTEL-ALC-002',
+    studentName: 'Rohan Gupta',
+    rollNo: '236F1A0553',
+    department: 'Computer Science & Engineering',
+    year: '4th Year',
+    phone: '+91 98765 43212',
+    email: 'rohan.gupta@campushub.edu',
+    block: 'Block A',
+    room: 'Room A-204',
+    roomType: 'Double AC',
+    bedNumber: 'Bed 2',
+    joined: '15 Jul 2024',
+    status: 'Active Occupant',
+    messPlan: 'Standard Veg',
+    emergencyContact: '+91 98222 33445',
+    remarks: 'Roommate with Aditya Sharma'
+  },
+  {
+    id: 'HOSTEL-ALC-003',
+    studentName: 'Sneha Patel',
+    rollNo: '236F1A0552',
+    department: 'Electronics & Communication',
+    year: '3rd Year',
+    phone: '+91 98765 43211',
+    email: 'sneha.patel@campushub.edu',
+    block: 'Block C',
+    room: 'Room C-302',
+    roomType: 'Single Non-AC',
+    bedNumber: 'Bed 1',
+    joined: '18 Jul 2024',
+    status: 'Active Occupant',
+    messPlan: 'Special Veg',
+    emergencyContact: '+91 98333 44556',
+    remarks: 'Single room allotment on merit'
+  },
+  {
+    id: 'HOSTEL-ALC-004',
+    studentName: 'Pooja Reddy',
+    rollNo: '236F1A0554',
+    department: 'Information Technology',
+    year: '3rd Year',
+    phone: '+91 98765 43213',
+    email: 'pooja.reddy@campushub.edu',
+    block: 'Block C',
+    room: 'Room C-108',
+    roomType: 'Double Non-AC',
+    bedNumber: 'Bed 1',
+    joined: '20 Jul 2024',
+    status: 'Active Occupant',
+    messPlan: 'Standard Veg',
+    emergencyContact: '+91 98444 55667',
+    remarks: 'Ground floor accommodation'
+  }
+];
+
+export const getHostelBlocks = (): HostelBlockItem[] =>
+  safeGetStorage<HostelBlockItem[]>('campushub_hostel_blocks', DEFAULT_HOSTEL_BLOCKS);
+
+export const saveHostelBlocks = (blocks: HostelBlockItem[]): void =>
+  safeSetStorage('campushub_hostel_blocks', blocks);
+
+export const getHostelAllocations = (): HostelAllocationItem[] =>
+  safeGetStorage<HostelAllocationItem[]>('campushub_hostel_allocations', DEFAULT_HOSTEL_ALLOCATIONS);
+
+export const saveHostelAllocations = (allocations: HostelAllocationItem[]): void =>
+  safeSetStorage('campushub_hostel_allocations', allocations);
+
+// ----------------------------------------------------------------------
+// 11. Student & Faculty Authentication Login History Logs
+// ----------------------------------------------------------------------
+export interface LoginHistoryRecord {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  role: 'student' | 'faculty' | 'admin';
+  timestamp: string;
+  ipAddress: string;
+  deviceInfo: string;
+  loginLocation: string;
+  authMethod: 'Password' | 'SSO' | 'Google' | 'Session Token';
+  status: 'Active Session' | 'Success' | 'Logged Out' | 'Failed' | 'Terminated by Admin';
+}
+
+const STORAGE_LOGIN_HISTORY_KEY = 'campushub_login_history';
+
+const DEFAULT_LOGIN_HISTORY: LoginHistoryRecord[] = [
+  {
+    id: 'LOG-2026-9081',
+    userId: '236F1A0504',
+    userName: 'rohit',
+    userEmail: 'rohit@campushub.com',
+    role: 'student',
+    timestamp: '12 Sep 2026 at 08:45 PM',
+    ipAddress: '192.168.1.104 (Campus Wi-Fi)',
+    deviceInfo: 'Chrome 128 / Windows 11',
+    loginLocation: 'Boys Senior Hostel (Block A)',
+    authMethod: 'Password',
+    status: 'Active Session'
+  },
+  {
+    id: 'LOG-2026-9080',
+    userId: 'FAC-CSE-01',
+    userName: 'Dr. Suresh Kumar',
+    userEmail: 'suresh.kumar@campushub.edu',
+    role: 'faculty',
+    timestamp: '12 Sep 2026 at 08:10 PM',
+    ipAddress: '172.16.10.5 (Faculty Network)',
+    deviceInfo: 'Edge 128 / Windows 11',
+    loginLocation: 'CSE Faculty Room (Cabin 204)',
+    authMethod: 'Password',
+    status: 'Active Session'
+  },
+  {
+    id: 'LOG-2026-9079',
+    userId: 'ADM-002',
+    userName: 'Rajana Ganesh (Admin)',
+    userEmail: 'grajana608@gmail.com',
+    role: 'admin',
+    timestamp: '12 Sep 2026 at 08:00 PM',
+    ipAddress: '172.16.1.1 (Admin Gateway)',
+    deviceInfo: 'Chrome 128 / Windows 11',
+    loginLocation: 'Central Administration Block',
+    authMethod: 'Password',
+    status: 'Active Session'
+  },
+  {
+    id: 'LOG-2026-9078',
+    userId: '236F1A0551',
+    userName: 'Aditya Sharma',
+    userEmail: 'aditya.sharma@campushub.edu',
+    role: 'student',
+    timestamp: '12 Sep 2026 at 07:15 PM',
+    ipAddress: '192.168.1.52 (Library Wi-Fi)',
+    deviceInfo: 'Firefox 130 / macOS Sonoma',
+    loginLocation: 'Central Digital Library 2nd Floor',
+    authMethod: 'Password',
+    status: 'Active Session'
+  },
+  {
+    id: 'LOG-2026-9077',
+    userId: 'FAC-ECE-01',
+    userName: 'Dr. Priya Menon',
+    userEmail: 'priya.menon@campushub.edu',
+    role: 'faculty',
+    timestamp: '12 Sep 2026 at 06:40 PM',
+    ipAddress: '172.16.10.12 (ECE Dept Office)',
+    deviceInfo: 'Chrome 128 / macOS Sequoia',
+    loginLocation: 'ECE Department Complex',
+    authMethod: 'Password',
+    status: 'Success'
+  },
+  {
+    id: 'LOG-2026-9076',
+    userId: '236F1A0552',
+    userName: 'Sneha Patel',
+    userEmail: 'sneha.patel@campushub.edu',
+    role: 'student',
+    timestamp: '12 Sep 2026 at 05:30 PM',
+    ipAddress: '172.16.20.14 (Lab Network)',
+    deviceInfo: 'Chrome 128 / Ubuntu 24.04',
+    loginLocation: 'ECE Digital Systems Lab 3',
+    authMethod: 'Password',
+    status: 'Success'
+  },
+  {
+    id: 'LOG-2026-9075',
+    userId: '236F1A0553',
+    userName: 'Rohan Gupta',
+    userEmail: 'rohan.gupta@campushub.edu',
+    role: 'student',
+    timestamp: '12 Sep 2026 at 04:10 PM',
+    ipAddress: '192.168.1.88 (Mobile 5G Gateway)',
+    deviceInfo: 'Safari Mobile / iOS 17.6',
+    loginLocation: 'Campus Sports Complex',
+    authMethod: 'Password',
+    status: 'Success'
+  },
+  {
+    id: 'LOG-2026-9074',
+    userId: 'FAC-IT-01',
+    userName: 'Dr. Anil Gupta',
+    userEmail: 'anil.gupta@campushub.edu',
+    role: 'faculty',
+    timestamp: '12 Sep 2026 at 03:15 PM',
+    ipAddress: '172.16.10.22 (IT Server Lab)',
+    deviceInfo: 'Chrome 128 / Windows 11',
+    loginLocation: 'IT Data Center Wing',
+    authMethod: 'Password',
+    status: 'Success'
+  },
+  {
+    id: 'LOG-2026-9073',
+    userId: '236F1A0554',
+    userName: 'Pooja Reddy',
+    userEmail: 'pooja.reddy@campushub.edu',
+    role: 'student',
+    timestamp: '12 Sep 2026 at 02:20 PM',
+    ipAddress: '192.168.1.92 (Hostel C Wi-Fi)',
+    deviceInfo: 'Chrome 128 / Windows 10',
+    loginLocation: 'Girls Senior Hostel (Block C)',
+    authMethod: 'Password',
+    status: 'Success'
+  },
+  {
+    id: 'LOG-2026-9072',
+    userId: 'FAC-AIDS-01',
+    userName: 'Dr. Vikram Singh',
+    userEmail: 'vikram.singh@campushub.edu',
+    role: 'faculty',
+    timestamp: '12 Sep 2026 at 11:05 AM',
+    ipAddress: '172.16.10.35 (AI Lab Server)',
+    deviceInfo: 'Chromium / Linux Debian',
+    loginLocation: 'AI & Data Science Center',
+    authMethod: 'Password',
+    status: 'Success'
+  },
+  {
+    id: 'LOG-2026-9071',
+    userId: '236F1A0501',
+    userName: 'Rahul Verma',
+    userEmail: 'rahul.verma@campushub.edu',
+    role: 'student',
+    timestamp: '11 Sep 2026 at 09:45 AM',
+    ipAddress: '192.168.1.66 (Student Lounge)',
+    deviceInfo: 'Edge 128 / Windows 11',
+    loginLocation: 'Student Activity Center',
+    authMethod: 'Password',
+    status: 'Logged Out'
+  }
+];
+
+export const getLoginHistory = (): LoginHistoryRecord[] =>
+  safeGetStorage<LoginHistoryRecord[]>(STORAGE_LOGIN_HISTORY_KEY, DEFAULT_LOGIN_HISTORY);
+
+export const saveLoginHistory = (history: LoginHistoryRecord[]): void =>
+  safeSetStorage(STORAGE_LOGIN_HISTORY_KEY, history);
+
+export const recordLoginEvent = (
+  params: Omit<LoginHistoryRecord, 'id' | 'timestamp'> & { timestamp?: string; id?: string }
+): LoginHistoryRecord => {
+  const current = getLoginHistory();
+  const now = new Date();
+  const timestampStr =
+    params.timestamp ||
+    now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) +
+      ' at ' +
+      now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+  const newLog: LoginHistoryRecord = {
+    id: params.id || `LOG-2026-${Date.now().toString().slice(-4)}${Math.floor(10 + Math.random() * 90)}`,
+    userId: params.userId || 'USR-01',
+    userName: params.userName || 'User',
+    userEmail: params.userEmail || 'user@campushub.edu',
+    role: params.role || 'student',
+    timestamp: timestampStr,
+    ipAddress: params.ipAddress || '192.168.1.100 (Campus Wi-Fi)',
+    deviceInfo: params.deviceInfo || 'Chrome 128 / Windows 11',
+    loginLocation: params.loginLocation || 'Campus Gateway',
+    authMethod: params.authMethod || 'Password',
+    status: params.status || 'Active Session'
+  };
+
+  const updated = [newLog, ...current].slice(0, 250);
+  saveLoginHistory(updated);
+
+  // Update user last active in user accounts table
+  try {
+    const users = getUserAccounts();
+    const cleanEmail = (newLog.userEmail || '').toLowerCase().trim();
+    const cleanName = (newLog.userName || '').toLowerCase().trim();
+    const cleanId = (newLog.userId || '').toLowerCase().trim();
+
+    const uIdx = users.findIndex(
+      (u) =>
+        u.email.toLowerCase().trim() === cleanEmail ||
+        u.id.toLowerCase().trim() === cleanId ||
+        u.name.toLowerCase().trim() === cleanName
+    );
+
+    if (uIdx >= 0) {
+      users[uIdx].lastActive = 'Just now';
+      saveUserAccounts(users);
+    } else {
+      // Add if new user account
+      const newUserAcc: UserAccountItem = {
+        id: newLog.userId,
+        name: newLog.userName,
+        email: newLog.userEmail,
+        role: newLog.role,
+        status: 'Active',
+        lastActive: 'Just now'
+      };
+      saveUserAccounts([newUserAcc, ...users]);
+    }
+  } catch {}
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('campushub_login_history_updated', { detail: newLog }));
+    window.dispatchEvent(new Event('storage'));
+  }
+
+  return newLog;
+};
+
+export const updateLoginSessionStatus = (
+  id: string,
+  status: 'Active Session' | 'Success' | 'Logged Out' | 'Terminated by Admin'
+): void => {
+  const current = getLoginHistory();
+  const updated = current.map((item) => (item.id === id ? { ...item, status } : item));
+  saveLoginHistory(updated);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('campushub_login_history_updated'));
+    window.dispatchEvent(new Event('storage'));
+  }
+};
+
+export const clearLoginHistory = (): void => {
+  saveLoginHistory([]);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('campushub_login_history_updated'));
+    window.dispatchEvent(new Event('storage'));
+  }
+};
+
+export const recordLogoutEvent = (userIdOrEmail?: string): void => {
+  if (!userIdOrEmail) return;
+  const clean = userIdOrEmail.toLowerCase().trim();
+  const current = getLoginHistory();
+  let modified = false;
+  const updated = current.map((log) => {
+    if (
+      !modified &&
+      (log.userId.toLowerCase().trim() === clean || log.userEmail.toLowerCase().trim() === clean) &&
+      (log.status === 'Active Session' || log.status === 'Success')
+    ) {
+      modified = true;
+      return { ...log, status: 'Logged Out' as const };
+    }
+    return log;
+  });
+  if (modified) {
+    saveLoginHistory(updated);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('campushub_login_history_updated'));
+      window.dispatchEvent(new Event('storage'));
+    }
+  }
+};
+
+
+
 

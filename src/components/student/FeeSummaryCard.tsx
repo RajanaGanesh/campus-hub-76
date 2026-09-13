@@ -9,14 +9,14 @@ export interface FeeSummaryCardProps {
 }
 
 export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({
-  total = 85000,
-  paid = 72500,
-  pending = 12500,
-  dueDate = '30 Aug 2026'
+  total = 0,
+  paid = 0,
+  pending = 0,
+  dueDate = 'No dues'
 }) => {
   const navigate = useNavigate();
 
-  const paidPercentage = Math.round((paid / total) * 100);
+  const paidPercentage = total > 0 ? Math.min(100, Math.round((paid / total) * 100)) : 100;
 
   const formatCurrency = (amt: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -33,8 +33,9 @@ export const FeeSummaryCard: React.FC<FeeSummaryCardProps> = ({
           <h3 className="c1-card-title">Fee Status</h3>
           <p className="c1-card-subtitle">Academic Year 2026–2027</p>
         </div>
-        <span className="c1-badge c1-badge-warning">
-          <i className="fa-solid fa-clock"></i> Due: {dueDate}
+        <span className={`c1-badge ${pending > 0 ? 'c1-badge-warning' : 'c1-badge-success'}`}>
+          <i className={`fa-solid ${pending > 0 ? 'fa-clock' : 'fa-circle-check'}`}></i>
+          {' '}{pending > 0 ? `Due: ${dueDate}` : 'Settled'}
         </span>
       </div>
 

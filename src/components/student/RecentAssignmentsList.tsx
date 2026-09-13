@@ -6,15 +6,8 @@ export interface RecentAssignmentsListProps {
   assignments?: PendingAssignment[];
 }
 
-const DEFAULT_ASSIGNMENTS: PendingAssignment[] = [
-  { subject: 'Database Management', title: 'ER Diagram & Normalization (CS302)', due: 'Tomorrow, 11:59 PM', status: 'Due Soon', priority: 'High' },
-  { subject: 'Computer Networks', title: 'TCP/IP Protocol Simulation Lab', due: '25 Aug 2026', status: 'Pending', priority: 'Medium' },
-  { subject: 'Software Engineering', title: 'Agile SRS Architecture Documentation', due: '28 Aug 2026', status: 'Pending', priority: 'Low' },
-  { subject: 'Operating Systems', title: 'Process Scheduling & Semaphores Case Study', due: '30 Aug 2026', status: 'Pending', priority: 'Medium' }
-];
-
 export const RecentAssignmentsList: React.FC<RecentAssignmentsListProps> = ({
-  assignments = DEFAULT_ASSIGNMENTS
+  assignments = []
 }) => {
   const navigate = useNavigate();
 
@@ -63,38 +56,50 @@ export const RecentAssignmentsList: React.FC<RecentAssignmentsListProps> = ({
       </div>
 
       <div className="assignments-list-container">
-        {assignments.map((item, idx) => (
-          <div key={idx} className="assignment-item-row">
-            <div className="assignment-item-icon">
-              <i className="fa-solid fa-file-lines"></i>
-            </div>
-
-            <div className="assignment-item-details">
-              <div className="assignment-top-meta">
-                <span className="assignment-subject-tag">{item.subject}</span>
-                {getPriorityTag(item.priority)}
-              </div>
-              <h4 className="assignment-item-title">{item.title}</h4>
-              <div className="assignment-bottom-meta">
-                <span className="assignment-due-date">
-                  <i className="fa-regular fa-calendar-xmark"></i> Due: {item.due}
-                </span>
-              </div>
-            </div>
-
-            <div className="assignment-item-status">
-              {getStatusBadge(item.status)}
-              <button
-                type="button"
-                className="c1-btn c1-btn-secondary btn-submit-micro"
-                onClick={() => navigate('/student/assignments')}
-              >
-                <span>Submit</span>
-                <i className="fa-solid fa-arrow-up-from-bracket"></i>
-              </button>
-            </div>
+        {assignments.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '36px 16px',
+            color: 'var(--text-muted)'
+          }}>
+            <i className="fa-solid fa-clipboard-check" style={{ fontSize: '2.5rem', marginBottom: '12px', opacity: 0.35, display: 'block' }}></i>
+            <h4 style={{ margin: '0 0 6px', color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.95rem' }}>No Pending Assignments</h4>
+            <p style={{ margin: 0, fontSize: '0.825rem' }}>All course homework submissions are up to date.</p>
           </div>
-        ))}
+        ) : (
+          assignments.map((item, idx) => (
+            <div key={idx} className="assignment-item-row">
+              <div className="assignment-item-icon">
+                <i className="fa-solid fa-file-lines"></i>
+              </div>
+
+              <div className="assignment-item-details">
+                <div className="assignment-top-meta">
+                  <span className="assignment-subject-tag">{item.subject}</span>
+                  {getPriorityTag(item.priority)}
+                </div>
+                <h4 className="assignment-item-title">{item.title}</h4>
+                <div className="assignment-bottom-meta">
+                  <span className="assignment-due-date">
+                    <i className="fa-regular fa-calendar-xmark"></i> Due: {item.due}
+                  </span>
+                </div>
+              </div>
+
+              <div className="assignment-item-status">
+                {getStatusBadge(item.status)}
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary btn-submit-micro"
+                  onClick={() => navigate('/student/assignments')}
+                >
+                  <span>Submit</span>
+                  <i className="fa-solid fa-arrow-up-from-bracket"></i>
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

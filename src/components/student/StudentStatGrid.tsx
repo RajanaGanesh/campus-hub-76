@@ -11,12 +11,12 @@ export interface StudentStatGridProps {
 }
 
 export const StudentStatGrid: React.FC<StudentStatGridProps> = ({
-  attendancePercentage = 86,
-  presentDays = 142,
-  totalDays = 165,
-  cgpa = 8.6,
-  pendingAssignmentsCount = 4,
-  upcomingExamsCount = 3
+  attendancePercentage = 0,
+  presentDays = 0,
+  totalDays = 0,
+  cgpa = 0,
+  pendingAssignmentsCount = 0,
+  upcomingExamsCount = 0
 }) => {
   const navigate = useNavigate();
 
@@ -28,9 +28,9 @@ export const StudentStatGrid: React.FC<StudentStatGridProps> = ({
       icon: 'fa-user-check',
       title: 'Overall Attendance',
       value: `${attendancePercentage}%`,
-      subtitle: `${presentDays} / ${totalDays} Total Days Present`,
-      statusText: isAttendanceSafe ? 'Good Standing' : 'Action Required',
-      statusVariant: isAttendanceSafe ? 'success' : 'error',
+      subtitle: totalDays > 0 ? `${presentDays} / ${totalDays} Total Days Present` : 'Institutional Attendance Register',
+      statusText: attendancePercentage > 0 ? (isAttendanceSafe ? 'Good Standing' : 'Action Required') : 'Active',
+      statusVariant: isAttendanceSafe ? 'success' : attendancePercentage > 0 ? 'error' : 'neutral',
       colorClass: 'stat-accent-purple',
       route: '/student/attendance'
     },
@@ -38,9 +38,9 @@ export const StudentStatGrid: React.FC<StudentStatGridProps> = ({
       id: 'stat-cgpa',
       icon: 'fa-award',
       title: 'Current CGPA',
-      value: cgpa.toFixed(1),
-      subtitle: '8th Semester • Top 5% Tier',
-      statusText: 'Excellent',
+      value: cgpa > 0 ? cgpa.toFixed(1) : '0.0',
+      subtitle: 'Academic Transcript Rating',
+      statusText: cgpa >= 8.0 ? 'Excellent' : cgpa >= 6.5 ? 'Good' : 'Active',
       statusVariant: 'success',
       colorClass: 'stat-accent-cyan',
       route: '/student/results'
@@ -50,9 +50,9 @@ export const StudentStatGrid: React.FC<StudentStatGridProps> = ({
       icon: 'fa-file-invoice',
       title: 'Pending Assignments',
       value: pendingAssignmentsCount.toString(),
-      subtitle: '2 submissions due this week',
-      statusText: 'Due Soon',
-      statusVariant: 'warning',
+      subtitle: pendingAssignmentsCount > 0 ? `${pendingAssignmentsCount} pending submissions` : 'All caught up',
+      statusText: pendingAssignmentsCount > 0 ? 'Due Soon' : 'Completed',
+      statusVariant: pendingAssignmentsCount > 0 ? 'warning' : 'success',
       colorClass: 'stat-accent-blue',
       route: '/student/assignments'
     },
@@ -61,9 +61,9 @@ export const StudentStatGrid: React.FC<StudentStatGridProps> = ({
       icon: 'fa-receipt',
       title: 'Upcoming Exams',
       value: upcomingExamsCount.toString(),
-      subtitle: 'Next: Data Structures (9d left)',
-      statusText: 'Scheduled',
-      statusVariant: 'primary',
+      subtitle: upcomingExamsCount > 0 ? `${upcomingExamsCount} scheduled tests` : 'No upcoming exams',
+      statusText: upcomingExamsCount > 0 ? 'Scheduled' : 'None',
+      statusVariant: upcomingExamsCount > 0 ? 'primary' : 'neutral',
       colorClass: 'stat-accent-indigo',
       route: '/student/exams'
     }

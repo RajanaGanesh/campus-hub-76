@@ -82,18 +82,20 @@ export const StudentDashboard: React.FC = () => {
             <StudentWelcomeCard
               department={user?.department || data.profile.department}
               semester={data.profile.semester}
+              pendingAssignmentsCount={data.assignments?.filter(a => a.status === 'Pending' || a.status === 'Due Soon').length || 0}
+              nextExamDays={data.exams && data.exams.length > 0 ? data.exams[0].daysLeft : null}
               onRefresh={() => fetchDashboardData(true)}
               isRefreshing={isRefreshing}
             />
 
             {/* 2. Four Major Statistics Cards */}
             <StudentStatGrid
-              attendancePercentage={data.overallAttendance}
-              presentDays={142}
-              totalDays={165}
-              cgpa={8.6}
-              pendingAssignmentsCount={data.assignments?.length || 4}
-              upcomingExamsCount={data.exams?.length || 3}
+              attendancePercentage={data.overallAttendance || 0}
+              presentDays={data.presentCount || 0}
+              totalDays={data.totalClasses || 0}
+              cgpa={Number(data.stats?.find(s => s.title === 'CGPA')?.value) || 0}
+              pendingAssignmentsCount={data.assignments?.filter(a => a.status === 'Pending' || a.status === 'Due Soon').length || 0}
+              upcomingExamsCount={data.exams?.length || 0}
             />
 
             {/* 3. Main Two-Column Analytics & Operational Layout */}
@@ -102,26 +104,26 @@ export const StudentDashboard: React.FC = () => {
               <div className="dashboard-column-main">
                 {/* Overall Attendance Progress Ring Card (No subject-wise breakdown) */}
                 <AttendanceOverviewCard
-                  overallPercentage={data.overallAttendance}
-                  presentCount={142}
-                  absentCount={23}
-                  totalClasses={165}
+                  overallPercentage={data.overallAttendance || 0}
+                  presentCount={data.presentCount || 0}
+                  absentCount={data.absentCount || 0}
+                  totalClasses={data.totalClasses || 0}
                 />
 
                 {/* Academic Performance CGPA Progression Chart */}
                 <StudentPerformanceChart
-                  data={data.performanceHistory}
-                  currentCgpa={8.6}
+                  data={data.performanceHistory || []}
+                  currentCgpa={Number(data.stats?.find(s => s.title === 'CGPA')?.value) || 0}
                 />
 
                 {/* Recent Assignments Preview */}
                 <RecentAssignmentsList
-                  assignments={data.assignments}
+                  assignments={data.assignments || []}
                 />
 
                 {/* Upcoming Examinations Schedule */}
                 <UpcomingExamsList
-                  exams={data.exams}
+                  exams={data.exams || []}
                 />
 
                 {/* 8 Quick Action Tiles */}
@@ -131,41 +133,62 @@ export const StudentDashboard: React.FC = () => {
               {/* Secondary Column (35% width on desktop) */}
               <div className="dashboard-column-side">
                 {/* Upcoming Events Timeline */}
-                <UpcomingEventsList />
+                <UpcomingEventsList
+                  events={data.exams && data.exams.length > 0 ? data.exams.map(e => ({
+                    id: `ex-${e.subject}`,
+                    title: `${e.subject} Exam`,
+                    category: 'exam' as const,
+                    date: e.date,
+                    time: e.time
+                  })) : []}
+                />
 
                 {/* Fee Status Card */}
                 <FeeSummaryCard
-                  total={data.fees?.total || 85000}
-                  paid={data.fees?.paid || 72500}
-                  pending={data.fees?.pending || 12500}
-                  dueDate={data.fees?.dueDate || '30 Aug 2026'}
+                  total={data.fees?.total || 0}
+                  paid={data.fees?.paid || 0}
+                  pending={data.fees?.pending || 0}
+                  dueDate={data.fees?.dueDate || 'No dues'}
                 />
 
                 {/* Digital Library Summary */}
                 <LibrarySummaryCard
-                  issuedCount={data.library?.issued || 3}
-                  dueSoonCount={data.library?.dueSoonCount || 1}
+                  issuedCount={data.library?.issued || 0}
+                  dueSoonCount={data.library?.dueSoonCount || 0}
                   overdueCount={data.library?.overdueCount || 0}
                   fineAmount={0}
+                  recentBookTitle={data.library?.books && data.library.books.length > 0 ? data.library.books[0].title : undefined}
+                  recentBookDue={data.library?.books && data.library.books.length > 0 ? data.library.books[0].due : undefined}
                 />
 
                 {/* Placement Opportunities Card */}
                 <PlacementSummaryCard
-                  availableJobsCount={12}
-                  applicationsCount={3}
-                  shortlistedCount={1}
-                  upcomingDrivesCount={2}
+                  availableJobsCount={data.placements?.length || 0}
+                  applicationsCount={0}
+                  shortlistedCount={0}
+                  upcomingDrivesCount={data.placements?.length || 0}
+                  featuredRole={data.placements && data.placements.length > 0 ? data.placements[0].role : undefined}
+                  featuredCompany={data.placements && data.placements.length > 0 ? data.placements[0].company : undefined}
+                  featuredMeta={data.placements && data.placements.length > 0 ? `${data.placements[0].company} • ${data.placements[0].package} • ${data.placements[0].deadline}` : undefined}
                 />
 
                 {/* CampusOne AI Assistant Preview */}
                 <AIAssistantPreview />
 
                 {/* Recent Notifications Preview */}
-                <NotificationsPreview />
+                <NotificationsPreview
+                  notifications={data.notifications && data.notifications.length > 0 ? data.notifications.map(n => ({
+                    id: n.id,
+                    icon: n.icon || 'fa-bell',
+                    title: n.title,
+                    time: n.time,
+                    unread: n.unread
+                  })) : []}
+                />
 
                 {/* Campus Announcements & Notices */}
                 <CampusAnnouncements
-                  announcements={data.announcements}
+                  announcements={data.announcements || []}
                 />
               </div>
             </div>

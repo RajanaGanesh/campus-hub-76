@@ -4,6 +4,15 @@ import { getManagementData, ManagementAnnouncement } from '../../data/management
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 
+import {
+  getStudentNotices,
+  saveStudentNotices,
+  getStudentNotifications,
+  saveStudentNotifications,
+  NoticeItem,
+  StudentNotificationItem
+} from '../../services/storageService';
+
 export const AdminNotices: React.FC = () => {
   const mgmt = getManagementData();
 
@@ -32,6 +41,8 @@ export const AdminNotices: React.FC = () => {
       return;
     }
 
+    const todayFormatted = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
     const newNot: ManagementAnnouncement = {
       id: `ann-${Date.now()}`,
       title: title.trim(),
@@ -39,11 +50,52 @@ export const AdminNotices: React.FC = () => {
       publishedBy: 'Campus Administration Office',
       audience,
       priority,
-      publishDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      publishDate: todayFormatted,
       status: 'Published'
     };
 
     setNotices([newNot, ...notices]);
+
+    // Cross-sync to Student Notices Board
+    try {
+      const studentNotices = getStudentNotices();
+      const newStudentNotice: NoticeItem = {
+        id: `NOT-${Date.now()}`,
+        title: title.trim(),
+        category: 'General',
+        publishedDate: todayFormatted,
+        publisher: 'Campus Administration Office',
+        priority,
+        snippet: message.trim().slice(0, 100) + '...',
+        fullText: message.trim(),
+        attachmentName: 'Admin_Circular.pdf',
+        isUnread: true
+      };
+      saveStudentNotices([newStudentNotice, ...studentNotices]);
+    } catch {}
+
+    // Cross-sync to Student Notifications Inbox
+    try {
+      const studentNotifs = getStudentNotifications();
+      const newNotif: StudentNotificationItem = {
+        id: `NOTIF-${Date.now()}`,
+        category: 'Academic',
+        title: `Admin Circular: ${title.trim()}`,
+        message: message.trim().slice(0, 120),
+        time: 'Just now',
+        isUnread: true,
+        targetRoute: '/student/notices',
+        actionLabel: 'Read Notice'
+      };
+      saveStudentNotifications([newNotif, ...studentNotifs]);
+    } catch {}
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('campushub_student_notices_updated'));
+      window.dispatchEvent(new Event('campushub_student_notifications_updated'));
+      window.dispatchEvent(new Event('storage'));
+    }
+
     setIsAddModalOpen(false);
     setTitle('');
     setMessage('');

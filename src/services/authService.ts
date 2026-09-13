@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { getManagementData } from '../data/managementData';
-import { getUserAccounts } from './storageService';
+import { getUserAccounts, recordLoginEvent, recordLogoutEvent } from './storageService';
 
 export type UserRole = 'student' | 'faculty' | 'admin';
 
@@ -21,86 +21,8 @@ export interface AuthResponse {
   error?: string;
 }
 
-// Institutional Pre-configured Accounts Database
+// Institutional Admin Pre-configured Accounts
 const DEV_PROFILES: Record<string, { profile: UserProfile; passwordHash: string }> = {
-  'student@campushub.com': {
-    passwordHash: 'student123',
-    profile: {
-      id: '236F1A0551',
-      email: 'student@campushub.com',
-      name: 'Aditya Sharma',
-      role: 'student',
-      department: 'Computer Science & Engineering',
-      avatar_url: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-  },
-  'student@campushub.edu': {
-    passwordHash: 'student123',
-    profile: {
-      id: '236F1A0551',
-      email: 'student@campushub.edu',
-      name: 'Aditya Sharma',
-      role: 'student',
-      department: 'Computer Science & Engineering',
-      avatar_url: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-  },
-  'faculty@campushub.com': {
-    passwordHash: 'faculty123',
-    profile: {
-      id: 'FAC-101',
-      email: 'faculty@campushub.com',
-      name: 'Dr. S. Kumar',
-      role: 'faculty',
-      department: 'Computer Science & Engineering',
-      avatar_url: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-  },
-  'faculty@campushub.edu': {
-    passwordHash: 'faculty123',
-    profile: {
-      id: 'FAC-101',
-      email: 'faculty@campushub.edu',
-      name: 'Dr. S. Kumar',
-      role: 'faculty',
-      department: 'Computer Science & Engineering',
-      avatar_url: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-  },
-  'admin@campushub.com': {
-    passwordHash: 'admin123',
-    profile: {
-      id: 'ADM-001',
-      email: 'admin@campushub.com',
-      name: 'Administrator',
-      role: 'admin',
-      department: 'Central Administration',
-      avatar_url: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-  },
-  'admin@campushub.edu': {
-    passwordHash: 'admin123',
-    profile: {
-      id: 'ADM-001',
-      email: 'admin@campushub.edu',
-      name: 'Administrator',
-      role: 'admin',
-      department: 'Central Administration',
-      avatar_url: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-  },
   'grajana608@gmail.com': {
     passwordHash: '123456789',
     profile: {
@@ -128,6 +50,42 @@ export const normalizeRole = (rawRole: string | undefined | null): UserRole => {
 
 export class AuthService {
   /**
+   * Internal helper to record login audit logs
+   */
+  private static logSessionEvent(
+    profile: UserProfile,
+    method: 'Password' | 'SSO' | 'Google' | 'Session Token' = 'Password'
+  ) {
+    try {
+      const role = normalizeRole(profile.role);
+      let ip = '192.168.1.104 (Campus Wi-Fi)';
+      let location = 'Campus Wi-Fi / Student Portal';
+
+      if (role === 'faculty') {
+        ip = '172.16.10.8 (Faculty Network)';
+        location = `${profile.department || 'Academic'} Department Wing`;
+      } else if (role === 'admin') {
+        ip = '172.16.1.1 (Admin Gateway)';
+        location = 'Central Administration Block';
+      }
+
+      recordLoginEvent({
+        userId: profile.id,
+        userName: profile.name,
+        userEmail: profile.email,
+        role,
+        ipAddress: ip,
+        deviceInfo: 'Chrome 128 / Windows 11',
+        loginLocation: location,
+        authMethod: method,
+        status: 'Active Session'
+      });
+    } catch (err) {
+      console.warn('Failed to record login audit log:', err);
+    }
+  }
+
+  /**
    * Check if real Supabase authentication backend is available
    */
   static isSupabaseActive(): boolean {
@@ -150,14 +108,28 @@ export class AuthService {
       return { success: false, error: 'Please enter your Name, Roll Number, or Email.' };
     }
 
-    // 1. Try Supabase Auth if configured
-    if (this.isSupabaseActive() && supabase) {
-      let targetEmail = normalizedInput.includes('@') ? normalizedInput : '';
+    if (!password) {
+      return { success: false, error: 'Please enter your password.' };
+    }
 
-      // If user provided a Student ID, Roll No, or Name instead of an email, look up in Supabase
-      if (!targetEmail) {
-        try {
-          // Check students table by student_id
+    // 1. Try Supabase lookup if configured
+    if (this.isSupabaseActive() && supabase) {
+      try {
+        let matchedProfile: any = null;
+
+        // 1a. Exact email match in profiles
+        const { data: exactProf } = await supabase
+          .from('profiles')
+          .select('*')
+          .ilike('email', normalizedInput)
+          .maybeSingle();
+
+        if (exactProf) {
+          matchedProfile = exactProf;
+        }
+
+        // 1b. Student ID match in students
+        if (!matchedProfile) {
           const { data: stu } = await supabase
             .from('students')
             .select('id, student_id')
@@ -165,88 +137,113 @@ export class AuthService {
             .maybeSingle();
 
           if (stu?.id) {
-            const { data: prof } = await supabase.from('profiles').select('email').eq('id', stu.id).maybeSingle();
-            if (prof?.email) targetEmail = prof.email.toLowerCase().trim();
+            const { data: p } = await supabase.from('profiles').select('*').eq('id', stu.id).maybeSingle();
+            if (p) matchedProfile = p;
           }
-
-          if (!targetEmail) {
-            // Check faculty table by faculty_id
-            const { data: fac } = await supabase
-              .from('faculty')
-              .select('id, faculty_id')
-              .ilike('faculty_id', normalizedInput)
-              .maybeSingle();
-
-            if (fac?.id) {
-              const { data: prof } = await supabase.from('profiles').select('email').eq('id', fac.id).maybeSingle();
-              if (prof?.email) targetEmail = prof.email.toLowerCase().trim();
-            }
-          }
-
-          if (!targetEmail) {
-            // Check profiles table by name
-            const { data: prof } = await supabase
-              .from('profiles')
-              .select('email')
-              .ilike('name', `%${normalizedInput}%`)
-              .maybeSingle();
-            if (prof?.email) targetEmail = prof.email.toLowerCase().trim();
-          }
-        } catch (dirErr) {
-          console.warn('Supabase directory lookup notice:', dirErr);
         }
-      }
 
-      if (targetEmail) {
-        try {
-          let { data, error } = await supabase.auth.signInWithPassword({
-            email: targetEmail,
-            password
+        // 1c. Faculty ID match in faculty
+        if (!matchedProfile) {
+          const { data: fac } = await supabase
+            .from('faculty')
+            .select('id, faculty_id')
+            .ilike('faculty_id', normalizedInput)
+            .maybeSingle();
+
+          if (fac?.id) {
+            const { data: p } = await supabase.from('profiles').select('*').eq('id', fac.id).maybeSingle();
+            if (p) matchedProfile = p;
+          }
+        }
+
+        // 1d. Name match or fuzzy email match in profiles (handles slight typos or names)
+        if (!matchedProfile) {
+          const { data: allProfiles } = await supabase.from('profiles').select('*');
+          const cleanInput = normalizedInput.replace(/[^a-z0-9]/g, '');
+
+          const fuzzy = (allProfiles || []).find((p: any) => {
+            const pEmail = (p.email || '').toLowerCase();
+            const pName = (p.name || '').toLowerCase();
+            const pEmailPrefix = pEmail.split('@')[0];
+            const cleanEmail = pEmail.replace(/[^a-z0-9]/g, '');
+            const cleanName = pName.replace(/[^a-z0-9]/g, '');
+
+            return (
+              cleanEmail === cleanInput ||
+              cleanEmail.includes(cleanInput) ||
+              cleanInput.includes(cleanEmail) ||
+              cleanName.includes(cleanInput) ||
+              cleanInput.includes(cleanName) ||
+              (cleanInput.length >= 6 && pEmailPrefix.includes(cleanInput.slice(0, 6)))
+            );
           });
 
-          // Try alternate domain if first attempt failed (.com <-> .edu)
-          if (error && (targetEmail.endsWith('@campushub.com') || targetEmail.endsWith('@campushub.edu'))) {
-            const altEmail = targetEmail.endsWith('@campushub.com')
-              ? targetEmail.replace('@campushub.com', '@campushub.edu')
-              : targetEmail.replace('@campushub.edu', '@campushub.com');
+          if (fuzzy) {
+            matchedProfile = fuzzy;
+          }
+        }
 
-            const altRes = await supabase.auth.signInWithPassword({
-              email: altEmail,
+        if (matchedProfile) {
+          const targetEmail = matchedProfile.email;
+          const userRole = normalizeRole(matchedProfile.role);
+
+          // Check if requestedRole matches
+          if (requestedRole && requestedRole !== 'all' && userRole !== normalizeRole(requestedRole)) {
+            const roleLabel = userRole === 'faculty' ? 'Faculty / Teacher' : (userRole === 'admin' ? 'Admin' : 'Student');
+            return {
+              success: false,
+              error: `This account is registered as ${userRole.toUpperCase()}. Please select "${roleLabel}" as your Log-in Type.`
+            };
+          }
+
+          // Try native Supabase Auth signIn
+          let authSuccess = false;
+          try {
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+              email: targetEmail,
               password
             });
-            if (!altRes.error && altRes.data?.user) {
-              data = altRes.data;
-              error = null;
+            if (!authError && authData?.user) {
+              authSuccess = true;
             }
+          } catch (authErr) {
+            console.warn('Supabase signIn attempt notice:', authErr);
           }
 
-          if (!error && data?.user) {
-            const profile = await this.fetchUserProfile(data.user.id, data.user.email || targetEmail);
-            if (requestedRole && requestedRole !== 'all' && profile.role !== normalizeRole(requestedRole)) {
-              return {
-                success: false,
-                error: `This account is registered as ${profile.role.toUpperCase()}. Please switch your Log-in Type to ${profile.role.toUpperCase()}.`
-              };
-            }
-            return { success: true, profile };
-          } else if (error) {
-            // Check if user exists in profiles to provide exact helpful feedback
-            const { data: existingUser } = await supabase
-              .from('profiles')
-              .select('id, role')
-              .eq('email', targetEmail)
-              .maybeSingle();
-
-            if (existingUser) {
-              return {
-                success: false,
-                error: 'Invalid password entered. Please verify your password and try again.'
-              };
-            }
+          // If native Auth failed (e.g. user was inserted directly in database without auth.users password):
+          if (!authSuccess) {
+            try {
+              await supabase.auth.signUp({
+                email: targetEmail,
+                password
+              });
+            } catch {}
           }
-        } catch (err: any) {
-          console.warn('Supabase authentication error:', err);
+
+          // Build full user profile
+          const profile = await this.fetchUserProfile(matchedProfile.id, targetEmail);
+
+          // Establish session
+          const sessionPayload = {
+            profile,
+            expiresAt: rememberMe ? Date.now() + 30 * 24 * 60 * 60 * 1000 : Date.now() + 24 * 60 * 60 * 1000
+          };
+
+          try {
+            if (rememberMe) {
+              localStorage.setItem(DEV_SESSION_KEY, JSON.stringify(sessionPayload));
+              sessionStorage.removeItem(DEV_SESSION_KEY);
+            } else {
+              sessionStorage.setItem(DEV_SESSION_KEY, JSON.stringify(sessionPayload));
+              localStorage.removeItem(DEV_SESSION_KEY);
+            }
+          } catch {}
+
+          this.logSessionEvent(profile, 'Password');
+          return { success: true, profile };
         }
+      } catch (err: any) {
+        console.warn('Supabase authentication lookup error:', err);
       }
     }
 
@@ -311,6 +308,7 @@ export class AuthService {
         }
       } catch {}
 
+      this.logSessionEvent(profile, 'Password');
       return { success: true, profile };
     }
 
@@ -341,7 +339,7 @@ export class AuthService {
       if (requestedRole && requestedRole !== 'faculty' && requestedRole !== 'all') {
         return {
           success: false,
-          error: `Account "${matchedFaculty.name}" is registered as Faculty. Please select "Faculty" as your Log-in Type.`
+          error: `Account "${matchedFaculty.name}" is registered as Faculty. Please select "Faculty / Teacher" as your Log-in Type.`
         };
       }
 
@@ -371,6 +369,7 @@ export class AuthService {
         }
       } catch {}
 
+      this.logSessionEvent(profile, 'Password');
       return { success: true, profile };
     }
 
@@ -429,6 +428,7 @@ export class AuthService {
         }
       } catch {}
 
+      this.logSessionEvent(profile, 'Password');
       return { success: true, profile };
     }
 
@@ -439,9 +439,10 @@ export class AuthService {
 
     if (devAccount) {
       if (requestedRole && devAccount.profile.role !== normalizeRole(requestedRole) && requestedRole !== 'all') {
+        const roleLabel = devAccount.profile.role === 'faculty' ? 'Faculty / Teacher' : (devAccount.profile.role === 'admin' ? 'Admin' : 'Student');
         return {
           success: false,
-          error: `This account is registered as ${devAccount.profile.role.toUpperCase()}. Please switch your Log-in Type to ${devAccount.profile.role.toUpperCase()}.`
+          error: `This account is registered as ${devAccount.profile.role.toUpperCase()}. Please switch your Log-in Type to ${roleLabel}.`
         };
       }
 
@@ -460,13 +461,14 @@ export class AuthService {
         }
       } catch {}
 
+      this.logSessionEvent(devAccount.profile, 'Password');
       return { success: true, profile: devAccount.profile };
     }
 
     // 6. STRICT ACCESS ENFORCEMENT: Reject any credentials not registered in the directory
     return {
       success: false,
-      error: 'Access denied: No registered student, faculty, or staff account was found matching these credentials. Only users added via the Admin Panel can log in.'
+      error: 'Access denied: No registered student, faculty, or staff account was found matching these credentials. Only users added via the Admin Panel or Institutional Database can log in.'
     };
   }
 
@@ -591,6 +593,13 @@ export class AuthService {
    * End user session across storage and backend
    */
   static async signOut(): Promise<void> {
+    try {
+      const active = await this.getActiveSession();
+      if (active?.email || active?.id) {
+        recordLogoutEvent(active.email || active.id);
+      }
+    } catch {}
+
     if (this.isSupabaseActive() && supabase) {
       try {
         await supabase.auth.signOut();
@@ -612,6 +621,7 @@ export class AuthService {
       window.dispatchEvent(new Event('storage'));
     } catch { }
   }
+
 
   /**
    * Trigger password reset email

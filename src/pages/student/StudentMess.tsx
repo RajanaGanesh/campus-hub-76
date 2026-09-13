@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -25,6 +25,25 @@ export const StudentMess: React.FC = () => {
 
   // Active navigation tab
   const [activeTab, setActiveTab] = useState<'menu' | 'pass' | 'rebates' | 'feedback' | 'diet'>('menu');
+
+  // Digital QR Pass Modal State
+  const [isQrPassModalOpen, setIsQrPassModalOpen] = useState(false);
+  const [qrSecurityCode, setQrSecurityCode] = useState('C1-DIN-9842X');
+  const [qrCountdown, setQrCountdown] = useState(45);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setQrCountdown((prev) => {
+        if (prev <= 1) {
+          const randomHex = Math.random().toString(36).substring(2, 7).toUpperCase();
+          setQrSecurityCode(`C1-DIN-${randomHex}`);
+          return 45;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Day selector for menu
   const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -303,9 +322,16 @@ export const StudentMess: React.FC = () => {
             <button
               type="button"
               className="c1-btn c1-btn-secondary"
-              onClick={() => setActiveTab('pass')}
+              onClick={() => {
+                setIsQrPassModalOpen(true);
+                setActiveTab('pass');
+              }}
+              style={{
+                borderColor: 'var(--accent-primary, #6c4bff)',
+                boxShadow: '0 2px 8px rgba(108, 75, 255, 0.12)'
+              }}
             >
-              <i className="fa-solid fa-qrcode" style={{ color: 'var(--accent-blue)' }}></i>
+              <i className="fa-solid fa-qrcode" style={{ color: 'var(--accent-primary, #6c4bff)' }}></i>
               <span>Digital QR Pass</span>
             </button>
             <button
@@ -321,7 +347,15 @@ export const StudentMess: React.FC = () => {
 
         {/* Quick Stat Summary Cards */}
         <div className="dashboard-grid-4" style={{ marginBottom: '24px' }}>
-          <div className="c1-card stat-summary-card">
+          <div
+            className="c1-card stat-summary-card"
+            onClick={() => {
+              setIsQrPassModalOpen(true);
+              setActiveTab('pass');
+            }}
+            style={{ cursor: 'pointer' }}
+            title="Click to view QR Meal Pass"
+          >
             <div className="stat-card-header">
               <span className="stat-card-title">Current Meal Session</span>
               <div className="stat-icon-wrapper" style={{ background: 'rgba(56, 189, 248, 0.15)', color: 'var(--accent-blue)' }}>
@@ -350,7 +384,15 @@ export const StudentMess: React.FC = () => {
             </div>
           </div>
 
-          <div className="c1-card stat-summary-card">
+          <div
+            className="c1-card stat-summary-card"
+            onClick={() => {
+              setIsQrPassModalOpen(true);
+              setActiveTab('pass');
+            }}
+            style={{ cursor: 'pointer' }}
+            title="Click to open QR Pass & check-in"
+          >
             <div className="stat-card-header">
               <span className="stat-card-title">Today's Meal Check-ins</span>
               <div className="stat-icon-wrapper" style={{ background: 'rgba(168, 85, 247, 0.15)', color: 'var(--accent-purple)' }}>
@@ -361,7 +403,7 @@ export const StudentMess: React.FC = () => {
               {[mealAttendance.breakfast, mealAttendance.lunch, mealAttendance.snacks, mealAttendance.dinner].filter(Boolean).length} / 4 Availed
             </div>
             <div className="stat-card-subtitle">
-              <span>Breakfast: Availed • Lunch: Ready</span>
+              <span>Breakfast: Availed • Lunch: Ready (Tap to Scan)</span>
             </div>
           </div>
 
@@ -1042,49 +1084,145 @@ export const StudentMess: React.FC = () => {
                 style={{
                   background: '#ffffff',
                   borderRadius: '16px',
-                  padding: '20px',
+                  padding: '20px 16px',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginBottom: '20px',
-                  boxShadow: 'inset 0 2px 6px rgba(0, 0, 0, 0.1)'
+                  boxShadow: 'inset 0 2px 6px rgba(0, 0, 0, 0.1)',
+                  cursor: 'pointer'
                 }}
+                onClick={() => setIsQrPassModalOpen(true)}
+                title="Click to expand QR Pass modal"
               >
-                {/* SVG Simulated Barcode / QR matrix */}
+                {/* SVG High-res QR Matrix */}
                 <div
                   style={{
                     width: '180px',
                     height: '180px',
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(6, 1fr)',
-                    gap: '4px',
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     padding: '8px',
-                    background: '#fff',
-                    borderRadius: '8px'
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '12px',
+                    background: '#ffffff'
                   }}
                 >
-                  {Array.from({ length: 36 }).map((_, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        background: (i * 7) % 3 === 0 || i === 0 || i === 5 || i === 30 || i === 35 ? '#0f172a' : (i % 2 === 0 ? '#334155' : '#e2e8f0'),
-                        borderRadius: '2px'
-                      }}
-                    ></div>
-                  ))}
+                  <svg viewBox="0 0 100 100" width="100%" height="100%">
+                    <rect x="5" y="5" width="26" height="26" fill="#0f172a" rx="4" />
+                    <rect x="9" y="9" width="18" height="18" fill="#ffffff" rx="2" />
+                    <rect x="13" y="13" width="10" height="10" fill="#6366f1" rx="2" />
+
+                    <rect x="69" y="5" width="26" height="26" fill="#0f172a" rx="4" />
+                    <rect x="73" y="9" width="18" height="18" fill="#ffffff" rx="2" />
+                    <rect x="77" y="13" width="10" height="10" fill="#6366f1" rx="2" />
+
+                    <rect x="5" y="69" width="26" height="26" fill="#0f172a" rx="4" />
+                    <rect x="9" y="73" width="18" height="18" fill="#ffffff" rx="2" />
+                    <rect x="13" y="77" width="10" height="10" fill="#6366f1" rx="2" />
+
+                    <rect x="36" y="8" width="6" height="6" fill="#0f172a" />
+                    <rect x="46" y="8" width="6" height="6" fill="#0f172a" />
+                    <rect x="56" y="8" width="6" height="6" fill="#0f172a" />
+                    <rect x="36" y="18" width="6" height="6" fill="#0f172a" />
+                    <rect x="46" y="18" width="6" height="6" fill="#0f172a" />
+                    <rect x="56" y="18" width="6" height="6" fill="#0f172a" />
+                    
+                    <rect x="8" y="36" width="6" height="6" fill="#0f172a" />
+                    <rect x="18" y="36" width="6" height="6" fill="#0f172a" />
+                    <rect x="28" y="36" width="6" height="6" fill="#0f172a" />
+                    <rect x="38" y="36" width="6" height="6" fill="#0f172a" />
+                    <rect x="48" y="36" width="6" height="6" fill="#0f172a" />
+                    <rect x="58" y="36" width="6" height="6" fill="#0f172a" />
+                    <rect x="68" y="36" width="6" height="6" fill="#0f172a" />
+                    <rect x="78" y="36" width="6" height="6" fill="#0f172a" />
+                    <rect x="88" y="36" width="6" height="6" fill="#0f172a" />
+
+                    <rect x="38" y="46" width="6" height="6" fill="#0f172a" />
+                    <rect x="58" y="46" width="6" height="6" fill="#0f172a" />
+                    <rect x="78" y="46" width="6" height="6" fill="#0f172a" />
+
+                    <rect x="8" y="56" width="6" height="6" fill="#0f172a" />
+                    <rect x="28" y="56" width="6" height="6" fill="#0f172a" />
+                    <rect x="48" y="56" width="6" height="6" fill="#0f172a" />
+                    <rect x="68" y="56" width="6" height="6" fill="#0f172a" />
+                    <rect x="88" y="56" width="6" height="6" fill="#0f172a" />
+
+                    <rect x="38" y="68" width="6" height="6" fill="#0f172a" />
+                    <rect x="48" y="68" width="6" height="6" fill="#0f172a" />
+                    <rect x="68" y="68" width="6" height="6" fill="#0f172a" />
+                    <rect x="78" y="68" width="6" height="6" fill="#0f172a" />
+                    <rect x="88" y="68" width="6" height="6" fill="#0f172a" />
+
+                    <rect x="38" y="78" width="6" height="6" fill="#0f172a" />
+                    <rect x="58" y="78" width="6" height="6" fill="#0f172a" />
+                    <rect x="78" y="78" width="6" height="6" fill="#0f172a" />
+                    <rect x="88" y="78" width="6" height="6" fill="#0f172a" />
+
+                    <rect x="38" y="88" width="6" height="6" fill="#0f172a" />
+                    <rect x="48" y="88" width="6" height="6" fill="#0f172a" />
+                    <rect x="68" y="88" width="6" height="6" fill="#0f172a" />
+                    <rect x="78" y="88" width="6" height="6" fill="#0f172a" />
+                  </svg>
+                  
+                  <div
+                    style={{
+                      position: 'absolute',
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '8px',
+                      background: 'linear-gradient(135deg, #6366f1, #06b6d4)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#ffffff',
+                      fontSize: '13px',
+                      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
+                      border: '2px solid #ffffff'
+                    }}
+                  >
+                    <i className="fa-solid fa-bolt"></i>
+                  </div>
                 </div>
 
-                <div style={{ marginTop: '12px', fontSize: '0.75rem', fontWeight: 600, color: '#475569', letterSpacing: '1px' }}>
-                  TOKEN: 8849-DINING-ACTIVE-PASS
+                <div style={{ marginTop: '12px', textAlign: 'center' }}>
+                  <div style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '0.875rem', color: '#1e293b', letterSpacing: '1px' }}>
+                    TOKEN: {qrSecurityCode}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                    <i className="fa-solid fa-rotate fa-spin" style={{ color: '#6366f1' }}></i>
+                    <span>Refreshes in <strong>{qrCountdown}s</strong> • Tap to enlarge</span>
+                  </div>
                 </div>
-                <div style={{ fontSize: '0.6875rem', color: '#94a3b8' }}>Refreshes automatically in 30 seconds</div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.6)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.7)', marginBottom: '16px' }}>
                 <span>Diet: <strong>{dietProfile.primaryDiet}</strong></span>
                 <span>Valid: <strong>30 Jun 2027</strong></span>
               </div>
+
+              <button
+                type="button"
+                className="c1-btn c1-btn-secondary"
+                onClick={() => setIsQrPassModalOpen(true)}
+                style={{
+                  width: '100%',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  borderColor: 'rgba(255, 255, 255, 0.2)',
+                  color: '#ffffff',
+                  fontSize: '0.8125rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <i className="fa-solid fa-expand"></i>
+                <span>Open Fullscreen Scan Pass</span>
+              </button>
             </div>
 
             {/* Right Column: Daily 4-Meal Pass Check-in System */}
@@ -2300,6 +2438,320 @@ export const StudentMess: React.FC = () => {
               </div>
             </div>
           )}
+        </Modal>
+
+        {/* ============================================================
+            MODAL: INSTANT DIGITAL QR DINING PASS
+            ============================================================ */}
+        <Modal
+          isOpen={isQrPassModalOpen}
+          onClose={() => setIsQrPassModalOpen(false)}
+          title="CampusOne Digital Dining Pass"
+          maxWidth="md"
+        >
+          <div className="digital-qr-pass-modal-content">
+            {/* Holographic Digital Pass ID Card */}
+            <div
+              style={{
+                borderRadius: '16px',
+                padding: '24px',
+                background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)',
+                border: '1.5px solid rgba(99, 102, 241, 0.4)',
+                boxShadow: '0 12px 32px rgba(15, 23, 42, 0.45), 0 0 20px rgba(99, 102, 241, 0.2)',
+                position: 'relative',
+                overflow: 'hidden',
+                color: '#ffffff'
+              }}
+            >
+              {/* Background Glow */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '-40px',
+                  right: '-40px',
+                  width: '160px',
+                  height: '160px',
+                  borderRadius: '50%',
+                  background: 'radial-gradient(circle, rgba(56, 189, 248, 0.35), transparent 70%)',
+                  pointerEvents: 'none'
+                }}
+              ></div>
+
+              {/* Pass Top Bar */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '8px',
+                      background: 'linear-gradient(135deg, #6366f1, #06b6d4)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '14px',
+                      boxShadow: '0 2px 8px rgba(6, 182, 212, 0.4)'
+                    }}
+                  >
+                    <i className="fa-solid fa-utensils"></i>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: '0.95rem', letterSpacing: '0.5px' }}>CAMPUSONE DINING PASS</div>
+                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>AUTHORIZED MEAL ACCESS • 2026-27</div>
+                  </div>
+                </div>
+                <span
+                  style={{
+                    background: 'rgba(16, 185, 129, 0.2)',
+                    border: '1px solid rgba(16, 185, 129, 0.4)',
+                    color: '#34d399',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    padding: '4px 10px',
+                    borderRadius: '9999px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}
+                >
+                  <i className="fa-solid fa-circle-check" style={{ fontSize: '8px' }}></i> ACTIVE & VALID
+                </span>
+              </div>
+
+              {/* Student Details Grid */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  padding: '14px 16px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  marginBottom: '20px'
+                }}
+              >
+                <div
+                  style={{
+                    width: '52px',
+                    height: '52px',
+                    borderRadius: '14px',
+                    background: 'linear-gradient(135deg, #6366f1, #38bdf8)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.35rem',
+                    fontWeight: 800,
+                    color: '#fff',
+                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)',
+                    flexShrink: 0
+                  }}
+                >
+                  {userInitial}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: '1.05rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {user?.name || 'Rajana Ganesh'}
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>
+                    Roll: <strong>236F1A0551</strong> • CSE Dept
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#38bdf8', marginTop: '2px' }}>
+                    <i className="fa-solid fa-hotel" style={{ marginRight: '4px' }}></i> Krishna Block (Room B-304)
+                  </div>
+                </div>
+              </div>
+
+              {/* Live QR Code Box */}
+              <div
+                style={{
+                  background: '#ffffff',
+                  borderRadius: '16px',
+                  padding: '20px 16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#0f172a',
+                  marginBottom: '18px',
+                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)'
+                }}
+              >
+                {/* SVG QR Visual */}
+                <div
+                  style={{
+                    width: '180px',
+                    height: '180px',
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '8px',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '12px',
+                    background: '#ffffff'
+                  }}
+                >
+                  <svg viewBox="0 0 100 100" width="100%" height="100%">
+                    {/* Corner Position Detection Squares */}
+                    <rect x="5" y="5" width="26" height="26" fill="#0f172a" rx="4" />
+                    <rect x="9" y="9" width="18" height="18" fill="#ffffff" rx="2" />
+                    <rect x="13" y="13" width="10" height="10" fill="#6366f1" rx="2" />
+
+                    <rect x="69" y="5" width="26" height="26" fill="#0f172a" rx="4" />
+                    <rect x="73" y="9" width="18" height="18" fill="#ffffff" rx="2" />
+                    <rect x="77" y="13" width="10" height="10" fill="#6366f1" rx="2" />
+
+                    <rect x="5" y="69" width="26" height="26" fill="#0f172a" rx="4" />
+                    <rect x="9" y="73" width="18" height="18" fill="#ffffff" rx="2" />
+                    <rect x="13" y="77" width="10" height="10" fill="#6366f1" rx="2" />
+
+                    {/* QR Matrix Bits */}
+                    <rect x="36" y="8" width="6" height="6" fill="#0f172a" />
+                    <rect x="46" y="8" width="6" height="6" fill="#0f172a" />
+                    <rect x="56" y="8" width="6" height="6" fill="#0f172a" />
+                    <rect x="36" y="18" width="6" height="6" fill="#0f172a" />
+                    <rect x="46" y="18" width="6" height="6" fill="#0f172a" />
+                    <rect x="56" y="18" width="6" height="6" fill="#0f172a" />
+                    
+                    <rect x="8" y="36" width="6" height="6" fill="#0f172a" />
+                    <rect x="18" y="36" width="6" height="6" fill="#0f172a" />
+                    <rect x="28" y="36" width="6" height="6" fill="#0f172a" />
+                    <rect x="38" y="36" width="6" height="6" fill="#0f172a" />
+                    <rect x="48" y="36" width="6" height="6" fill="#0f172a" />
+                    <rect x="58" y="36" width="6" height="6" fill="#0f172a" />
+                    <rect x="68" y="36" width="6" height="6" fill="#0f172a" />
+                    <rect x="78" y="36" width="6" height="6" fill="#0f172a" />
+                    <rect x="88" y="36" width="6" height="6" fill="#0f172a" />
+
+                    <rect x="38" y="46" width="6" height="6" fill="#0f172a" />
+                    <rect x="58" y="46" width="6" height="6" fill="#0f172a" />
+                    <rect x="78" y="46" width="6" height="6" fill="#0f172a" />
+
+                    <rect x="8" y="56" width="6" height="6" fill="#0f172a" />
+                    <rect x="28" y="56" width="6" height="6" fill="#0f172a" />
+                    <rect x="48" y="56" width="6" height="6" fill="#0f172a" />
+                    <rect x="68" y="56" width="6" height="6" fill="#0f172a" />
+                    <rect x="88" y="56" width="6" height="6" fill="#0f172a" />
+
+                    <rect x="38" y="68" width="6" height="6" fill="#0f172a" />
+                    <rect x="48" y="68" width="6" height="6" fill="#0f172a" />
+                    <rect x="68" y="68" width="6" height="6" fill="#0f172a" />
+                    <rect x="78" y="68" width="6" height="6" fill="#0f172a" />
+                    <rect x="88" y="68" width="6" height="6" fill="#0f172a" />
+
+                    <rect x="38" y="78" width="6" height="6" fill="#0f172a" />
+                    <rect x="58" y="78" width="6" height="6" fill="#0f172a" />
+                    <rect x="78" y="78" width="6" height="6" fill="#0f172a" />
+                    <rect x="88" y="78" width="6" height="6" fill="#0f172a" />
+
+                    <rect x="38" y="88" width="6" height="6" fill="#0f172a" />
+                    <rect x="48" y="88" width="6" height="6" fill="#0f172a" />
+                    <rect x="68" y="88" width="6" height="6" fill="#0f172a" />
+                    <rect x="78" y="88" width="6" height="6" fill="#0f172a" />
+                  </svg>
+                  
+                  {/* Center Brand Badge */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '8px',
+                      background: 'linear-gradient(135deg, #6366f1, #06b6d4)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#ffffff',
+                      fontSize: '13px',
+                      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
+                      border: '2px solid #ffffff'
+                    }}
+                  >
+                    <i className="fa-solid fa-bolt"></i>
+                  </div>
+                </div>
+
+                {/* Token Code & Countdown */}
+                <div style={{ marginTop: '12px', textAlign: 'center' }}>
+                  <div style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '0.95rem', color: '#1e293b', letterSpacing: '1px' }}>
+                    TOKEN: {qrSecurityCode}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                    <i className="fa-solid fa-rotate fa-spin" style={{ color: '#6366f1' }}></i>
+                    <span>Auto-refreshes in <strong>{qrCountdown}s</strong> • Anti-replay active</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Today's Meal Check-in Status Quick Strip */}
+              <div
+                style={{
+                  background: 'rgba(255, 255, 255, 0.06)',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  fontSize: '0.8rem'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ color: '#94a3b8', fontWeight: 600 }}>Current Session:</span>
+                  <span style={{ color: '#38bdf8', fontWeight: 700 }}>Lunch (12:30 PM - 2:00 PM)</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', textAlign: 'center' }}>
+                  <div style={{ padding: '6px 4px', borderRadius: '6px', background: mealAttendance.breakfast ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)', color: mealAttendance.breakfast ? '#34d399' : '#94a3b8', fontSize: '0.72rem', fontWeight: 700 }}>
+                    <i className={mealAttendance.breakfast ? "fa-solid fa-check" : "fa-regular fa-clock"}></i> Breakfast
+                  </div>
+                  <div style={{ padding: '6px 4px', borderRadius: '6px', background: mealAttendance.lunch ? 'rgba(16, 185, 129, 0.2)' : 'rgba(56, 189, 248, 0.2)', color: mealAttendance.lunch ? '#34d399' : '#38bdf8', fontSize: '0.72rem', fontWeight: 700 }}>
+                    <i className={mealAttendance.lunch ? "fa-solid fa-check" : "fa-solid fa-bolt"}></i> Lunch
+                  </div>
+                  <div style={{ padding: '6px 4px', borderRadius: '6px', background: mealAttendance.snacks ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)', color: mealAttendance.snacks ? '#34d399' : '#94a3b8', fontSize: '0.72rem', fontWeight: 700 }}>
+                    <i className={mealAttendance.snacks ? "fa-solid fa-check" : "fa-regular fa-clock"}></i> Snacks
+                  </div>
+                  <div style={{ padding: '6px 4px', borderRadius: '6px', background: mealAttendance.dinner ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)', color: mealAttendance.dinner ? '#34d399' : '#94a3b8', fontSize: '0.72rem', fontWeight: 700 }}>
+                    <i className={mealAttendance.dinner ? "fa-solid fa-check" : "fa-regular fa-clock"}></i> Dinner
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', gap: '12px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="c1-btn c1-btn-gradient"
+                onClick={() => {
+                  handleAvailMeal('lunch', 'Lunch');
+                }}
+                disabled={mealAttendance.lunch}
+                style={{ flex: '1 1 200px' }}
+              >
+                <i className={mealAttendance.lunch ? "fa-solid fa-circle-check" : "fa-solid fa-qrcode"}></i>
+                <span>{mealAttendance.lunch ? 'Lunch Availed & Verified' : 'Simulate Turnstile Gate Scan'}</span>
+              </button>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => {
+                    showToast('Digital Dining Pass downloaded to device.', 'success');
+                  }}
+                  title="Download Pass as Image"
+                >
+                  <i className="fa-solid fa-download"></i>
+                  <span>Save</span>
+                </button>
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setIsQrPassModalOpen(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
         </Modal>
 
         {/* Toast Component */}

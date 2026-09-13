@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
 import { Toast } from '../../components/Toast';
@@ -20,7 +20,20 @@ export const StudentNotifications: React.FC = () => {
     setTimeout(() => setToastMsg(null), 3500);
   };
 
-  const categories = ['All', 'Assignment', 'Exam', 'Fee', 'Library', 'Hostel', 'Transport'];
+  // Real-time listener for notification updates dispatched from other pages/services
+  useEffect(() => {
+    const handleSync = () => {
+      setNotifications(getStudentNotifications());
+    };
+    window.addEventListener('campushub_student_notifications_updated', handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener('campushub_student_notifications_updated', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
+  }, []);
+
+  const categories = ['All', 'Academic', 'Assignment', 'Exam', 'Fee', 'Library', 'Hostel', 'Transport'];
 
   // Derived counts
   const unreadCount = notifications.filter((n) => n.isUnread).length;
@@ -76,6 +89,8 @@ export const StudentNotifications: React.FC = () => {
 
   const getCategoryIcon = (category: StudentNotificationItem['category']) => {
     switch (category) {
+      case 'Academic':
+        return { icon: 'fa-graduation-cap', color: '#f43f5e', bg: 'rgba(244, 63, 94, 0.15)' };
       case 'Assignment':
         return { icon: 'fa-file-invoice', color: '#818cf8', bg: 'rgba(99, 102, 241, 0.15)' };
       case 'Exam':
@@ -106,7 +121,7 @@ export const StudentNotifications: React.FC = () => {
             </div>
             <h1 className="module-title">Notifications Inbox</h1>
             <p className="module-subtitle">
-              Live student activity alerts, assignment deadlines, examination releases, fee due notices, and service updates.
+              Live student activity alerts, attendance shortage notices, assignment deadlines, examination releases, and campus circulars.
             </p>
           </div>
 
@@ -153,7 +168,7 @@ export const StudentNotifications: React.FC = () => {
               <i className="fa-solid fa-circle-exclamation"></i>
             </div>
             <div className="stat-card-data">
-              <span className="stat-num">{unreadCount}</span>
+              <span className="stat-num" style={{ color: '#fb7185' }}>{unreadCount}</span>
               <span className="stat-label">Unread Alerts</span>
             </div>
           </div>
@@ -233,6 +248,7 @@ export const StudentNotifications: React.FC = () => {
                   key={notif.id}
                   className={`c1-card notif-inbox-card ${notif.isUnread ? 'inbox-unread' : ''}`}
                   onClick={() => handleToggleRead(notif.id)}
+                  style={{ cursor: 'pointer' }}
                 >
                   <div
                     className="notif-inbox-icon-box"
@@ -310,24 +326,24 @@ export const StudentNotifications: React.FC = () => {
         <div className="module-footer-bridge c1-card">
           <div className="bridge-text">
             <h4>Need Help or Support?</h4>
-            <p>Access your timetable schedule or explore the digital library collection.</p>
+            <p>Check your attendance records or explore the digital library collection.</p>
           </div>
           <div className="bridge-actions">
             <button
               type="button"
               className="c1-btn c1-btn-secondary"
-              onClick={() => navigate('/student/timetable')}
+              onClick={() => navigate('/student/attendance')}
             >
-              <i className="fa-solid fa-calendar-days"></i>
-              <span>Class Timetable</span>
+              <i className="fa-solid fa-user-check"></i>
+              <span>Attendance Ledger</span>
             </button>
             <button
               type="button"
               className="c1-btn c1-btn-secondary"
-              onClick={() => navigate('/student/library')}
+              onClick={() => navigate('/student/notices')}
             >
-              <i className="fa-solid fa-book-open"></i>
-              <span>Digital Library</span>
+              <i className="fa-solid fa-bullhorn"></i>
+              <span>Campus Notices</span>
             </button>
           </div>
         </div>

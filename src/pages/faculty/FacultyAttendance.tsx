@@ -14,9 +14,92 @@ import {
   SendShortageEmailParams
 } from '../../services/emailService';
 
-// Helper to generate full month of dates (1 to 31)
-const generateMonthDates = (year = 2026, month = 8) => {
-  const daysInMonth = new Date(year, month, 0).getDate(); // 31 days for August
+// Comprehensive Gazetted Academic & Public Holidays Directory (2026)
+const ACADEMIC_PUBLIC_HOLIDAYS: Record<string, string> = {
+  // September 2026
+  '2026-09-06': 'Holiday',
+  '2026-09-13': 'Holiday',
+  '2026-09-14': 'Milad-un-Nabi / Hindi Diwas',
+  '2026-09-19': 'Ganesh Chaturthi (Vinayaka Chaturthi)',
+  '2026-09-20': 'Holiday',
+  '2026-09-27': 'Holiday',
+  '2026-09-28': 'Bhagat Singh Jayanti',
+
+  // August 2026
+  '2026-08-02': 'Holiday',
+  '2026-08-09': 'Holiday',
+  '2026-08-15': 'Independence Day',
+  '2026-08-16': 'Holiday',
+  '2026-08-23': 'Holiday',
+  '2026-08-28': 'Janmashtami / Raksha Bandhan',
+  '2026-08-30': 'Holiday',
+
+  // October 2026
+  '2026-10-02': 'Mahatma Gandhi Jayanti',
+  '2026-10-04': 'Holiday',
+  '2026-10-11': 'Holiday',
+  '2026-10-18': 'Holiday',
+  '2026-10-20': 'Maha Navami (Dussehra Holiday)',
+  '2026-10-21': 'Vijaya Dashami (Dussehra)',
+  '2026-10-25': 'Holiday',
+
+  // November 2026
+  '2026-11-01': 'Holiday',
+  '2026-11-08': 'Diwali / Deepavali (Holiday)',
+  '2026-11-09': 'Govardhan Puja Holiday',
+  '2026-11-15': 'Holiday',
+  '2026-11-22': 'Holiday',
+  '2026-11-24': 'Guru Nanak Jayanti',
+  '2026-11-29': 'Holiday',
+
+  // December 2026
+  '2026-12-06': 'Holiday',
+  '2026-12-13': 'Holiday',
+  '2026-12-20': 'Holiday',
+  '2026-12-25': 'Christmas Day',
+  '2026-12-27': 'Holiday'
+};
+
+const isSunday = (dateStr: string): boolean => {
+  try {
+    const parts = dateStr.split('-').map(Number);
+    if (parts.length === 3) {
+      const d = new Date(parts[0], parts[1] - 1, parts[2]);
+      return d.getDay() === 0;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+};
+
+const getHolidayInfo = (dateStr: string): { isHoliday: boolean; isSunday: boolean; name: string } => {
+  const isSun = isSunday(dateStr);
+  const holidayName = ACADEMIC_PUBLIC_HOLIDAYS[dateStr];
+  if (isSun) {
+    return {
+      isHoliday: true,
+      isSunday: true,
+      name: holidayName && holidayName !== 'Sunday' && holidayName !== 'Holiday' ? `${holidayName} (Holiday)` : 'Holiday'
+    };
+  }
+  if (holidayName) {
+    return {
+      isHoliday: true,
+      isSunday: false,
+      name: holidayName
+    };
+  }
+  return {
+    isHoliday: false,
+    isSunday: false,
+    name: ''
+  };
+};
+
+// Helper to generate full month of dates (1 to 30 for September, 1 to 31 for August/October)
+const generateMonthDates = (year = 2026, month = 9) => {
+  const daysInMonth = new Date(year, month, 0).getDate(); // 30 days for September
   const dateList: string[] = [];
   for (let d = 1; d <= daysInMonth; d++) {
     const dayStr = d < 10 ? `0${d}` : `${d}`;
@@ -26,10 +109,10 @@ const generateMonthDates = (year = 2026, month = 8) => {
   return dateList;
 };
 
-// Default initial dates for the semester register (Full Month: 01 Aug - 31 Aug)
-const DEFAULT_REGISTER_DATES = generateMonthDates(2026, 8);
+// Default initial dates for September 2026 register (Full Month: 01 Sep - 30 Sep)
+const DEFAULT_REGISTER_DATES = generateMonthDates(2026, 9);
 
-type AttendanceStatus = 'P' | 'X' | '';
+type AttendanceStatus = 'P' | 'X' | 'H' | '';
 type AttendanceMatrix = Record<string, Record<string, AttendanceStatus>>;
 
 export const FacultyAttendance: React.FC = () => {
@@ -78,78 +161,114 @@ export const FacultyAttendance: React.FC = () => {
   }, [courses, selectedCourseCode]);
 
   const [selectedSection, setSelectedSection] = useState<string>('A');
+  const [selectedMonth, setSelectedMonth] = useState<string>('2026-09');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Shortage' | 'Safe'>('All');
 
   // Current Date Cutoff (Attendance recorded up to this date; future days appear empty white boxes)
-  const [currentCutoffDate, setCurrentCutoffDate] = useState<string>('2026-08-18');
+  const [currentCutoffDate, setCurrentCutoffDate] = useState<string>('2026-09-13');
 
   // Active view tab
   const [activeTab, setActiveTab] = useState<'matrix' | 'history' | 'emails'>('matrix');
 
-  // Storage keys for persistent matrix per course & section
-  const datesStorageKey = `campushub_faculty_att_dates_${selectedCourseCode}_${selectedSection}`;
-  const matrixStorageKey = `campushub_faculty_att_matrix_${selectedCourseCode}_${selectedSection}`;
+  // Storage keys for persistent matrix per month, course & section
+  const datesStorageKey = `campushub_faculty_att_dates_${selectedMonth}_${selectedCourseCode}_${selectedSection}`;
+  const matrixStorageKey = `campushub_faculty_att_matrix_${selectedMonth}_${selectedCourseCode}_${selectedSection}`;
 
   // Date list state
   const [dates, setDates] = useState<string[]>(() => {
     return safeGetStorage<string[]>(datesStorageKey, DEFAULT_REGISTER_DATES);
   });
 
-  // Helper to build initial matrix
-  const generateInitialMatrix = useCallback((dateList: string[], studentList: StudentRecord[], cutoff: string): AttendanceMatrix => {
-    const matrix: AttendanceMatrix = {};
+  // Helper to build initial matrix ensuring all students have populated data up to cutoff, and Sundays/holidays marked in red ('H')
+  const generateInitialMatrix = useCallback((dateList: string[], studentList: StudentRecord[], cutoff: string, existingMatrix?: AttendanceMatrix | null): AttendanceMatrix => {
+    const mat: AttendanceMatrix = {};
     studentList.forEach((stu) => {
-      matrix[stu.id] = {};
+      mat[stu.id] = {};
+      const existing = existingMatrix?.[stu.id];
       const targetPct = (stu.attendancePercent || 85) / 100;
       dateList.forEach((dateStr, idx) => {
-        if (dateStr <= cutoff) {
-          // Conducted dates up to current date: 'P' (Present, green) or 'X' (Absent, red)
+        const holiday = getHolidayInfo(dateStr);
+        if (holiday.isHoliday) {
+          // Sundays and Public Holidays are ALWAYS marked in RED as 'H' (Holiday)
+          mat[stu.id][dateStr] = 'H';
+        } else if (existing && existing[dateStr] !== undefined && existing[dateStr] !== null && existing[dateStr] !== '') {
+          mat[stu.id][dateStr] = existing[dateStr];
+        } else if (dateStr <= cutoff) {
+          // Conducted working lecture dates up to cutoff: 'P' (Present, green) or 'X' (Absent, red)
           const charCode = (stu.id.charCodeAt(stu.id.length - 1) + idx * 7) % 100;
-          matrix[stu.id][dateStr] = charCode < (targetPct * 100) ? 'P' : 'X';
+          mat[stu.id][dateStr] = charCode < (targetPct * 100) ? 'P' : 'X';
         } else {
-          // Remaining future days in the month: empty white box
-          matrix[stu.id][dateStr] = '';
+          // Remaining future working days in the month: empty white box
+          mat[stu.id][dateStr] = '';
         }
       });
     });
-    return matrix;
+    return mat;
   }, []);
 
   // Attendance Matrix State
   const [matrix, setMatrix] = useState<AttendanceMatrix>(() => {
     const saved = safeGetStorage<AttendanceMatrix | null>(matrixStorageKey, null);
-    if (saved && Object.keys(saved).length > 0) {
-      return saved;
-    }
-    return generateInitialMatrix(DEFAULT_REGISTER_DATES, mgmt.students, '2026-08-18');
+    return generateInitialMatrix(DEFAULT_REGISTER_DATES, mgmt.students, '2026-09-13', saved);
   });
 
-  // Reload dates & matrix when course or section changes
+  // Reload dates & matrix when course, section, or month changes
   useEffect(() => {
-    const savedDates = safeGetStorage<string[]>(datesStorageKey, DEFAULT_REGISTER_DATES);
+    const [yStr, mStr] = selectedMonth.split('-');
+    const year = parseInt(yStr, 10) || 2026;
+    const month = parseInt(mStr, 10) || 9;
+    const defaultMonthDates = generateMonthDates(year, month);
+    
+    const savedDates = safeGetStorage<string[]>(datesStorageKey, defaultMonthDates);
     setDates(savedDates);
     const savedMatrix = safeGetStorage<AttendanceMatrix | null>(matrixStorageKey, null);
-    if (savedMatrix && Object.keys(savedMatrix).length > 0) {
-      setMatrix(savedMatrix);
-    } else {
-      setMatrix(generateInitialMatrix(savedDates, mgmt.students, currentCutoffDate));
-    }
-  }, [selectedCourseCode, selectedSection, datesStorageKey, matrixStorageKey, generateInitialMatrix, mgmt.students, currentCutoffDate]);
+    const resolvedMatrix = generateInitialMatrix(savedDates, mgmt.students, currentCutoffDate, savedMatrix);
+    setMatrix(resolvedMatrix);
+  }, [selectedCourseCode, selectedSection, selectedMonth, datesStorageKey, matrixStorageKey, generateInitialMatrix, mgmt.students, currentCutoffDate]);
 
-  // List of conducted dates up to cutoff or dates that have at least one marked student
+  // List of conducted working dates up to cutoff (excluding Sundays and holidays unless explicitly marked P/X)
   const conductedDates = useMemo(() => {
     return dates.filter(
-      (d) => d <= currentCutoffDate || mgmt.students.some((s) => matrix[s.id]?.[d] === 'P' || matrix[s.id]?.[d] === 'X')
+      (d) => {
+        const holiday = getHolidayInfo(d);
+        if (holiday.isHoliday) {
+          return mgmt.students.some((s) => matrix[s.id]?.[d] === 'P' || matrix[s.id]?.[d] === 'X');
+        }
+        return d <= currentCutoffDate || mgmt.students.some((s) => matrix[s.id]?.[d] === 'P' || matrix[s.id]?.[d] === 'X');
+      }
     );
   }, [dates, currentCutoffDate, mgmt.students, matrix]);
 
-  const lastDayOfMonth = dates[dates.length - 1] || '2026-08-31';
+  const holidaysInMonthCount = useMemo(() => {
+    return dates.filter((d) => getHolidayInfo(d).isHoliday).length;
+  }, [dates]);
+
+  const lastDayOfMonth = dates[dates.length - 1] || '2026-09-30';
   const isMonthEnd = currentCutoffDate >= lastDayOfMonth;
 
-  // Filter students based on section and search query
+  // Filter students based on section and search query (excluding admin/faculty accounts)
   const displayedStudents = useMemo(() => {
     return mgmt.students.filter((stu) => {
+      // Exclude Admin or Faculty accounts from Student Attendance Matrix
+      const stuName = (stu.name || '').toLowerCase().trim();
+      const stuEmail = (stu.email || '').toLowerCase().trim();
+      const stuId = (stu.id || '').toLowerCase().trim();
+
+      if (
+        stuName === 'admin' ||
+        stuName.includes('admincampushub') ||
+        stuName.includes('system admin') ||
+        stuName.includes('administrator') ||
+        stuEmail.startsWith('admin@') ||
+        stuEmail.includes('admincampushub') ||
+        stuEmail.startsWith('faculty@') ||
+        stuId.startsWith('adm') ||
+        stuId.startsWith('fac')
+      ) {
+        return false;
+      }
+
       // Section match
       if (selectedSection !== 'All') {
         const studentSec = (stu.section || '').replace(/Section\s*/i, '').trim().toUpperCase();
@@ -303,20 +422,33 @@ export const FacultyAttendance: React.FC = () => {
   };
 
   // -------------------------------------------------------------
-  // CELL TOGGLE HANDLER: 'P' (Present) -> 'X' (Absent) -> '' (Empty)
+  // CELL TOGGLE HANDLER: 'P' (Present) -> 'X' (Absent) -> 'H' (Holiday) -> '' (Empty)
   // -------------------------------------------------------------
   const toggleAttendance = (studentId: string, dateStr: string) => {
     setMatrix((prev) => {
       const studentMap = { ...(prev[studentId] || {}) };
       const currentStatus = studentMap[dateStr] || '';
+      const holiday = getHolidayInfo(dateStr);
       let nextStatus: AttendanceStatus = 'P';
 
-      if (currentStatus === 'P') {
-        nextStatus = 'X';
-      } else if (currentStatus === 'X') {
-        nextStatus = dateStr > currentCutoffDate ? '' : 'P';
+      if (holiday.isHoliday) {
+        // Sundays & Public Holidays cycle: H (Red) -> P (Special Class) -> X (Absent) -> H (Red)
+        if (currentStatus === 'H' || currentStatus === '') {
+          nextStatus = 'P';
+        } else if (currentStatus === 'P') {
+          nextStatus = 'X';
+        } else {
+          nextStatus = 'H';
+        }
       } else {
-        nextStatus = 'P';
+        // Regular working days cycle: P (Green) -> X (Red) -> '' (if future) / P (if conducted)
+        if (currentStatus === 'P') {
+          nextStatus = 'X';
+        } else if (currentStatus === 'X') {
+          nextStatus = dateStr > currentCutoffDate ? '' : 'P';
+        } else {
+          nextStatus = 'P';
+        }
       }
 
       studentMap[dateStr] = nextStatus;
@@ -347,19 +479,24 @@ export const FacultyAttendance: React.FC = () => {
     showToast(
       status === ''
         ? `Cleared attendance for ${formatDisplayDate(dateStr)} (marked empty).`
+        : status === 'H'
+        ? `Marked ${formatDisplayDate(dateStr)} as Holiday ('H' in red) for all students.`
         : `Marked all students as '${status === 'P' ? 'Present (P)' : 'Absent (X)'}' for ${formatDisplayDate(dateStr)}.`,
       'info'
     );
   };
 
-  // Bulk set for all conducted dates up to cutoff
+  // Bulk set for all conducted working dates up to cutoff (Sundays and holidays remain marked in red only)
   const handleMarkAllGlobal = (status: AttendanceStatus) => {
     setMatrix((prev) => {
       const updated = { ...prev };
       displayedStudents.forEach((stu) => {
         const studentMap = { ...(updated[stu.id] || {}) };
         dates.forEach((d) => {
-          if (d <= currentCutoffDate) {
+          const holiday = getHolidayInfo(d);
+          if (holiday.isHoliday) {
+            studentMap[d] = 'H'; // Sundays & public holidays remain marked in red as Holiday ('H')
+          } else if (d <= currentCutoffDate) {
             studentMap[d] = status;
           } else {
             studentMap[d] = '';
@@ -371,7 +508,7 @@ export const FacultyAttendance: React.FC = () => {
       return updated;
     });
     showToast(
-      `All conducted dates up to ${formatDisplayDate(currentCutoffDate)} marked as '${status === 'P' ? 'Present (P)' : 'Absent (X)'}'.`,
+      `All conducted working dates up to ${formatDisplayDate(currentCutoffDate)} marked as '${status === 'P' ? 'Present (P)' : 'Absent (X)'}'. Sundays & holidays remain marked as Holiday ('H' in red).`,
       status === 'P' ? 'success' : 'warning'
     );
   };
@@ -381,7 +518,7 @@ export const FacultyAttendance: React.FC = () => {
     const initial = generateInitialMatrix(dates, mgmt.students, currentCutoffDate);
     setMatrix(initial);
     safeSetStorage(matrixStorageKey, initial);
-    showToast(`Attendance register reset up to current date (${formatDisplayDate(currentCutoffDate)}).`, 'info');
+    showToast(`Attendance register reset up to current date (${formatDisplayDate(currentCutoffDate)}). Sundays & holidays marked as Holiday ('H' in red).`, 'info');
   };
 
   // Change Cutoff Date
@@ -392,8 +529,11 @@ export const FacultyAttendance: React.FC = () => {
       mgmt.students.forEach((stu) => {
         const stuMap = { ...(updated[stu.id] || {}) };
         dates.forEach((d, idx) => {
-          if (d <= newCutoff) {
-            if (!stuMap[d]) {
+          const holiday = getHolidayInfo(d);
+          if (holiday.isHoliday) {
+            stuMap[d] = 'H'; // Sundays & holidays are always red 'H'
+          } else if (d <= newCutoff) {
+            if (!stuMap[d] || stuMap[d] === 'H') {
               const targetPct = (stu.attendancePercent || 85) / 100;
               const charCode = (stu.id.charCodeAt(stu.id.length - 1) + idx * 7) % 100;
               stuMap[d] = charCode < (targetPct * 100) ? 'P' : 'X';
@@ -407,7 +547,38 @@ export const FacultyAttendance: React.FC = () => {
       safeSetStorage(matrixStorageKey, updated);
       return updated;
     });
-    showToast(`Attendance displayed up to ${formatDisplayDate(newCutoff)}. Remaining days set as empty boxes.`, 'info');
+    showToast(`Attendance displayed up to ${formatDisplayDate(newCutoff)}. Sundays & holidays marked as Holiday ('H' in red).`, 'info');
+  };
+
+  // Change Active Academic Month
+  const handleChangeMonth = (newMonth: string) => {
+    setSelectedMonth(newMonth);
+    const [yStr, mStr] = newMonth.split('-');
+    const year = parseInt(yStr, 10) || 2026;
+    const month = parseInt(mStr, 10) || 9;
+    const monthDates = generateMonthDates(year, month);
+
+    let newCutoff = `${newMonth}-13`;
+    if (newMonth < '2026-09') {
+      newCutoff = monthDates[monthDates.length - 1]; // All days conducted for past months
+    } else if (newMonth > '2026-09') {
+      newCutoff = monthDates[0]; // Future month
+    } else {
+      newCutoff = '2026-09-13'; // Active term date
+    }
+
+    setCurrentCutoffDate(newCutoff);
+    const newDatesKey = `campushub_faculty_att_dates_${newMonth}_${selectedCourseCode}_${selectedSection}`;
+    const newMatrixKey = `campushub_faculty_att_matrix_${newMonth}_${selectedCourseCode}_${selectedSection}`;
+
+    const savedDates = safeGetStorage<string[]>(newDatesKey, monthDates);
+    setDates(savedDates);
+    const savedMatrix = safeGetStorage<AttendanceMatrix | null>(newMatrixKey, null);
+    const resolvedMatrix = generateInitialMatrix(savedDates, mgmt.students, newCutoff, savedMatrix);
+    setMatrix(resolvedMatrix);
+
+    const monthName = new Date(year, month - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    showToast(`Switched attendance register to ${monthName}. Sundays & holidays marked as Holiday ('H' in red).`, 'info');
   };
 
   // Add Date Column
@@ -421,6 +592,7 @@ export const FacultyAttendance: React.FC = () => {
       return;
     }
 
+    const holiday = getHolidayInfo(newDateInput);
     const updatedDates = [...dates, newDateInput].sort();
     setDates(updatedDates);
     safeSetStorage(datesStorageKey, updatedDates);
@@ -430,7 +602,7 @@ export const FacultyAttendance: React.FC = () => {
       mgmt.students.forEach((stu) => {
         updated[stu.id] = {
           ...(updated[stu.id] || {}),
-          [newDateInput]: newDateInput <= currentCutoffDate ? newDateDefaultStatus : ''
+          [newDateInput]: holiday.isHoliday ? 'H' : newDateInput <= currentCutoffDate ? newDateDefaultStatus : ''
         };
       });
       safeSetStorage(matrixStorageKey, updated);
@@ -490,6 +662,34 @@ export const FacultyAttendance: React.FC = () => {
     setHistory(updatedHistory);
     saveFacultyAttendanceHistory(updatedHistory);
 
+    // Sync marked attendance to Supabase public.attendance table
+    const recordsToSync = displayedStudents
+      .map((s) => {
+        const val = matrix[s.id]?.[currentCutoffDate];
+        if (!val || val === 'H') return null;
+        return {
+          studentId: s.id,
+          status: val === 'P' ? ('Present' as const) : ('Absent' as const),
+          remarks: val === 'P' ? 'Attended lecture' : 'Absent from class'
+        };
+      })
+      .filter(Boolean) as Array<{ studentId: string; status: 'Present' | 'Absent'; remarks: string }>;
+
+    if (recordsToSync.length > 0) {
+      dbService.syncAttendanceBatch({
+        courseCode: selectedCourseCode,
+        date: currentCutoffDate,
+        records: recordsToSync,
+        facultyId: (user as any)?.id
+      }).then((res) => {
+        if (res.success && res.insertedCount) {
+          console.log(`Synced ${res.insertedCount} attendance records to Supabase.`);
+        }
+      }).catch((err) => {
+        console.warn('Attendance sync notice:', err);
+      });
+    }
+
     // Auto-send shortage emails if checked
     if (autoEmailOnSave && shortageStudentsList.length > 0) {
       const currentCourse = courses.find((c) => c.code === selectedCourseCode);
@@ -512,7 +712,7 @@ export const FacultyAttendance: React.FC = () => {
 
     setIsConfirmModalOpen(false);
     showToast(
-      `Attendance Register saved successfully for ${selectedCourseCode} (Section ${selectedSection})!${
+      `Attendance Register saved & synced successfully for ${selectedCourseCode} (Section ${selectedSection})!${
         autoEmailOnSave && shortageStudentsList.length > 0 ? ` Shortage emails dispatched to ${shortageStudentsList.length} student(s).` : ''
       }`,
       'success'
@@ -525,10 +725,14 @@ export const FacultyAttendance: React.FC = () => {
       'Roll Number',
       'Student Name',
       'Section',
-      ...dates.map((d) => formatDisplayDate(d)),
+      ...dates.map((d) => {
+        const h = getHolidayInfo(d);
+        return h.isHoliday ? `${formatDisplayDate(d)} (Holiday)` : formatDisplayDate(d);
+      }),
       'Present (P)',
       'Absent (X)',
-      'Conducted Days',
+      'Holidays (H)',
+      'Conducted Working Days',
       'Attendance %',
       'Shortage Status (Month-End)'
     ];
@@ -537,6 +741,7 @@ export const FacultyAttendance: React.FC = () => {
       const stuRecord = matrix[stu.id] || {};
       const pCount = dates.filter((d) => stuRecord[d] === 'P').length;
       const xCount = dates.filter((d) => stuRecord[d] === 'X').length;
+      const hCount = dates.filter((d) => stuRecord[d] === 'H').length;
       const conducted = pCount + xCount;
       const pct = conducted > 0 ? Math.round((pCount / conducted) * 100) : 100;
       const statusStr = isMonthEnd
@@ -556,6 +761,7 @@ export const FacultyAttendance: React.FC = () => {
         ...dateMarks.map((m) => `"${m}"`),
         pCount,
         xCount,
+        hCount,
         conducted,
         `"${pct}%"`,
         `"${statusStr}"`
@@ -736,9 +942,9 @@ export const FacultyAttendance: React.FC = () => {
             </div>
             <div className="stat-card-data">
               <span className="stat-num" style={{ color: '#38bdf8' }}>
-                {totalConductedCount} / {dates.length} Days
+                {conductedDates.length} Conducted Days
               </span>
-              <span className="stat-label">Conducted up to {formatDisplayDate(currentCutoffDate)}</span>
+              <span className="stat-label">Conducted Lectures ({holidaysInMonthCount} Holidays in Red - Symbol H)</span>
             </div>
           </div>
 
@@ -765,7 +971,7 @@ export const FacultyAttendance: React.FC = () => {
                 {shortageCount} Shortages
               </span>
               <span className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span>{shortageCount > 0 ? 'Click to Send Warning Emails' : 'Shortage Finalized on 31 Aug'}</span>
+                <span>{shortageCount > 0 ? 'Click to Send Warning Emails' : 'All Students On Track (≥75%)'}</span>
               </span>
             </div>
           </div>
@@ -808,6 +1014,27 @@ export const FacultyAttendance: React.FC = () => {
             <div className="c1-card academic-filters-card" style={{ marginBottom: '20px' }}>
               <div className="filters-row-wrap" style={{ width: '100%', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
                 <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {/* Academic Month Selector */}
+                  <div className="filter-select-item">
+                    <label htmlFor="select-att-month" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <i className="fa-solid fa-calendar-days" style={{ fontSize: '10px', color: '#6366f1' }}></i>
+                      <span>Academic Month</span>
+                    </label>
+                    <select
+                      id="select-att-month"
+                      className="c1-select"
+                      value={selectedMonth}
+                      onChange={(e) => handleChangeMonth(e.target.value)}
+                      style={{ minWidth: '180px' }}
+                    >
+                      <option value="2026-09">September 2026 (Active Term)</option>
+                      <option value="2026-08">August 2026</option>
+                      <option value="2026-10">October 2026</option>
+                      <option value="2026-11">November 2026</option>
+                      <option value="2026-12">December 2026</option>
+                    </select>
+                  </div>
+
                   {/* Course Dropdown */}
                   <div className="filter-select-item">
                     <label htmlFor="select-att-course">Subject Course</label>
@@ -934,16 +1161,19 @@ export const FacultyAttendance: React.FC = () => {
               <div className="c1-card-header" style={{ marginBottom: '14px' }}>
                 <div>
                   <h3 className="c1-card-title">
-                    {selectedCourseCode} (Section {selectedSection}) — Monthly Attendance Register
+                    {selectedCourseCode} (Section {selectedSection}) — {new Date(parseInt(selectedMonth.split('-')[0]), parseInt(selectedMonth.split('-')[1]) - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })} Attendance Register
                   </h3>
                   <p className="c1-card-subtitle">
-                    Attendance recorded up to <strong>{formatDisplayDate(currentCutoffDate)}</strong> (conducted days marked with green <strong>'P'</strong> / red <strong>'X'</strong>). Remaining days appear empty (white box). Shortage warnings automatically trigger email alerts.
+                    Attendance recorded up to <strong>{formatDisplayDate(currentCutoffDate)}</strong>. Sundays and public holidays are marked in <strong>RED only as Holiday ('H')</strong>. Conducted lectures marked with green <strong>'P'</strong> / red <strong>'X'</strong>. Remaining days appear empty (white box).
                   </p>
                 </div>
 
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <span className="c1-badge c1-badge-cyan">
-                    <i className="fa-solid fa-calendar-days"></i> {conductedDates.length} Conducted / {dates.length} Days
+                    <i className="fa-solid fa-calendar-days"></i> {conductedDates.length} Conducted Lectures / {dates.length} Days
+                  </span>
+                  <span className="c1-badge c1-badge-error" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+                    <i className="fa-solid fa-calendar-xmark"></i> {holidaysInMonthCount} Holidays in Red (H)
                   </span>
                   <span className="c1-badge c1-badge-success">
                     <i className="fa-solid fa-users"></i> {displayedStudents.length} Students
@@ -964,17 +1194,31 @@ export const FacultyAttendance: React.FC = () => {
 
                       {/* Dynamic Date Columns */}
                       {dates.map((dateStr) => {
+                        const holiday = getHolidayInfo(dateStr);
+                        const isHoliday = holiday.isHoliday;
                         const presentOnDate = displayedStudents.filter((s) => matrix[s.id]?.[dateStr] === 'P').length;
                         const absentOnDate = displayedStudents.filter((s) => matrix[s.id]?.[dateStr] === 'X').length;
-                        const isUpcoming = dateStr > currentCutoffDate && presentOnDate === 0 && absentOnDate === 0;
+                        const isUpcoming = dateStr > currentCutoffDate && presentOnDate === 0 && absentOnDate === 0 && !isHoliday;
 
                         return (
-                          <th key={dateStr} className="matrix-date-header">
+                          <th key={dateStr} className={`matrix-date-header ${isHoliday ? 'is-holiday-column' : ''}`}>
                             <div className="matrix-date-header-inner">
-                              <span className="matrix-date-day">{formatDisplayDay(dateStr)}</span>
-                              <span className="matrix-date-text">{formatDisplayDate(dateStr)}</span>
+                              <span className="matrix-date-day" style={isHoliday ? { color: '#ef4444', fontWeight: 800 } : {}}>
+                                {holiday.isSunday ? 'SUN' : formatDisplayDay(dateStr)}
+                              </span>
+                              <span className="matrix-date-text" style={isHoliday ? { color: '#f87171', fontWeight: 800 } : {}}>
+                                {formatDisplayDate(dateStr)}
+                              </span>
 
-                              {isUpcoming ? (
+                              {isHoliday ? (
+                                <span
+                                  className="matrix-date-stat-chip holiday-chip"
+                                  title={`${holiday.name || 'Holiday'} (Holiday marked with 'H' in red)`}
+                                >
+                                  <i className="fa-solid fa-calendar-xmark" style={{ marginRight: '3px', fontSize: '0.6rem' }}></i>
+                                  Holiday
+                                </span>
+                              ) : isUpcoming ? (
                                 <span className="matrix-date-stat-chip" style={{ opacity: 0.6, fontSize: '0.6rem' }}>
                                   Empty
                                 </span>
@@ -1004,6 +1248,15 @@ export const FacultyAttendance: React.FC = () => {
                                 </button>
                                 <button
                                   type="button"
+                                  className="matrix-col-btn"
+                                  style={{ color: '#ef4444', fontWeight: 800 }}
+                                  title={`Mark ${formatDisplayDate(dateStr)} as Holiday ('H' in red)`}
+                                  onClick={() => handleMarkAllForDate(dateStr, 'H')}
+                                >
+                                  H
+                                </button>
+                                <button
+                                  type="button"
                                   className="matrix-col-btn btn-del"
                                   title={`Clear date / remove`}
                                   onClick={() => handleDeleteDate(dateStr)}
@@ -1017,8 +1270,8 @@ export const FacultyAttendance: React.FC = () => {
                       })}
 
                       {/* Summary Columns (Right) */}
-                      <th className="matrix-summary-header" title="Total Present Count (Conducted)">Total P</th>
-                      <th className="matrix-summary-header" title="Total Absent Count (Conducted)">Total X</th>
+                      <th className="matrix-summary-header" title="Total Present Count (Conducted Working Days)">Total P</th>
+                      <th className="matrix-summary-header" title="Total Absent Count (Conducted Working Days)">Total X</th>
                       <th className="matrix-summary-header" title="Calculated Attendance Percentage">% Att.</th>
                       <th className="matrix-summary-header" title="Shortage Status & Real-Time Alert Action">
                         Shortage & Email Alert
@@ -1083,29 +1336,39 @@ export const FacultyAttendance: React.FC = () => {
                               </div>
                             </td>
 
-                            {/* Dynamic Date Cells: 'P' in Green, 'X' in Red, or Empty White Box */}
+                            {/* Dynamic Date Cells: 'H' in RED for Sundays & Holidays, 'P' in Green, 'X' in Red, or Empty White Box */}
                             {dates.map((dateStr) => {
                               const status = studentMap[dateStr] || '';
+                              const holiday = getHolidayInfo(dateStr);
                               const isPresent = status === 'P';
                               const isAbsent = status === 'X';
+                              const isHolidayMark = status === 'H' || (holiday.isHoliday && !isPresent && !isAbsent);
 
                               return (
-                                <td key={dateStr} className="attendance-cell-td">
+                                <td key={dateStr} className={`attendance-cell-td ${holiday.isHoliday ? 'holiday-cell' : ''}`}>
                                   <button
                                     type="button"
                                     className={`attendance-mark-btn ${
-                                      isPresent ? 'status-p' : isAbsent ? 'status-x' : 'status-empty'
+                                      isHolidayMark
+                                        ? 'status-h status-holiday'
+                                        : isPresent
+                                        ? 'status-p'
+                                        : isAbsent
+                                        ? 'status-x'
+                                        : 'status-empty'
                                     }`}
                                     onClick={() => toggleAttendance(stu.id, dateStr)}
-                                    title={`${stu.name} (${formatDisplayDate(dateStr)}): ${
-                                      isPresent
-                                        ? 'Present (Green P)'
+                                    title={
+                                      isHolidayMark
+                                        ? `${stu.name} - ${holiday.name || 'Holiday'} (Marked in RED as 'H' - Holiday / Off Day). Click to toggle.`
+                                        : isPresent
+                                        ? `${stu.name} (${formatDisplayDate(dateStr)}): Present (Green P). Click to toggle.`
                                         : isAbsent
-                                        ? 'Absent (Red X)'
-                                        : 'Empty / Upcoming'
-                                    }. Click to toggle.`}
+                                        ? `${stu.name} (${formatDisplayDate(dateStr)}): Absent (Red X). Click to toggle.`
+                                        : `${stu.name} (${formatDisplayDate(dateStr)}): Empty / Upcoming. Click to toggle.`
+                                    }
                                   >
-                                    {isPresent ? 'P' : isAbsent ? 'X' : ''}
+                                    {isHolidayMark ? 'H' : isPresent ? 'P' : isAbsent ? 'X' : ''}
                                   </button>
                                 </td>
                               );
@@ -1163,9 +1426,23 @@ export const FacultyAttendance: React.FC = () => {
                         </td>
 
                         {dates.map((dateStr) => {
+                          const holiday = getHolidayInfo(dateStr);
                           const pTotal = displayedStudents.filter((s) => matrix[s.id]?.[dateStr] === 'P').length;
                           const xTotal = displayedStudents.filter((s) => matrix[s.id]?.[dateStr] === 'X').length;
                           const markedTotal = pTotal + xTotal;
+
+                          if (holiday.isHoliday && markedTotal === 0) {
+                            return (
+                              <td key={dateStr} style={{ textAlign: 'center', padding: '8px 4px', background: 'rgba(239, 68, 68, 0.06)' }}>
+                                <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#ef4444' }}>
+                                  HOLIDAY
+                                </div>
+                                <div style={{ fontSize: '0.62rem', color: '#f87171' }} title={holiday.name}>
+                                  Holiday (H)
+                                </div>
+                              </td>
+                            );
+                          }
 
                           if (markedTotal === 0) {
                             return (
@@ -1211,6 +1488,10 @@ export const FacultyAttendance: React.FC = () => {
                 <div className="legend-items-group">
                   <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Legend / Guide:</span>
                   <div className="legend-item">
+                    <span className="legend-chip chip-h">H</span>
+                    <span><strong>Sundays & Holidays</strong> — Marked in <strong>RED as 'H'</strong> (Holiday / Non-working off day)</span>
+                  </div>
+                  <div className="legend-item">
                     <span className="legend-chip chip-p">P</span>
                     <span><strong>Present (P)</strong> — Marked in green</span>
                   </div>
@@ -1220,7 +1501,7 @@ export const FacultyAttendance: React.FC = () => {
                   </div>
                   <div className="legend-item">
                     <span className="legend-chip chip-empty"></span>
-                    <span><strong>Remaining Days</strong> — Empty white box (unconducted)</span>
+                    <span><strong>Remaining Working Days</strong> — Empty white box (unconducted)</span>
                   </div>
                 </div>
 
@@ -1596,6 +1877,7 @@ export const FacultyAttendance: React.FC = () => {
                 >
                   <option value="P">Mark All as 'P' (Present in Green) by default</option>
                   <option value="X">Mark All as 'X' (Absent in Red) by default</option>
+                  <option value="H">Mark as Sunday / Holiday ('H' in Red)</option>
                   <option value="">Leave as Empty (White Box)</option>
                 </select>
               </div>

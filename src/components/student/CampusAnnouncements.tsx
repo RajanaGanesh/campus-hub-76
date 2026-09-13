@@ -6,29 +6,8 @@ export interface CampusAnnouncementsProps {
   announcements?: AnnouncementItem[];
 }
 
-const DEFAULT_ANNOUNCEMENTS: AnnouncementItem[] = [
-  {
-    title: 'Mid-Semester Exam Timetable & Hall Allocations Released',
-    category: 'Academic',
-    time: '2 hours ago',
-    desc: 'The official timetable for B.Tech IV Year examinations is now live. Please review schedule shifts for elective subjects.'
-  },
-  {
-    title: 'Campus Recruitment Drive: TechNova & Microsoft Registrations',
-    category: 'Placement',
-    time: '5 hours ago',
-    desc: 'Shortlisting criteria and online assessment schedules have been published on the Placements portal.'
-  },
-  {
-    title: 'Library Extended Hours for Upcoming Examination Month',
-    category: 'General',
-    time: 'Yesterday',
-    desc: 'Central Library study halls will remain open until 11:00 PM starting next Monday.'
-  }
-];
-
 export const CampusAnnouncements: React.FC<CampusAnnouncementsProps> = ({
-  announcements = DEFAULT_ANNOUNCEMENTS
+  announcements = []
 }) => {
   const navigate = useNavigate();
 
@@ -65,21 +44,33 @@ export const CampusAnnouncements: React.FC<CampusAnnouncementsProps> = ({
       </div>
 
       <div className="announcements-list-wrapper">
-        {announcements.map((item, idx) => (
-          <div key={idx} className="announcement-card-item">
-            <div className="announcement-meta-bar">
-              <span className={`c1-badge ${getCategoryBadgeClass(item.category)}`}>
-                {item.category}
-              </span>
-              <span className="announcement-timestamp">
-                <i className="fa-regular fa-clock"></i> {item.time}
-              </span>
-            </div>
-
-            <h4 className="announcement-headline">{item.title}</h4>
-            <p className="announcement-body-text">{item.desc}</p>
+        {announcements.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '28px 16px',
+            color: 'var(--text-muted)'
+          }}>
+            <i className="fa-solid fa-bullhorn" style={{ fontSize: '2rem', marginBottom: '10px', opacity: 0.35, display: 'block' }}></i>
+            <h4 style={{ margin: '0 0 4px', color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.9rem' }}>No Active Announcements</h4>
+            <p style={{ margin: 0, fontSize: '0.8rem' }}>Institutional circulars and notices will appear here.</p>
           </div>
-        ))}
+        ) : (
+          announcements.map((item, idx) => (
+            <div key={idx} className="announcement-card-item">
+              <div className="announcement-meta-bar">
+                <span className={`c1-badge ${getCategoryBadgeClass(item.category)}`}>
+                  {item.category}
+                </span>
+                <span className="announcement-timestamp">
+                  <i className="fa-regular fa-clock"></i> {item.time}
+                </span>
+              </div>
+
+              <h4 className="announcement-headline">{item.title}</h4>
+              <p className="announcement-body-text">{item.desc}</p>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

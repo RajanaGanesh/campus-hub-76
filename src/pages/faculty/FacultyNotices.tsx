@@ -4,6 +4,15 @@ import { getManagementData, ManagementAnnouncement } from '../../data/management
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
 
+import {
+  getStudentNotices,
+  saveStudentNotices,
+  getStudentNotifications,
+  saveStudentNotifications,
+  NoticeItem,
+  StudentNotificationItem
+} from '../../services/storageService';
+
 export const FacultyNotices: React.FC = () => {
   const mgmt = getManagementData();
 
@@ -36,6 +45,8 @@ export const FacultyNotices: React.FC = () => {
       return;
     }
 
+    const todayFormatted = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
     const newNot: ManagementAnnouncement = {
       id: `ann-${Date.now()}`,
       title: noticeTitle,
@@ -44,11 +55,52 @@ export const FacultyNotices: React.FC = () => {
       audience: noticeAudience,
       targetAudienceDetail: noticeTargetDetail,
       priority: noticePriority,
-      publishDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      publishDate: todayFormatted,
       status: 'Published'
     };
 
     setNotices([newNot, ...notices]);
+
+    // Cross-sync to Student Notices Board
+    try {
+      const studentNotices = getStudentNotices();
+      const newStudentNotice: NoticeItem = {
+        id: `NOT-${Date.now()}`,
+        title: noticeTitle.trim(),
+        category: 'Academic',
+        publishedDate: todayFormatted,
+        publisher: 'Dr. Suresh Kumar (Professor & HOD)',
+        priority: noticePriority,
+        snippet: noticeMsg.trim().slice(0, 100) + '...',
+        fullText: noticeMsg.trim(),
+        attachmentName: 'Course_Notice.pdf',
+        isUnread: true
+      };
+      saveStudentNotices([newStudentNotice, ...studentNotices]);
+    } catch {}
+
+    // Cross-sync to Student Notifications Inbox
+    try {
+      const studentNotifs = getStudentNotifications();
+      const newNotif: StudentNotificationItem = {
+        id: `NOTIF-${Date.now()}`,
+        category: 'Academic',
+        title: `Faculty Notice: ${noticeTitle.trim()}`,
+        message: noticeMsg.trim().slice(0, 120),
+        time: 'Just now',
+        isUnread: true,
+        targetRoute: '/student/notices',
+        actionLabel: 'Read Notice'
+      };
+      saveStudentNotifications([newNotif, ...studentNotifs]);
+    } catch {}
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('campushub_student_notices_updated'));
+      window.dispatchEvent(new Event('campushub_student_notifications_updated'));
+      window.dispatchEvent(new Event('storage'));
+    }
+
     setIsPublishModalOpen(false);
     setNoticeTitle('');
     setNoticeMsg('');

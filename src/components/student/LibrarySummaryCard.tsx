@@ -6,13 +6,17 @@ export interface LibrarySummaryCardProps {
   dueSoonCount?: number;
   overdueCount?: number;
   fineAmount?: number;
+  recentBookTitle?: string;
+  recentBookDue?: string;
 }
 
 export const LibrarySummaryCard: React.FC<LibrarySummaryCardProps> = ({
-  issuedCount = 3,
-  dueSoonCount = 1,
+  issuedCount = 0,
+  dueSoonCount = 0,
   overdueCount = 0,
-  fineAmount = 0
+  fineAmount = 0,
+  recentBookTitle,
+  recentBookDue
 }) => {
   const navigate = useNavigate();
 
@@ -33,11 +37,11 @@ export const LibrarySummaryCard: React.FC<LibrarySummaryCardProps> = ({
           <span className="lib-chip-num">{issuedCount}</span>
           <span className="lib-chip-label">Borrowed</span>
         </div>
-        <div className="lib-chip lib-chip-warning">
+        <div className={`lib-chip ${dueSoonCount > 0 ? 'lib-chip-warning' : ''}`}>
           <span className="lib-chip-num">{dueSoonCount}</span>
           <span className="lib-chip-label">Due Soon</span>
         </div>
-        <div className="lib-chip">
+        <div className={`lib-chip ${overdueCount > 0 ? 'lib-chip-warning' : ''}`}>
           <span className="lib-chip-num">{overdueCount}</span>
           <span className="lib-chip-label">Overdue</span>
         </div>
@@ -47,15 +51,30 @@ export const LibrarySummaryCard: React.FC<LibrarySummaryCardProps> = ({
         </div>
       </div>
 
-      <div className="recent-book-banner">
-        <div className="book-icon-wrap">
-          <i className="fa-solid fa-book"></i>
+      {issuedCount > 0 && recentBookTitle ? (
+        <div className="recent-book-banner">
+          <div className="book-icon-wrap">
+            <i className="fa-solid fa-book"></i>
+          </div>
+          <div className="book-banner-info">
+            <span className="book-banner-title">{recentBookTitle}</span>
+            {recentBookDue && <span className="book-banner-due">Due: {recentBookDue}</span>}
+          </div>
         </div>
-        <div className="book-banner-info">
-          <span className="book-banner-title">Clean Code: Agile Craftsmanship</span>
-          <span className="book-banner-due">Due: 28 Aug 2026 (Robert C. Martin)</span>
+      ) : (
+        <div style={{
+          textAlign: 'center',
+          padding: '14px 10px',
+          background: 'rgba(255, 255, 255, 0.02)',
+          borderRadius: '8px',
+          border: '1px dashed var(--border-subtle)',
+          margin: '12px 0 4px',
+          color: 'var(--text-muted)',
+          fontSize: '0.8rem'
+        }}>
+          No books currently checked out
         </div>
-      </div>
+      )}
 
       <button
         type="button"

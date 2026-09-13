@@ -4,13 +4,17 @@ import { useEffectiveUserProfile } from '../../utils/userProfile';
 export interface StudentWelcomeCardProps {
   department?: string;
   semester?: string;
+  pendingAssignmentsCount?: number;
+  nextExamDays?: number | null;
   onRefresh?: () => void;
   isRefreshing?: boolean;
 }
 
 export const StudentWelcomeCard: React.FC<StudentWelcomeCardProps> = ({
   department = 'Computer Science & Engineering',
-  semester = '8th Semester • IV Year',
+  semester = '1st Semester',
+  pendingAssignmentsCount = 0,
+  nextExamDays = null,
   onRefresh,
   isRefreshing = false
 }) => {
@@ -50,7 +54,11 @@ export const StudentWelcomeCard: React.FC<StudentWelcomeCardProps> = ({
         </h1>
 
         <p className="welcome-subtitle">
-          Here's what's happening with your campus life today. You have <strong style={{ color: 'var(--text-primary)' }}>4 assignments pending</strong> and your next exam starts in <strong style={{ color: 'var(--accent-blue)' }}>9 days</strong>.
+          {pendingAssignmentsCount > 0 ? (
+            <>Here's what's happening with your campus life today. You have <strong style={{ color: 'var(--text-primary)' }}>{pendingAssignmentsCount} assignments pending</strong>{nextExamDays !== null ? <> and your next exam starts in <strong style={{ color: 'var(--accent-blue)' }}>{nextExamDays} days</strong>.</> : '.'}</>
+          ) : (
+            <>Welcome to your student portal. Access your courses, attendance, examinations, and institutional campus services.</>
+          )}
         </p>
 
         <div className="welcome-meta-chips">

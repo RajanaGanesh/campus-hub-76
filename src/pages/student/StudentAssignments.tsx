@@ -423,7 +423,10 @@ export const StudentAssignments: React.FC = () => {
 
           <div className="filters-row-wrap">
             <div className="filter-select-item">
-              <label htmlFor="filter-status">Status</label>
+              <label htmlFor="filter-status">
+                <i className="fa-solid fa-filter" style={{ fontSize: '10px', color: '#6366f1' }}></i>
+                <span>Status</span>
+              </label>
               <select
                 id="filter-status"
                 className="c1-select"
@@ -439,7 +442,10 @@ export const StudentAssignments: React.FC = () => {
             </div>
 
             <div className="filter-select-item">
-              <label htmlFor="filter-subject-ass">Course</label>
+              <label htmlFor="filter-subject-ass">
+                <i className="fa-solid fa-book" style={{ fontSize: '10px', color: '#06b6d4' }}></i>
+                <span>Course</span>
+              </label>
               <select
                 id="filter-subject-ass"
                 className="c1-select"
@@ -453,7 +459,10 @@ export const StudentAssignments: React.FC = () => {
             </div>
 
             <div className="filter-select-item">
-              <label htmlFor="sort-by-ass">Sort By</label>
+              <label htmlFor="sort-by-ass">
+                <i className="fa-solid fa-arrow-down-wide-short" style={{ fontSize: '10px', color: '#8b5cf6' }}></i>
+                <span>Sort By</span>
+              </label>
               <select
                 id="sort-by-ass"
                 className="c1-select"

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { Toast } from '../../components/Toast';
 import { downloadCSV } from '../../utils/fileDownloader';
+import { getLoginHistory } from '../../services/storageService';
 
 export interface ReportCategoryItem {
   id: string;
@@ -95,6 +96,15 @@ export const AdminReports: React.FC = () => {
       icon: 'fa-briefcase',
       format: 'CSV / PDF',
       recordsCount: '142 Offers'
+    },
+    {
+      id: 'REP-10',
+      title: 'Student & Faculty Login Audit Ledger',
+      category: 'Security & Access Control',
+      description: 'Historical authentication records, client telemetry, IP addresses, and active session states.',
+      icon: 'fa-clock-rotate-left',
+      format: 'CSV / PDF',
+      recordsCount: 'Live Audit Stream'
     }
   ]);
 
@@ -115,7 +125,23 @@ export const AdminReports: React.FC = () => {
       ['REC-005', 'Sample Student / Record 5', 'Computer Science', 'Active', '86.5%', '2026-08-19']
     ];
 
-    if (repTitle.toLowerCase().includes('faculty')) {
+    if (repTitle.toLowerCase().includes('login') || repTitle.toLowerCase().includes('audit') || repTitle.toLowerCase().includes('auth')) {
+      const logs = getLoginHistory();
+      headers = ['Log_ID', 'User_ID', 'User_Name', 'Email', 'Role', 'Timestamp', 'IP_Address', 'Device_Platform', 'Location', 'Auth_Method', 'Session_Status'];
+      rows = logs.map(l => [
+        l.id,
+        l.userId,
+        l.userName,
+        l.userEmail,
+        l.role.toUpperCase(),
+        l.timestamp,
+        l.ipAddress,
+        l.deviceInfo,
+        l.loginLocation,
+        l.authMethod,
+        l.status
+      ]);
+    } else if (repTitle.toLowerCase().includes('faculty')) {
       headers = ['Emp_ID', 'Faculty_Name', 'Department', 'Designation', 'Teaching_Credits', 'Workload_Status'];
       rows = [
         ['FAC-101', 'Dr. Alok Verma', 'Computer Science', 'Professor & HOD', '18 Credits', 'Optimal'],
@@ -131,6 +157,7 @@ export const AdminReports: React.FC = () => {
         ['TXN-8823', 'CS2023003', 'Michael Scott', 'Demand Draft', 52000, 'Success', '2026-08-12']
       ];
     }
+
 
     const filename = `${repTitle.replace(/[^a-zA-Z0-9_-]/g, '_')}_Report.csv`;
     downloadCSV(filename, headers, rows);

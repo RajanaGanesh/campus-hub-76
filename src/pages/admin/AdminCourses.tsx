@@ -463,18 +463,19 @@ export const AdminCourses: React.FC = () => {
                                     background: 'rgba(168, 85, 247, 0.12)',
                                     color: '#c084fc',
                                     border: '1px solid rgba(168, 85, 247, 0.25)',
-                                    fontSize: '0.7rem',
+                                    fontSize: '0.72rem',
                                     padding: '2px 8px',
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     gap: '4px',
-                                    cursor: 'pointer'
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap'
                                   }}
                                   onClick={() => setManagingLabsCourse(c)}
-                                  title={`Click to manage labs for ${c.code}`}
+                                  title={`Click to manage ${lab.name} (${lab.batch})`}
                                 >
                                   <i className="fa-solid fa-flask-vial"></i>
-                                  <span>{lab.code}: {lab.scheduleDay} {lab.scheduleTime} ({lab.batch})</span>
+                                  <span>{lab.code} ({lab.batch})</span>
                                 </span>
                               ))}
                             </div>

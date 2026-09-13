@@ -501,10 +501,10 @@ export const getManagementData = (): ManagementData => {
     });
 
     const rawExamMarks: ExamMarkRecord[] = Array.isArray(parsed.examMarks) ? parsed.examMarks : [];
-    const mergedExamMarks = rawExamMarks.filter(e => !SAMPLE_IDS.has(e.studentId) && !SAMPLE_IDS.has(e.courseCode));
+    const mergedExamMarks = rawExamMarks;
 
     const rawAnnouncements: ManagementAnnouncement[] = Array.isArray(parsed.announcements) ? parsed.announcements : [];
-    const mergedAnnouncements = rawAnnouncements.filter(a => !SAMPLE_IDS.has(a.id));
+    const mergedAnnouncements = rawAnnouncements;
 
     return {
       students: mergedStudents,

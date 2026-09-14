@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { AppLayout } from '../../components/AppLayout';
 import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
+import { getManagementData } from '../../data/managementData';
+import { getStudentNotifications, saveStudentNotifications, StudentNotificationItem } from '../../services/storageService';
 
 export interface AdminNotifItem {
   id: string;
@@ -47,10 +49,13 @@ export const AdminNotifications: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [targetRole, setTargetRole] = useState('All Users');
+  const [selectedStudentId, setSelectedStudentId] = useState('');
   const [priority, setPriority] = useState<'High' | 'Medium' | 'Low'>('Medium');
   const [message, setMessage] = useState('');
 
   const [toastMsg, setToastMsg] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
+
+  const studentsList = getManagementData().students;
 
   const showToast = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
     setToastMsg({ message, type });
@@ -64,21 +69,57 @@ export const AdminNotifications: React.FC = () => {
       return;
     }
 
+    if (targetRole === 'Specific Student' && !selectedStudentId) {
+      showToast('Please select a specific student.', 'error');
+      return;
+    }
+
+    const matchedStudent = studentsList.find((s) => s.id === selectedStudentId);
+
+    const displayTarget = targetRole === 'Specific Student' && matchedStudent
+      ? `Student: ${matchedStudent.name} (${matchedStudent.id})`
+      : targetRole;
+
     const newN: AdminNotifItem = {
       id: `NOTIF-${Date.now()}`,
       title: title.trim(),
       message: message.trim(),
-      targetRole,
+      targetRole: displayTarget,
       priority,
       time: 'Just now',
       isUnread: true
     };
 
     setNotifications([newN, ...notifications]);
+
+    // Dispatch to Student In-App Notifications Feed
+    try {
+      const allStudentNotifs = getStudentNotifications();
+      const newStudentNotif: StudentNotificationItem = {
+        id: `NOTIF-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+        category: 'General',
+        title: title.trim(),
+        message: message.trim(),
+        time: 'Just now',
+        isUnread: true,
+        targetRoute: '/student/notifications',
+        actionLabel: 'View Alert',
+        targetStudentId: targetRole === 'Specific Student' ? (matchedStudent?.id || selectedStudentId) : 'all',
+        targetStudentEmail: targetRole === 'Specific Student' ? matchedStudent?.email : undefined,
+        targetStudentName: targetRole === 'Specific Student' ? matchedStudent?.name : undefined,
+        targetRole: targetRole === 'Specific Student' ? 'student' : (targetRole === 'Faculty' ? 'faculty' : (targetRole === 'Student' ? 'student' : 'all'))
+      };
+
+      saveStudentNotifications([newStudentNotif, ...allStudentNotifs]);
+    } catch (err) {
+      console.warn('Could not sync student notification:', err);
+    }
+
     setIsAddModalOpen(false);
     setTitle('');
     setMessage('');
-    showToast(`System notification broadcasted to ${targetRole}!`, 'success');
+    setSelectedStudentId('');
+    showToast(`Notification sent to ${displayTarget}!`, 'success');
   };
 
   return (
@@ -202,14 +243,20 @@ export const AdminNotifications: React.FC = () => {
 
               <div className="form-fields-two-col">
                 <div className="form-field-wrap">
-                  <label className="form-label">Target Role</label>
+                  <label className="form-label">Target Audience / Recipient</label>
                   <select
                     className="c1-select"
                     value={targetRole}
-                    onChange={(e) => setTargetRole(e.target.value)}
+                    onChange={(e) => {
+                      setTargetRole(e.target.value);
+                      if (e.target.value !== 'Specific Student') {
+                        setSelectedStudentId('');
+                      }
+                    }}
                   >
-                    <option value="All Users">All Campus Users</option>
-                    <option value="Student">All Students</option>
+                    <option value="All Users">All Campus Users (Broadcast)</option>
+                    <option value="Student">All Students (Campus Broadcast)</option>
+                    <option value="Specific Student">🎯 Specific Individual Student</option>
                     <option value="Faculty">All Faculty</option>
                     <option value="Parent">Parents</option>
                   </select>
@@ -228,6 +275,29 @@ export const AdminNotifications: React.FC = () => {
                   </select>
                 </div>
               </div>
+
+              {targetRole === 'Specific Student' && (
+                <div className="form-field-wrap">
+                  <label className="form-label">Select Student (Recipient)</label>
+                  <select
+                    className="c1-select"
+                    value={selectedStudentId}
+                    onChange={(e) => setSelectedStudentId(e.target.value)}
+                    required
+                  >
+                    <option value="">-- Choose Student --</option>
+                    {studentsList.map((stu) => (
+                      <option key={stu.id} value={stu.id}>
+                        {stu.name} ({stu.id}) • {stu.department} ({stu.year} - Sec {stu.section})
+                      </option>
+                    ))}
+                  </select>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    <i className="fa-solid fa-lock" style={{ marginRight: '4px' }}></i>
+                    This notification will only be received by this specific student.
+                  </p>
+                </div>
+              )}
 
               <div className="form-field-wrap">
                 <label className="form-label">Message Content</label>

@@ -1,15 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopNavbar } from './TopNavbar';
 import { GlobalSearch } from './GlobalSearch';
 import { NotificationPanel, NotificationItem } from './NotificationPanel';
 import { CampusAIAssistant } from './CampusAIAssistant';
+import { useAuth } from '../context/AuthContext';
+import { useEffectiveUserProfile } from '../utils/userProfile';
+import {
+  getStudentNotificationsForUser,
+  toggleStudentNotificationRead,
+  markAllStudentNotificationsAsRead
+} from '../services/storageService';
 
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
 export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
+  const { user } = useAuth();
+  const effectiveProfile = useEffectiveUserProfile();
+
+  const userRole = user?.role || 'student';
+  const studentId = user?.id || '';
+  const studentEmail = user?.email || effectiveProfile.email || '';
+  const studentName = user?.name || effectiveProfile.name || '';
+
   // Persistence of sidebar collapsed state
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     return localStorage.getItem('campushub_sidebar_collapsed') === 'true';
@@ -20,41 +35,49 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  // Demo Notifications State
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    {
-      id: 1,
-      category: 'academic',
-      title: 'Attendance Notice',
-      desc: 'Overall attendance compliance verified for current term.',
-      time: '10m ago',
-      unread: true
-    },
-    {
-      id: 2,
-      category: 'academic',
-      title: 'Assignment Deadline',
-      desc: 'Upcoming coursework task submission due soon.',
-      time: '2h ago',
-      unread: true
-    },
-    {
-      id: 3,
-      category: 'academic',
-      title: 'Exam Timetable Published',
-      desc: 'Mid-Semester Theory exam schedules are available.',
-      time: '1d ago',
-      unread: true
-    },
-    {
-      id: 4,
-      category: 'placement',
-      title: 'Placement Opportunity',
-      desc: 'TechNova recruitment registration deadline approaching.',
-      time: '2d ago',
-      unread: false
+  // Dynamic User Scoped Notifications State
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+
+  const loadNotifications = useCallback(() => {
+    if (userRole === 'student') {
+      const studentNotifs = getStudentNotificationsForUser(studentId, studentEmail, studentName);
+      setNotifications(
+        studentNotifs.map((n) => ({
+          id: n.id,
+          category: n.category,
+          title: n.title,
+          desc: n.message,
+          time: n.time,
+          unread: n.isUnread,
+          targetRoute: n.targetRoute || '/student/notifications'
+        }))
+      );
+    } else if (userRole === 'faculty') {
+      setNotifications([
+        { id: 'fn-1', category: 'Assignment', title: 'New Submissions', desc: '5 students submitted solutions for Binary Search Trees.', time: '20m ago', unread: true, targetRoute: '/faculty/assignments' },
+        { id: 'fn-2', category: 'Class', title: 'Upcoming Lecture', desc: 'CSE-302 (DBMS) Section B lecture begins at 11:00 AM.', time: '30m ago', unread: true, targetRoute: '/faculty/dashboard' },
+        { id: 'fn-3', category: 'Attendance', title: 'Roll Call Pending', desc: 'Attendance for CSE-401 Section A is pending roll call.', time: '2h ago', unread: false, targetRoute: '/faculty/attendance' }
+      ]);
+    } else {
+      setNotifications([
+        { id: 'an-1', category: 'Hostel', title: 'Hostel Maintenance Request', desc: 'Plumbing repair request submitted by student in Room A-204.', time: '15m ago', unread: true, targetRoute: '/admin/hostel' },
+        { id: 'an-2', category: 'Exam', title: 'Exam Seating Roster Approved', desc: 'COE Controller has approved room allocations for Midterm 1.', time: '1h ago', unread: true, targetRoute: '/admin/exams' },
+        { id: 'an-3', category: 'Fee', title: 'Fee Settlement Completed', desc: 'Razorpay settlement batch of ₹4,25,000 transferred.', time: '3h ago', unread: false, targetRoute: '/admin/fees' }
+      ]);
     }
-  ]);
+  }, [userRole, studentId, studentEmail, studentName]);
+
+  useEffect(() => {
+    loadNotifications();
+    window.addEventListener('campushub_student_notifications_updated', loadNotifications);
+    window.addEventListener('campushub_shortage_email_sent', loadNotifications);
+    window.addEventListener('storage', loadNotifications);
+    return () => {
+      window.removeEventListener('campushub_student_notifications_updated', loadNotifications);
+      window.removeEventListener('campushub_shortage_email_sent', loadNotifications);
+      window.removeEventListener('storage', loadNotifications);
+    };
+  }, [loadNotifications]);
 
   const toggleSidebar = () => {
     if (window.innerWidth <= 768) {
@@ -89,17 +112,28 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     return () => window.removeEventListener('keydown', handleGlobalKeys);
   }, []);
 
-  const handleMarkRead = (id: number) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, unread: false } : n))
-    );
+  const handleMarkRead = (id: string | number) => {
+    if (userRole === 'student') {
+      toggleStudentNotificationRead(String(id), studentId);
+      loadNotifications();
+    } else {
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, unread: false } : n))
+      );
+    }
   };
 
   const handleMarkAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+    if (userRole === 'student') {
+      markAllStudentNotificationsAsRead(studentId, studentEmail, studentName);
+      loadNotifications();
+    } else {
+      setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+    }
   };
 
   const unreadNotifCount = notifications.filter((n) => n.unread).length;
+  const viewAllRoute = userRole === 'admin' ? '/admin/notifications' : (userRole === 'faculty' ? '/faculty/notifications' : '/student/notifications');
 
   return (
     <div className="app-layout">
@@ -132,6 +166,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             onMarkRead={handleMarkRead}
             onMarkAllRead={handleMarkAllRead}
             onClose={() => setIsNotificationsOpen(false)}
+            viewAllRoute={viewAllRoute}
           />
         </div>
       )}

@@ -1,7 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
+import { Modal } from '../../components/Modal';
 import { Toast } from '../../components/Toast';
+import { getManagementData } from '../../data/managementData';
+import { getStudentNotifications, saveStudentNotifications, StudentNotificationItem } from '../../services/storageService';
 
 export interface FacultyNotificationItem {
   id: string;
@@ -64,11 +67,68 @@ export const FacultyNotifications: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Modal State for Sending Alert to Student
+  const [isSendModalOpen, setIsSendModalOpen] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertCategory, setAlertCategory] = useState<StudentNotificationItem['category']>('Academic');
+  const [targetStudentId, setTargetStudentId] = useState('');
+  const [targetType, setTargetType] = useState<'specific' | 'all'>('specific');
+  const [alertMessage, setAlertMessage] = useState('');
+
   const [toastMsg, setToastMsg] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
+
+  const studentsList = getManagementData().students;
 
   const showToast = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
     setToastMsg({ message, type });
     setTimeout(() => setToastMsg(null), 3500);
+  };
+
+  const handleSendStudentAlert = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!alertTitle.trim() || !alertMessage.trim()) {
+      showToast('Please fill in both Title and Message fields.', 'error');
+      return;
+    }
+
+    if (targetType === 'specific' && !targetStudentId) {
+      showToast('Please select a student recipient.', 'error');
+      return;
+    }
+
+    const matchedStudent = studentsList.find((s) => s.id === targetStudentId);
+
+    try {
+      const allStudentNotifs = getStudentNotifications();
+      const newStudentNotif: StudentNotificationItem = {
+        id: `NOTIF-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+        category: alertCategory,
+        title: alertTitle.trim(),
+        message: alertMessage.trim(),
+        time: 'Just now',
+        isUnread: true,
+        targetRoute: '/student/notifications',
+        actionLabel: 'View Alert',
+        targetStudentId: targetType === 'specific' ? (matchedStudent?.id || targetStudentId) : 'all',
+        targetStudentEmail: targetType === 'specific' ? matchedStudent?.email : undefined,
+        targetStudentName: targetType === 'specific' ? matchedStudent?.name : undefined,
+        targetRole: 'student'
+      };
+
+      saveStudentNotifications([newStudentNotif, ...allStudentNotifs]);
+
+      const recipientText = targetType === 'specific' && matchedStudent
+        ? `${matchedStudent.name} (${matchedStudent.id})`
+        : 'all students';
+
+      setIsSendModalOpen(false);
+      setAlertTitle('');
+      setAlertMessage('');
+      setTargetStudentId('');
+      showToast(`Notification delivered successfully to ${recipientText}!`, 'success');
+    } catch (err) {
+      showToast('Failed to send notification.', 'error');
+    }
   };
 
   const categories = ['All', 'Assignment', 'Class', 'Attendance', 'Exam'];
@@ -141,7 +201,15 @@ export const FacultyNotifications: React.FC = () => {
           </div>
 
           <div className="module-header-meta">
-            <div className="notif-header-actions">
+            <div className="notif-header-actions" style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
+                className="c1-btn c1-btn-gradient"
+                onClick={() => setIsSendModalOpen(true)}
+              >
+                <i className="fa-solid fa-paper-plane"></i>
+                <span>Send Student Alert</span>
+              </button>
               {unreadCount > 0 && (
                 <button
                   type="button"
@@ -308,6 +376,115 @@ export const FacultyNotifications: React.FC = () => {
             <h4>All alerts acknowledged</h4>
             <p>No new notifications in this category.</p>
           </div>
+        )}
+
+        {/* ============================================================
+            MODAL: SEND STUDENT ALERT
+            ============================================================ */}
+        {isSendModalOpen && (
+          <Modal
+            isOpen={true}
+            onClose={() => setIsSendModalOpen(false)}
+            title="Send Alert to Student"
+            maxWidth="md"
+          >
+            <form onSubmit={handleSendStudentAlert} className="faculty-form-stack">
+              <div className="form-field-wrap">
+                <label className="form-label">Alert Heading / Subject</label>
+                <input
+                  type="text"
+                  className="c1-input"
+                  placeholder="e.g. Lab Assignment #4 Feedback & Follow-up"
+                  value={alertTitle}
+                  onChange={(e) => setAlertTitle(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-fields-two-col">
+                <div className="form-field-wrap">
+                  <label className="form-label">Recipient Scope</label>
+                  <select
+                    className="c1-select"
+                    value={targetType}
+                    onChange={(e) => {
+                      setTargetType(e.target.value as 'specific' | 'all');
+                      if (e.target.value === 'all') setTargetStudentId('');
+                    }}
+                  >
+                    <option value="specific">🎯 Individual Student</option>
+                    <option value="all">📢 All Students (Class Broadcast)</option>
+                  </select>
+                </div>
+
+                <div className="form-field-wrap">
+                  <label className="form-label">Category</label>
+                  <select
+                    className="c1-select"
+                    value={alertCategory}
+                    onChange={(e) => setAlertCategory(e.target.value as any)}
+                  >
+                    <option value="Academic">Academic</option>
+                    <option value="Assignment">Assignment</option>
+                    <option value="Exam">Exam</option>
+                    <option value="General">General Notice</option>
+                  </select>
+                </div>
+              </div>
+
+              {targetType === 'specific' && (
+                <div className="form-field-wrap">
+                  <label className="form-label">Select Student (Recipient)</label>
+                  <select
+                    className="c1-select"
+                    value={targetStudentId}
+                    onChange={(e) => setTargetStudentId(e.target.value)}
+                    required
+                  >
+                    <option value="">-- Choose Student --</option>
+                    {studentsList.map((stu) => (
+                      <option key={stu.id} value={stu.id}>
+                        {stu.name} ({stu.id}) • {stu.department} ({stu.year} - Sec {stu.section})
+                      </option>
+                    ))}
+                  </select>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    <i className="fa-solid fa-lock" style={{ marginRight: '4px' }}></i>
+                    Only this student will receive this notification in their feed.
+                  </p>
+                </div>
+              )}
+
+              <div className="form-field-wrap">
+                <label className="form-label">Notification Message</label>
+                <textarea
+                  className="c1-textarea"
+                  rows={3}
+                  placeholder="Enter message details for the student..."
+                  value={alertMessage}
+                  onChange={(e) => setAlertMessage(e.target.value)}
+                  required
+                ></textarea>
+              </div>
+
+              <div className="modal-dialog-footer">
+                <button
+                  type="button"
+                  className="c1-btn c1-btn-secondary"
+                  onClick={() => setIsSendModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="c1-btn c1-btn-gradient"
+                >
+                  <i className="fa-solid fa-paper-plane"></i>
+                  <span>Send Notification</span>
+                </button>
+              </div>
+            </form>
+          </Modal>
         )}
 
         {/* Toast Notification Container */}

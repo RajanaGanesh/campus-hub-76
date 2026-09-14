@@ -252,21 +252,217 @@ export interface StudentNotificationItem {
   isUnread: boolean;
   targetRoute?: string;
   actionLabel?: string;
+  // Student targeting fields:
+  targetStudentId?: string; // Specific roll number / student ID or 'all'
+  targetStudentEmail?: string; // Specific student email
+  targetStudentName?: string; // Specific student name
+  targetRole?: 'student' | 'faculty' | 'admin' | 'all';
+  readBy?: string[]; // User IDs who have read (for broadcasts)
 }
 
 const DEFAULT_STUDENT_NOTIFICATIONS: StudentNotificationItem[] = [
-  { id: 'NOTIF-101', category: 'Assignment', title: 'Assignment Deadline Approaching', message: 'Database Management "ER Diagram & Normalization" coursework is due on 25th August.', time: '15 mins ago', isUnread: true, targetRoute: '/student/assignments', actionLabel: 'Submit Work' },
-  { id: 'NOTIF-102', category: 'Exam', title: 'Mid-Semester Hall Ticket Released', message: 'Your official examination hall ticket for August 2026 is now available for download.', time: '2 hours ago', isUnread: true, targetRoute: '/student/exams', actionLabel: 'View Hall Ticket' },
-  { id: 'NOTIF-103', category: 'Fee', title: 'Semester 8 Tuition Installment Reminder', message: 'Your pending installment of ₹20,000 is due by 15th September 2026 to avoid late charges.', time: '1 day ago', isUnread: true, targetRoute: '/student/fees', actionLabel: 'Pay Fees' },
-  { id: 'NOTIF-104', category: 'Library', title: 'Library Book Due Soon', message: '"Database System Concepts" by Abraham Silberschatz is due for return in 27 days.', time: '2 days ago', isUnread: false, targetRoute: '/student/library', actionLabel: 'Renew Loan' },
-  { id: 'NOTIF-105', category: 'Hostel', title: 'Hostel Maintenance Update', message: 'Your service request for bathroom tap repair has been assigned to maintenance supervisor.', time: '3 days ago', isUnread: false, targetRoute: '/student/hostel', actionLabel: 'View Request' }
+  { id: 'NOTIF-101', category: 'Assignment', title: 'Assignment Deadline Approaching', message: 'Database Management "ER Diagram & Normalization" coursework is due on 25th August.', time: '15 mins ago', isUnread: true, targetRoute: '/student/assignments', actionLabel: 'Submit Work', targetStudentId: 'all', targetRole: 'student' },
+  { id: 'NOTIF-102', category: 'Exam', title: 'Mid-Semester Hall Ticket Released', message: 'Your official examination hall ticket for August 2026 is now available for download.', time: '2 hours ago', isUnread: true, targetRoute: '/student/exams', actionLabel: 'View Hall Ticket', targetStudentId: 'all', targetRole: 'student' },
+  { id: 'NOTIF-103', category: 'Fee', title: 'Semester 8 Tuition Installment Reminder', message: 'Your pending installment of ₹20,000 is due by 15th September 2026 to avoid late charges.', time: '1 day ago', isUnread: true, targetRoute: '/student/fees', actionLabel: 'Pay Fees', targetStudentId: 'all', targetRole: 'student' },
+  { id: 'NOTIF-104', category: 'Library', title: 'Library Book Due Soon', message: '"Database System Concepts" by Abraham Silberschatz is due for return in 27 days.', time: '2 days ago', isUnread: false, targetRoute: '/student/library', actionLabel: 'Renew Loan', targetStudentId: 'all', targetRole: 'student' },
+  { id: 'NOTIF-105', category: 'Hostel', title: 'Hostel Maintenance Update', message: 'Your service request for bathroom tap repair has been assigned to maintenance supervisor.', time: '3 days ago', isUnread: false, targetRoute: '/student/hostel', actionLabel: 'View Request', targetStudentId: 'all', targetRole: 'student' }
 ];
 
 export const getStudentNotifications = (): StudentNotificationItem[] =>
   safeGetStorage<StudentNotificationItem[]>('campushub_student_notifications', DEFAULT_STUDENT_NOTIFICATIONS);
 
-export const saveStudentNotifications = (notifs: StudentNotificationItem[]): void =>
+export const saveStudentNotifications = (notifs: StudentNotificationItem[]): void => {
   safeSetStorage('campushub_student_notifications', notifs);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('campushub_student_notifications_updated'));
+    window.dispatchEvent(new Event('storage'));
+  }
+};
+
+/**
+ * Retrieves notifications specifically scoped to the active student.
+ * Returns:
+ * 1. Notifications explicitly addressed to this student (by ID/Roll No, Email, or Name).
+ * 2. Broadcast notifications meant for all students (targetStudentId === 'all' or undefined).
+ * Notifications addressed to other individual students are strictly excluded.
+ */
+export const getStudentNotificationsForUser = (
+  studentId?: string,
+  studentEmail?: string,
+  studentName?: string
+): StudentNotificationItem[] => {
+  const allNotifs = getStudentNotifications();
+  const cleanId = (studentId || '').toLowerCase().trim();
+  const cleanEmail = (studentEmail || '').toLowerCase().trim();
+  const cleanName = (studentName || '').toLowerCase().trim();
+
+  return allNotifs.filter((n) => {
+    // If notification has a specific student target (not 'all' or empty)
+    if (n.targetStudentId && n.targetStudentId !== 'all') {
+      const targetId = n.targetStudentId.toLowerCase().trim();
+      const targetEmail = (n.targetStudentEmail || '').toLowerCase().trim();
+      const targetName = (n.targetStudentName || '').toLowerCase().trim();
+
+      const isMatch =
+        (cleanId && targetId === cleanId) ||
+        (cleanEmail && targetEmail === cleanEmail) ||
+        (cleanName && targetName === cleanName) ||
+        (cleanEmail && targetId && cleanEmail.includes(targetId)) ||
+        (cleanId && targetEmail && targetEmail.includes(cleanId));
+
+      return isMatch;
+    }
+
+    // If targetStudentEmail is specified and not 'all'
+    if (n.targetStudentEmail && n.targetStudentEmail !== 'all' && n.targetStudentEmail !== '') {
+      const targetEmail = n.targetStudentEmail.toLowerCase().trim();
+      return cleanEmail && targetEmail === cleanEmail;
+    }
+
+    // If targetRole is specified and is not student or all
+    if (n.targetRole && n.targetRole !== 'student' && n.targetRole !== 'all') {
+      return false;
+    }
+
+    // Otherwise, it's a broadcast notification for all students
+    return true;
+  });
+};
+
+/**
+ * Toggle read status for a student notification
+ */
+export const toggleStudentNotificationRead = (
+  notifId: string,
+  userId?: string
+): StudentNotificationItem[] => {
+  const allNotifs = getStudentNotifications();
+  const updated = allNotifs.map((n) => {
+    if (n.id !== notifId) return n;
+    
+    // For single-recipient notifs, toggle isUnread
+    if (n.targetStudentId && n.targetStudentId !== 'all') {
+      return { ...n, isUnread: !n.isUnread };
+    }
+
+    // For broadcast notifs, track readBy if userId is given, or toggle isUnread
+    const isCurrentlyUnread = n.isUnread;
+    const currentReadBy = n.readBy || [];
+    let nextReadBy = currentReadBy;
+    if (userId) {
+      if (currentReadBy.includes(userId)) {
+        nextReadBy = currentReadBy.filter((u) => u !== userId);
+      } else {
+        nextReadBy = [...currentReadBy, userId];
+      }
+    }
+    return { ...n, isUnread: !isCurrentlyUnread, readBy: nextReadBy };
+  });
+
+  saveStudentNotifications(updated);
+  return updated;
+};
+
+/**
+ * Mark all notifications as read for a specific student
+ */
+export const markAllStudentNotificationsAsRead = (
+  studentId?: string,
+  studentEmail?: string,
+  studentName?: string
+): void => {
+  const allNotifs = getStudentNotifications();
+  const cleanId = (studentId || '').toLowerCase().trim();
+  const cleanEmail = (studentEmail || '').toLowerCase().trim();
+  const cleanName = (studentName || '').toLowerCase().trim();
+
+  const updated = allNotifs.map((n) => {
+    // If targeted to this student
+    if (n.targetStudentId && n.targetStudentId !== 'all') {
+      const targetId = n.targetStudentId.toLowerCase().trim();
+      const targetEmail = (n.targetStudentEmail || '').toLowerCase().trim();
+      const targetName = (n.targetStudentName || '').toLowerCase().trim();
+
+      const isMatch =
+        (cleanId && targetId === cleanId) ||
+        (cleanEmail && targetEmail === cleanEmail) ||
+        (cleanName && targetName === cleanName) ||
+        (cleanEmail && targetId && cleanEmail.includes(targetId)) ||
+        (cleanId && targetEmail && targetEmail.includes(cleanId));
+
+      if (isMatch) {
+        return { ...n, isUnread: false };
+      }
+      return n;
+    }
+
+    // If broadcast notification
+    if (!n.targetStudentId || n.targetStudentId === 'all') {
+      const readBy = n.readBy || [];
+      const userKey = studentId || studentEmail || 'current_student';
+      return {
+        ...n,
+        isUnread: false,
+        readBy: readBy.includes(userKey) ? readBy : [...readBy, userKey]
+      };
+    }
+
+    return n;
+  });
+
+  saveStudentNotifications(updated);
+};
+
+/**
+ * Delete a notification from student inbox
+ */
+export const deleteStudentNotification = (notifId: string): void => {
+  const allNotifs = getStudentNotifications();
+  const updated = allNotifs.filter((n) => n.id !== notifId);
+  saveStudentNotifications(updated);
+};
+
+/**
+ * Clear all read notifications for a specific student
+ */
+export const clearReadStudentNotifications = (
+  studentId?: string,
+  studentEmail?: string,
+  studentName?: string
+): void => {
+  const allNotifs = getStudentNotifications();
+  const cleanId = (studentId || '').toLowerCase().trim();
+  const cleanEmail = (studentEmail || '').toLowerCase().trim();
+  const cleanName = (studentName || '').toLowerCase().trim();
+
+  const updated = allNotifs.filter((n) => {
+    // If targeted to this student and is read, filter it out
+    if (n.targetStudentId && n.targetStudentId !== 'all') {
+      const targetId = n.targetStudentId.toLowerCase().trim();
+      const targetEmail = (n.targetStudentEmail || '').toLowerCase().trim();
+      const targetName = (n.targetStudentName || '').toLowerCase().trim();
+
+      const isMatch =
+        (cleanId && targetId === cleanId) ||
+        (cleanEmail && targetEmail === cleanEmail) ||
+        (cleanName && targetName === cleanName) ||
+        (cleanEmail && targetId && cleanEmail.includes(targetId)) ||
+        (cleanId && targetEmail && targetEmail.includes(cleanId));
+
+      if (isMatch && !n.isUnread) {
+        return false;
+      }
+    }
+    // If broadcast and is read by user
+    if ((!n.targetStudentId || n.targetStudentId === 'all') && !n.isUnread) {
+      return false;
+    }
+
+    return true;
+  });
+
+  saveStudentNotifications(updated);
+};
 
 export interface NoticeItem {
   id: string;

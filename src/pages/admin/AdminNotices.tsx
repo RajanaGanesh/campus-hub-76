@@ -85,7 +85,9 @@ export const AdminNotices: React.FC = () => {
         time: 'Just now',
         isUnread: true,
         targetRoute: '/student/notices',
-        actionLabel: 'Read Notice'
+        actionLabel: 'Read Notice',
+        targetStudentId: 'all',
+        targetRole: 'student'
       };
       saveStudentNotifications([newNotif, ...studentNotifs]);
     } catch {}

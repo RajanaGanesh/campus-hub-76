@@ -15,6 +15,7 @@ import {
   getManagementData,
   saveManagementData
 } from '../data/managementData';
+import { getStudentNotificationsForUser } from './storageService';
 
 const generateUUID = (): string => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -859,6 +860,18 @@ export const dbService = {
       desc: a.message
     }));
 
+    const userScopedNotifs = getStudentNotificationsForUser(
+      localStu?.id || '236F1A0551',
+      localStu?.email || email,
+      localStu?.name
+    ).map((n, idx) => ({
+      id: idx + 1,
+      icon: n.category === 'Academic' ? 'fa-file-signature' : (n.category === 'Fee' ? 'fa-wallet' : (n.category === 'Exam' ? 'fa-receipt' : 'fa-bell')),
+      title: n.title + ': ' + n.message,
+      time: n.time,
+      unread: n.isUnread
+    }));
+
     const fallbackData: StudentDashboardData = {
       ...studentDashboardData,
       profile: {
@@ -875,6 +888,7 @@ export const dbService = {
       totalClasses: 250,
       assignments: mgmtStudentAssignments.length > 0 ? mgmtStudentAssignments : studentDashboardData.assignments,
       announcements: mgmtAnnouncements.length > 0 ? mgmtAnnouncements : studentDashboardData.announcements,
+      notifications: userScopedNotifs.length > 0 ? userScopedNotifs : studentDashboardData.notifications,
       stats: [
         { icon: 'fa-user-check', title: 'Attendance', value: `${studentAttPercent}%`, description: 'Overall Attendance (32/36 Labs)', status: studentAttPercent >= 75 ? 'Safe' : 'Warning', statusType: studentAttPercent >= 75 ? 'good' : 'due', progress: studentAttPercent, colorVariant: studentAttPercent >= 75 ? 'primary' : 'red' },
         { icon: 'fa-award', title: 'CGPA', value: localStu?.cgpa ? localStu.cgpa.toFixed(2) : '8.65', description: 'Current CGPA', status: (localStu?.cgpa || 8.65) >= 8.0 ? 'Excellent' : 'Good', statusType: 'excellent', colorVariant: 'cyan' },

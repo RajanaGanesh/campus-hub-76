@@ -1,14 +1,31 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '../../components/AppLayout';
 import { Toast } from '../../components/Toast';
-import { getStudentNotifications, saveStudentNotifications, StudentNotificationItem } from '../../services/storageService';
+import { useAuth } from '../../context/AuthContext';
+import { useEffectiveUserProfile } from '../../utils/userProfile';
+import {
+  getStudentNotificationsForUser,
+  toggleStudentNotificationRead,
+  markAllStudentNotificationsAsRead,
+  deleteStudentNotification,
+  clearReadStudentNotifications,
+  StudentNotificationItem
+} from '../../services/storageService';
 
 export const StudentNotifications: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const effectiveProfile = useEffectiveUserProfile();
 
-  // Notifications State loaded from persistent storage
-  const [notifications, setNotifications] = useState<StudentNotificationItem[]>(() => getStudentNotifications());
+  const studentId = user?.id || '';
+  const studentEmail = user?.email || effectiveProfile.email || '';
+  const studentName = user?.name || effectiveProfile.name || '';
+
+  // Notifications State scoped strictly to the current active student
+  const [notifications, setNotifications] = useState<StudentNotificationItem[]>(() =>
+    getStudentNotificationsForUser(studentId, studentEmail, studentName)
+  );
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -20,18 +37,20 @@ export const StudentNotifications: React.FC = () => {
     setTimeout(() => setToastMsg(null), 3500);
   };
 
+  const loadNotifications = useCallback(() => {
+    setNotifications(getStudentNotificationsForUser(studentId, studentEmail, studentName));
+  }, [studentId, studentEmail, studentName]);
+
   // Real-time listener for notification updates dispatched from other pages/services
   useEffect(() => {
-    const handleSync = () => {
-      setNotifications(getStudentNotifications());
-    };
-    window.addEventListener('campushub_student_notifications_updated', handleSync);
-    window.addEventListener('storage', handleSync);
+    loadNotifications();
+    window.addEventListener('campushub_student_notifications_updated', loadNotifications);
+    window.addEventListener('storage', loadNotifications);
     return () => {
-      window.removeEventListener('campushub_student_notifications_updated', handleSync);
-      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('campushub_student_notifications_updated', loadNotifications);
+      window.removeEventListener('storage', loadNotifications);
     };
-  }, []);
+  }, [loadNotifications]);
 
   const categories = ['All', 'Academic', 'Assignment', 'Exam', 'Fee', 'Library', 'Hostel', 'Transport'];
 
@@ -57,33 +76,29 @@ export const StudentNotifications: React.FC = () => {
 
   // Mark single as read
   const handleToggleRead = (id: string) => {
-    const updated = notifications.map((n) => (n.id === id ? { ...n, isUnread: !n.isUnread } : n));
-    setNotifications(updated);
-    saveStudentNotifications(updated);
+    toggleStudentNotificationRead(id, studentId);
+    loadNotifications();
   };
 
   // Mark all read
   const handleMarkAllRead = () => {
-    const updated = notifications.map((n) => ({ ...n, isUnread: false }));
-    setNotifications(updated);
-    saveStudentNotifications(updated);
+    markAllStudentNotificationsAsRead(studentId, studentEmail, studentName);
+    loadNotifications();
     showToast('All notifications marked as read.', 'info');
   };
 
   // Delete notification
   const handleDeleteNotification = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const updated = notifications.filter((n) => n.id !== id);
-    setNotifications(updated);
-    saveStudentNotifications(updated);
+    deleteStudentNotification(id);
+    loadNotifications();
     showToast('Notification removed.', 'info');
   };
 
   // Clear read notifications
   const handleClearRead = () => {
-    const remaining = notifications.filter((n) => n.isUnread);
-    setNotifications(remaining);
-    saveStudentNotifications(remaining);
+    clearReadStudentNotifications(studentId, studentEmail, studentName);
+    loadNotifications();
     showToast('Cleared read notifications.', 'info');
   };
 

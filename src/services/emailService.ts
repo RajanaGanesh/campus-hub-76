@@ -3,10 +3,7 @@ import {
   safeSetStorage,
   getStudentNotifications,
   saveStudentNotifications,
-  getStudentNotices,
-  saveStudentNotices,
-  StudentNotificationItem,
-  NoticeItem
+  StudentNotificationItem
 } from './storageService';
 import { getManagementData } from '../data/managementData';
 
@@ -125,7 +122,6 @@ export const sendAttendanceShortageEmail = (params: SendShortageEmailParams): At
   const courseTitle = params.courseName || params.courseCode;
   const now = new Date();
   const timeStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' at ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  const dateFormatted = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
   const subject = `URGENT: Academic Attendance Shortage Notice (${params.attendancePercentage}%) - ${params.courseCode}`;
   
@@ -174,7 +170,7 @@ CampusHub Academic Management Portal`;
   const updatedEmails = [newEmailRecord, ...currentEmails];
   saveAttendanceShortageEmails(updatedEmails);
 
-  // 1. Cross-dispatch to Student In-App Notifications Feed
+  // 1. Cross-dispatch to Student In-App Notifications Feed (Private to target student)
   try {
     const studentNotifs = getStudentNotifications();
     const newStudentNotif: StudentNotificationItem = {
@@ -185,38 +181,21 @@ CampusHub Academic Management Portal`;
       time: 'Just now',
       isUnread: true,
       targetRoute: '/student/attendance',
-      actionLabel: 'View Attendance Notice'
+      actionLabel: 'View Attendance Notice',
+      targetStudentId: params.studentId,
+      targetStudentEmail: emailAddr,
+      targetStudentName: params.studentName,
+      targetRole: 'student'
     };
     saveStudentNotifications([newStudentNotif, ...studentNotifs]);
   } catch (err) {
     console.warn('Could not sync student notification:', err);
   }
 
-  // 2. Cross-dispatch to Official Student Notices Board
-  try {
-    const studentNotices = getStudentNotices();
-    const newStudentNotice: NoticeItem = {
-      id: `NOT-ATT-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
-      title: `Urgent Attendance Shortage Notice: ${params.courseCode} (${params.attendancePercentage}%)`,
-      category: 'Academic',
-      publishedDate: dateFormatted,
-      publisher: `${params.facultyName || 'Academic Dean / Attendance Office'}`,
-      priority: 'High',
-      snippet: `Official low attendance alert for ${params.studentName} (${params.studentId}) in ${params.courseCode}. Current rate: ${params.attendancePercentage}%. Mandatory threshold: 75%. Notice sent to ${emailAddr}.`,
-      fullText: messageText,
-      attachmentName: `Attendance_Shortage_Notice_${params.courseCode}.pdf`,
-      isUnread: true
-    };
-    saveStudentNotices([newStudentNotice, ...studentNotices]);
-  } catch (err) {
-    console.warn('Could not sync student notice board:', err);
-  }
-
   // Real-time Event broadcast for active tabs / windows
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('campushub_shortage_email_sent', { detail: newEmailRecord }));
     window.dispatchEvent(new Event('campushub_student_notifications_updated'));
-    window.dispatchEvent(new Event('campushub_student_notices_updated'));
     window.dispatchEvent(new Event('storage'));
   }
 

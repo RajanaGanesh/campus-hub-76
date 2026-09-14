@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useEffectiveUserProfile } from '../../utils/userProfile';
 import { AppLayout } from '../../components/AppLayout';
 import { dbService } from '../../services/dbService';
+import { getStudentNotificationsForUser } from '../../services/storageService';
 import { studentDashboardData, StudentDashboardData } from '../../data/studentDashboardData';
 import { Toast } from '../../components/Toast';
 
@@ -24,6 +26,11 @@ import { StudentDashboardSkeleton, StudentErrorState } from '../../components/st
 
 export const StudentDashboard: React.FC = () => {
   const { user } = useAuth();
+  const effectiveProfile = useEffectiveUserProfile();
+
+  const studentId = user?.id || '';
+  const studentEmail = user?.email || effectiveProfile.email || '';
+  const studentName = user?.name || effectiveProfile.name || '';
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -50,6 +57,17 @@ export const StudentDashboard: React.FC = () => {
 
       const res = await dbService.getStudentDashboardData(user.email);
       if (res) {
+        // Ensure user-scoped notifications are reflected
+        const scopedNotifs = getStudentNotificationsForUser(studentId, studentEmail, studentName);
+        if (scopedNotifs && scopedNotifs.length > 0) {
+          res.notifications = scopedNotifs.map((n, idx) => ({
+            id: idx + 1,
+            icon: n.category === 'Academic' ? 'fa-file-signature' : (n.category === 'Fee' ? 'fa-wallet' : (n.category === 'Exam' ? 'fa-receipt' : 'fa-bell')),
+            title: n.title + ': ' + n.message,
+            time: n.time,
+            unread: n.isUnread
+          }));
+        }
         setData(res);
         if (showSyncToast) {
           showToast('Student academic records synced successfully.', 'success');
@@ -63,11 +81,35 @@ export const StudentDashboard: React.FC = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [user]);
+  }, [user, studentId, studentEmail, studentName]);
 
   useEffect(() => {
     fetchDashboardData();
-  }, [fetchDashboardData]);
+
+    const handleNotifsUpdate = () => {
+      const scopedNotifs = getStudentNotificationsForUser(studentId, studentEmail, studentName);
+      setData((prev) => ({
+        ...prev,
+        notifications: scopedNotifs.map((n, idx) => ({
+          id: idx + 1,
+          icon: n.category === 'Academic' ? 'fa-file-signature' : (n.category === 'Fee' ? 'fa-wallet' : (n.category === 'Exam' ? 'fa-receipt' : 'fa-bell')),
+          title: n.title + ': ' + n.message,
+          time: n.time,
+          unread: n.isUnread
+        }))
+      }));
+    };
+
+    window.addEventListener('campushub_student_notifications_updated', handleNotifsUpdate);
+    window.addEventListener('campushub_shortage_email_sent', handleNotifsUpdate);
+    window.addEventListener('storage', handleNotifsUpdate);
+
+    return () => {
+      window.removeEventListener('campushub_student_notifications_updated', handleNotifsUpdate);
+      window.removeEventListener('campushub_shortage_email_sent', handleNotifsUpdate);
+      window.removeEventListener('storage', handleNotifsUpdate);
+    };
+  }, [fetchDashboardData, studentId, studentEmail, studentName]);
 
   return (
     <AppLayout>
